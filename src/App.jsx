@@ -6,24 +6,24 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import Navbar from "./components/Navbar";
+import Navbar from "./components/Navbar"; // Ensure correct path
 import HeroSection from "./components/HeroSection";
 import FeaturesSection from "./components/FeaturesSection";
 import Footer from "./components/Footer";
-import HomeComponent from "./pages/Home";
+import HomeComponent from "./pages/Home"; // Ensure correct path
 import Authentication from "./components/Authentication";
 
 const AuthPage = ({ setIsAuthenticated }) => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
-  const mode = searchParams.get("mode"); // Get login or register mode
+  const mode = searchParams.get("mode");
 
   return (
     <Authentication
       open={true}
       handleClose={() => window.history.back()}
       isLogin={mode === "login"}
-      setIsAuthenticated={setIsAuthenticated} // ✅ Ensure authentication updates
+      setIsAuthenticated={setIsAuthenticated}
     />
   );
 };
@@ -45,7 +45,7 @@ const App = () => {
 
   return (
     <Router>
-      <Navbar />
+      <Navbar isAuthenticated={isAuthenticated} onLogout={handleLogout} />
       <Routes>
         <Route
           path="/"

@@ -106,7 +106,6 @@ const Authentication = ({ open, handleClose, isLogin }) => {
         } else {
           setEmailForOTP(formData.email); // Save email for OTP verification
           setOtpOpen(true); // Open OTP modal
-          handleClose();
         }
       } else {
         setError(data.message || "Authentication failed.");
