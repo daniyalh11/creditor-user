@@ -1,30 +1,42 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import Navbar from "./components/Navbar";
 import HeroSection from "./components/HeroSection";
 import FeaturesSection from "./components/FeaturesSection";
-import LoginModal from "./components/LoginModal";
-import RegistrationModal from "./components/RegistrationModal";
 import Footer from "./components/Footer";
-import Home from "./pages/Home";
+import HomeComponent from "./pages/Home";
+import Authentication from "./components/Authentication";
+
+const AuthPage = ({ setIsAuthenticated }) => {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const mode = searchParams.get("mode"); // Get login or register mode
+
+  return (
+    <Authentication
+      open={true}
+      handleClose={() => window.history.back()}
+      isLogin={mode === "login"}
+      setIsAuthenticated={setIsAuthenticated} // ✅ Ensure authentication updates
+    />
+  );
+};
 
 const App = () => {
-  const [isLoginOpen, setLoginOpen] = useState(false);
-  const [isRegisterOpen, setRegisterOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check if user is already authenticated
     const token = localStorage.getItem("authToken");
     if (token) {
       setIsAuthenticated(true);
     }
   }, []);
-
-  const handleLoginSuccess = (token) => {
-    localStorage.setItem("authToken", token);
-    setIsAuthenticated(true);
-  };
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -33,6 +45,7 @@ const App = () => {
 
   return (
     <Router>
+      <Navbar />
       <Routes>
         <Route
           path="/"
@@ -41,29 +54,26 @@ const App = () => {
               <Navigate to="/home" />
             ) : (
               <>
-                <Navbar 
-                  onLogin={() => setLoginOpen(true)} 
-                  onRegister={() => setRegisterOpen(true)} 
-                />
                 <HeroSection />
                 <FeaturesSection />
                 <Footer />
-                <LoginModal
-                  open={isLoginOpen}
-                  handleClose={() => setLoginOpen(false)}
-                  onLoginSuccess={handleLoginSuccess}
-                />
-                <RegistrationModal
-                  open={isRegisterOpen}
-                  handleClose={() => setRegisterOpen(false)}
-                />
               </>
             )
           }
         />
         <Route
           path="/home"
-          element={isAuthenticated ? <Home onLogout={handleLogout} /> : <Navigate to="/" />}
+          element={
+            isAuthenticated ? (
+              <HomeComponent onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
+        />
+        <Route
+          path="/auth"
+          element={<AuthPage setIsAuthenticated={setIsAuthenticated} />}
         />
       </Routes>
     </Router>

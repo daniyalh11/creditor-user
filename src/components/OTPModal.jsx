@@ -20,7 +20,7 @@ const OTPModal = ({ open, handleClose, email }) => {
 
   useEffect(() => {
     if (!open) return;
-    
+
     setTimeLeft(300); // Reset OTP timer on open
     setAttempts(0); // Reset attempt counter
     setError(""); // Clear error messages
@@ -42,7 +42,7 @@ const OTPModal = ({ open, handleClose, email }) => {
   // Handle OTP Verification
   const handleVerify = async () => {
     if (attempts >= 5) return setError("Too many attempts. Try again later.");
-    
+
     try {
       const response = await axios.post("/api/auth/verify-otp", { email, otp });
 
@@ -62,13 +62,13 @@ const OTPModal = ({ open, handleClose, email }) => {
   // Resend OTP
   const handleResendOTP = async () => {
     if (attempts >= 5) return alert("Max resend attempts reached.");
-    
+
     try {
       await axios.post("/api/auth/resend-otp", { email });
       alert("New OTP sent to your email.");
       setTimeLeft(300); // Reset timer
       setCanResend(false);
-      
+
       // Enable resend button after 30 seconds
       setTimeout(() => setCanResend(true), 30000);
     } catch (error) {
@@ -87,14 +87,19 @@ const OTPModal = ({ open, handleClose, email }) => {
           onChange={(e) => setOtp(e.target.value)}
           margin="normal"
         />
-        
+
         {error && <Typography color="error">{error}</Typography>}
 
         <Typography variant="body2" sx={{ marginTop: "10px" }}>
           OTP expires in {Math.floor(timeLeft / 60)}:{timeLeft % 60}
         </Typography>
 
-        <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={handleVerify}>
+        <Button
+          variant="contained"
+          fullWidth
+          sx={{ mt: 2 }}
+          onClick={handleVerify}
+        >
           Verify OTP
         </Button>
 
