@@ -8,10 +8,10 @@ import {
   Select,
   MenuItem,
   CircularProgress,
-  Avatar,
+  IconButton,
 } from "@mui/material";
+import { Close as CloseIcon, Google as GoogleIcon } from "@mui/icons-material";
 import { useSpring, animated } from "@react-spring/web";
-import { Google as GoogleIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import OTPModal from "./OTPModal"; // Ensure OTPModal is imported
 
@@ -19,9 +19,8 @@ const Authentication = ({ open, handleClose, isLogin }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  // const [previewImage, setPreviewImage] = useState(null);
-  const [otpOpen, setOtpOpen] = useState(false); // State to control OTP modal
-  const [emailForOTP, setEmailForOTP] = useState(""); // Store email for OTP verification
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [emailForOTP, setEmailForOTP] = useState("");
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -30,7 +29,6 @@ const Authentication = ({ open, handleClose, isLogin }) => {
     email: "",
     phone: "",
     password: "",
-    // image: null,
   });
 
   const animation = useSpring({
@@ -41,23 +39,9 @@ const Authentication = ({ open, handleClose, isLogin }) => {
     config: { tension: 200, friction: 18 },
   });
 
-  // const defaultAvatars = {
-  //   male: "/default-male-avatar.png",
-  //   female: "/default-female-avatar.png",
-  //   other: "/default-avatar.png",
-  // };
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-
-  // const handleImageChange = (e) => {
-  //   const file = e.target.files[0];
-  //   if (file) {
-  //     setFormData({ ...formData, image: file });
-  //     setPreviewImage(URL.createObjectURL(file));
-  //   }
-  // };
 
   const handleSubmit = async () => {
     if (!formData.email || !formData.password) {
@@ -85,10 +69,6 @@ const Authentication = ({ open, handleClose, isLogin }) => {
         body.append("email", formData.email);
         body.append("phone", formData.phone);
         body.append("password", formData.password);
-        // body.append(
-        //   "image",
-        //   formData.image || defaultAvatars[formData.gender || "other"]
-        // );
       }
 
       const response = await fetch(endpoint, {
@@ -104,8 +84,8 @@ const Authentication = ({ open, handleClose, isLogin }) => {
           localStorage.setItem("authToken", data.token);
           navigate("/home");
         } else {
-          setEmailForOTP(formData.email); // Save email for OTP verification
-          setOtpOpen(true); // Open OTP modal
+          setEmailForOTP(formData.email);
+          setOtpOpen(true);
         }
       } else {
         setError(data.message || "Authentication failed.");
@@ -137,6 +117,7 @@ const Authentication = ({ open, handleClose, isLogin }) => {
         <animated.div style={animation}>
           <Box
             sx={{
+              position: "relative",
               backgroundColor: "white",
               padding: "32px",
               borderRadius: "12px",
@@ -148,6 +129,18 @@ const Authentication = ({ open, handleClose, isLogin }) => {
               overflowY: "auto",
             }}
           >
+            {/* Close Button */}
+            <IconButton
+              onClick={handleClose}
+              sx={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+
             <h2
               style={{
                 fontSize: "20px",
@@ -175,37 +168,6 @@ const Authentication = ({ open, handleClose, isLogin }) => {
 
             {!isLogin && (
               <>
-                {/* <label htmlFor="image-upload">
-                  <input
-                    type="file"
-                    id="image-upload"
-                    accept="image/*"
-                    style={{ display: "none" }}
-                    onChange={handleImageChange}
-                  />
-                  <Avatar
-                    src={
-                      previewImage || defaultAvatars[formData.gender || "other"]
-                    }
-                    sx={{
-                      width: 70,
-                      height: 70,
-                      margin: "auto",
-                      cursor: "pointer",
-                      mb: 1,
-                    }}
-                  /> */}
-                {/* </label> */}
-                {/* <p
-                  style={{
-                    fontSize: "14px",
-                    color: "gray",
-                    marginBottom: "10px",
-                  }}
-                >
-                  Upload Image Here
-                </p> */}
-
                 <div style={{ display: "flex", gap: "8px" }}>
                   <TextField
                     label="First Name"
@@ -295,6 +257,11 @@ const Authentication = ({ open, handleClose, isLogin }) => {
         open={otpOpen}
         handleClose={() => setOtpOpen(false)}
         email={emailForOTP}
+        first_name={formData.firstName} // ✅ Corrected to `formData`
+        last_name={formData.lastName}
+        password={formData.password}
+        phone={formData.phone}
+        gender={formData.gender}
       />
     </>
   );

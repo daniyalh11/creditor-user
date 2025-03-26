@@ -6,11 +6,11 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import Navbar from "./components/Navbar"; // Ensure correct path
+import Navbar from "./components/Navbar"; 
 import HeroSection from "./components/HeroSection";
 import FeaturesSection from "./components/FeaturesSection";
 import Footer from "./components/Footer";
-import HomeComponent from "./pages/Home"; // Ensure correct path
+import HomeComponent from "./pages/Home"; 
 import Authentication from "./components/Authentication";
 
 const AuthPage = ({ setIsAuthenticated }) => {

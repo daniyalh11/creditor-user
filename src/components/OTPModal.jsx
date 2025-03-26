@@ -10,7 +10,16 @@ import {
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-const OTPModal = ({ open, handleClose, email }) => {
+const OTPModal = ({
+  open,
+  handleClose,
+  email,
+  first_name,
+  last_name,
+  password,
+  phone,
+  gender,
+}) => {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [attempts, setAttempts] = useState(0);
@@ -44,18 +53,29 @@ const OTPModal = ({ open, handleClose, email }) => {
     if (attempts >= 5) return setError("Too many attempts. Try again later.");
 
     try {
-      const response = await axios.post("/api/auth/verify-otp", { email, otp });
+      const response = await axios.post("/api/auth/verify-otp", {
+        first_name, // ✅ Now properly passed from props
+        last_name,
+        email,
+        password,
+        phone,
+        gender,
+        otp,
+      });
+
+      console.log("OTP Verification Response:", response.data); // ✅ Debugging log
 
       if (response.data.success) {
         alert("OTP verified successfully!");
         handleClose();
-        navigate("/home"); // Redirect to home/dashboard
+        navigate("/home");
       } else {
         throw new Error(response.data.message || "Invalid OTP");
       }
     } catch (err) {
+      console.error("OTP Verification Failed:", err); // ✅ Debugging log
       setError("Invalid OTP. Try again.");
-      setAttempts(attempts + 1);
+      setAttempts((prev) => prev + 1); // ✅ Corrected state update
     }
   };
 
