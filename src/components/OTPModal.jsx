@@ -1,3 +1,4 @@
+// src/components/OTPModal.jsx
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -6,33 +7,30 @@ import {
   Button,
   TextField,
   Typography,
+  IconButton,
+  Box,
 } from "@mui/material";
-import axios from "axios";
+import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
+import api from "../utils/axios.js";
 
-const OTPModal = ({
-  open,
-  handleClose,
-  email,
-  first_name,
-  last_name,
-  password,
-  phone,
-  gender,
-}) => {
+const OTPModal = ({ open, handleClose, email }) => {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [attempts, setAttempts] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(300);
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
   const [canResend, setCanResend] = useState(false);
   const navigate = useNavigate();
+  const { verifyOtp } = useAuth();
 
   useEffect(() => {
     if (!open) return;
 
-    setTimeLeft(300); // Reset OTP timer on open
-    setAttempts(0); // Reset attempt counter
-    setError(""); // Clear error messages
+    setTimeLeft(300);
+    setAttempts(0);
+    setError("");
+    setOtp("");
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -40,65 +38,78 @@ const OTPModal = ({
           clearInterval(timer);
           handleClose();
           alert("OTP expired. Please request a new one.");
+          return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [open]);
+  }, [open, handleClose]);
 
-  // Handle OTP Verification
   const handleVerify = async () => {
-    if (attempts >= 5) return setError("Too many attempts. Try again later.");
+    if (attempts >= 5) {
+      setError("Too many attempts. Try again later.");
+      return;
+    }
 
     try {
-      const response = await axios.post("/api/auth/verify-otp", {
-        first_name, // ✅ Now properly passed from props
+      const formData =
+        JSON.parse(localStorage.getItem("registrationFormData")) || {};
+      const { first_name, last_name, phone, password, gender } = formData;
+      await verifyOtp(otp, email, {
+        first_name,
         last_name,
-        email,
-        password,
         phone,
+        password,
         gender,
-        otp,
       });
-
-      console.log("OTP Verification Response:", response.data); // ✅ Debugging log
-
-      if (response.data.success) {
-        alert("OTP verified successfully!");
-        handleClose();
-        navigate("/home");
-      } else {
-        throw new Error(response.data.message || "Invalid OTP");
-      }
+      alert("OTP verified successfully!");
+      handleClose();
+      navigate("/home");
     } catch (err) {
-      console.error("OTP Verification Failed:", err); // ✅ Debugging log
-      setError("Invalid OTP. Try again.");
-      setAttempts((prev) => prev + 1); // ✅ Corrected state update
+      setError(err.message || "Invalid OTP");
+      setAttempts((prev) => prev + 1);
     }
   };
 
-  // Resend OTP
   const handleResendOTP = async () => {
-    if (attempts >= 5) return alert("Max resend attempts reached.");
+    if (attempts >= 5) {
+      alert("Max resend attempts reached.");
+      return;
+    }
 
     try {
-      await axios.post("/api/auth/resend-otp", { email });
-      alert("New OTP sent to your email.");
-      setTimeLeft(300); // Reset timer
-      setCanResend(false);
-
-      // Enable resend button after 30 seconds
-      setTimeout(() => setCanResend(true), 30000);
+      const { data } = await api.post("/api/auth/resend-otp", { email });
+      if (data.message.includes("otp sent")) {
+        alert("New OTP sent to your email.");
+        setTimeLeft(300);
+        setCanResend(false);
+        setTimeout(() => setCanResend(true), 30000); // Enable resend after 30s
+      } else {
+        throw new Error(data.message || "Failed to resend OTP");
+      }
     } catch (error) {
-      alert("Failed to resend OTP. Try again later.");
+      alert(error.message || "Failed to resend OTP. Try again later.");
     }
   };
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Enter OTP</DialogTitle>
+      <DialogTitle>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Typography>Enter OTP</Typography>
+          <IconButton onClick={handleClose} sx={{ p: 0 }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
       <DialogContent>
         <TextField
           fullWidth
@@ -107,28 +118,26 @@ const OTPModal = ({
           onChange={(e) => setOtp(e.target.value)}
           margin="normal"
         />
-
         {error && <Typography color="error">{error}</Typography>}
-
         <Typography variant="body2" sx={{ marginTop: "10px" }}>
-          OTP expires in {Math.floor(timeLeft / 60)}:{timeLeft % 60}
+          OTP expires in {Math.floor(timeLeft / 60)}:
+          {String(timeLeft % 60).padStart(2, "0")}
         </Typography>
-
         <Button
           variant="contained"
           fullWidth
           sx={{ mt: 2 }}
           onClick={handleVerify}
+          disabled={attempts >= 5}
         >
           Verify OTP
         </Button>
-
         <Button
           variant="text"
           fullWidth
           sx={{ mt: 1 }}
           onClick={handleResendOTP}
-          disabled={!canResend}
+          disabled={!canResend || attempts >= 5}
         >
           Resend OTP
         </Button>

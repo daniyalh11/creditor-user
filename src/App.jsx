@@ -1,56 +1,43 @@
-import React, { useState, useEffect } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-} from "react-router-dom";
-import Navbar from "./components/Navbar"; 
-import HeroSection from "./components/HeroSection";
-import FeaturesSection from "./components/FeaturesSection";
-import Footer from "./components/Footer";
-import HomeComponent from "./pages/Home"; 
-import Authentication from "./components/Authentication";
+// src/App.jsx
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
+import Navbar from "./components/Navbar.jsx";
+import HeroSection from "./components/HeroSection.jsx";
+import FeaturesSection from "./components/FeaturesSection.jsx";
+import Footer from "./components/Footer.jsx";
+import Home from "./pages/Home.jsx";
+import Authentication from "./components/Authentication.jsx";
+import PrivateRoute from "./PrivateRoute.jsx";
+import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 
-const AuthPage = ({ setIsAuthenticated }) => {
+const AuthPage = () => {
   const location = useLocation();
+  const navigate = useNavigate(); // Now defined with import
   const searchParams = new URLSearchParams(location.search);
   const mode = searchParams.get("mode");
 
   return (
     <Authentication
       open={true}
-      handleClose={() => window.history.back()}
+      handleClose={() => navigate("/")}
       isLogin={mode === "login"}
-      setIsAuthenticated={setIsAuthenticated}
     />
   );
 };
 
-const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+const AppRoutes = () => {
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (token) {
-      setIsAuthenticated(true);
-    }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("authToken");
-    setIsAuthenticated(false);
-  };
+  if (loading) return <div>Loading...</div>;
 
   return (
-    <Router>
-      <Navbar isAuthenticated={isAuthenticated} onLogout={handleLogout} />
+    <>
+      <Navbar />
       <Routes>
         <Route
           path="/"
           element={
-            isAuthenticated ? (
+            user ? (
               <Navigate to="/home" />
             ) : (
               <>
@@ -64,19 +51,24 @@ const App = () => {
         <Route
           path="/home"
           element={
-            isAuthenticated ? (
-              <HomeComponent onLogout={handleLogout} />
-            ) : (
-              <Navigate to="/" />
-            )
+            <PrivateRoute>
+              <Home />
+            </PrivateRoute>
           }
         />
-        <Route
-          path="/auth"
-          element={<AuthPage setIsAuthenticated={setIsAuthenticated} />}
-        />
+        <Route path="/auth" element={<AuthPage />} />
       </Routes>
-    </Router>
+    </>
+  );
+};
+
+const App = () => {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </AuthProvider>
   );
 };
 

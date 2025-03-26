@@ -1,27 +1,30 @@
+// src/components/Authentication.jsx
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 import {
   Modal,
   Box,
+  Typography,
   TextField,
   Button,
   FormControl,
+  InputLabel,
   Select,
   MenuItem,
-  CircularProgress,
   IconButton,
 } from "@mui/material";
-import { Close as CloseIcon, Google as GoogleIcon } from "@mui/icons-material";
-import { useSpring, animated } from "@react-spring/web";
-import { useNavigate } from "react-router-dom";
-import OTPModal from "./OTPModal"; // Ensure OTPModal is imported
+import CloseIcon from "@mui/icons-material/Close";
+import GoogleIcon from "@mui/icons-material/Google";
+import OTPModal from "./OTPModal.jsx";
 
 const Authentication = ({ open, handleClose, isLogin }) => {
   const navigate = useNavigate();
+  const { login, register } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [otpOpen, setOtpOpen] = useState(false);
   const [emailForOTP, setEmailForOTP] = useState("");
-
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -31,197 +34,158 @@ const Authentication = ({ open, handleClose, isLogin }) => {
     password: "",
   });
 
-  const animation = useSpring({
-    opacity: open ? 1 : 0,
-    transform: open
-      ? "translateY(0px) scale(1)"
-      : "translateY(-100px) scale(1.1)",
-    config: { tension: 200, friction: 18 },
-  });
-
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = async () => {
     if (!formData.email || !formData.password) {
-      setError("All fields are required!");
+      setError("Email and password are required!");
       return;
     }
     setError("");
     setLoading(true);
 
     try {
-      const endpoint = isLogin ? "/api/auth/login" : "/api/auth/registerUser";
-      const method = "POST";
-      let body;
-
       if (isLogin) {
-        body = JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        });
+        await login(formData.email, formData.password);
+        navigate("/home"); // Matches your /home route
       } else {
-        body = new FormData();
-        body.append("firstName", formData.firstName);
-        body.append("lastName", formData.lastName);
-        body.append("gender", formData.gender);
-        body.append("email", formData.email);
-        body.append("phone", formData.phone);
-        body.append("password", formData.password);
-      }
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: isLogin ? { "Content-Type": "application/json" } : undefined,
-        body: isLogin ? body : body,
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        if (isLogin) {
-          localStorage.setItem("authToken", data.token);
-          navigate("/home");
-        } else {
-          setEmailForOTP(formData.email);
-          setOtpOpen(true);
-        }
-      } else {
-        setError(data.message || "Authentication failed.");
+        await register(formData);
+        setEmailForOTP(formData.email);
+        localStorage.setItem(
+          "registrationFormData",
+          JSON.stringify({
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            password: formData.password,
+            gender: formData.gender,
+          })
+        );
+        setOtpOpen(true);
       }
     } catch (error) {
-      setError("Server error. Try again later.");
+      setError(error.message || "Authentication failed.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = () => {
-    window.location.href = "/api/auth/google";
+    window.location.href = "http://localhost:9000/api/auth/google";
+  };
+
+  const handleFullClose = () => {
+    handleClose(); // Close the current modal
+    navigate("/"); // Navigate to landing page to reset auth flow
+  };
+
+  const modalStyle = {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    width: isLogin ? 400 : 350,
+    bgcolor: "background.paper",
+    borderRadius: "8px",
+    boxShadow: 24,
+    p: 4,
+  };
+
+  const contentStyle = {
+    maxHeight: isLogin ? "60vh" : "50vh",
+    overflowY: "auto",
   };
 
   return (
     <>
-      <Modal
-        open={open}
-        onClose={handleClose}
-        closeAfterTransition
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "flex-start",
-          paddingTop: "5vh",
-        }}
-      >
-        <animated.div style={animation}>
-          <Box
-            sx={{
-              position: "relative",
-              backgroundColor: "white",
-              padding: "32px",
-              borderRadius: "12px",
-              width: "90%",
-              maxWidth: "420px",
-              boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)",
-              textAlign: "center",
-              maxHeight: "90vh",
-              overflowY: "auto",
-            }}
-          >
-            {/* Close Button */}
-            <IconButton
-              onClick={handleClose}
-              sx={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-              }}
-            >
+      <Modal open={open} onClose={handleFullClose}>
+        <Box sx={modalStyle}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Typography variant="h5" align="center">
+              {isLogin ? "Login" : "Sign Up"}
+            </Typography>
+            <IconButton onClick={handleFullClose} sx={{ p: 0 }}>
               <CloseIcon />
             </IconButton>
-
-            <h2
-              style={{
-                fontSize: "20px",
-                fontWeight: "bold",
-                marginBottom: "16px",
-              }}
-            >
-              {isLogin ? "Log in" : "Register"}
-            </h2>
-
-            <Button
-              variant="outlined"
-              fullWidth
-              startIcon={<GoogleIcon />}
-              sx={{
-                mb: 2,
-                borderColor: "black",
-                color: "black",
-                "&:hover": { backgroundColor: "#f1f1f1" },
-              }}
-              onClick={handleGoogleSignIn}
-            >
-              {isLogin ? "Login with Google" : "Sign Up with Google"}
-            </Button>
-
+          </Box>
+          <Button
+            variant="outlined"
+            fullWidth
+            startIcon={<GoogleIcon />}
+            onClick={handleGoogleSignIn}
+            sx={{ mb: 2 }}
+          >
+            Sign {isLogin ? "in" : "up"} with Google
+          </Button>
+          {error && (
+            <Typography color="error" align="center" sx={{ mb: 2 }}>
+              {error}
+            </Typography>
+          )}
+          <Box sx={contentStyle}>
             {!isLogin && (
               <>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <TextField
-                    label="First Name"
-                    name="firstName"
-                    fullWidth
-                    margin="normal"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                  />
-                  <TextField
-                    label="Last Name"
-                    name="lastName"
-                    fullWidth
-                    margin="normal"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                  />
-                </div>
-
+                <TextField
+                  fullWidth
+                  label="First Name"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  margin="normal"
+                  required
+                />
+                <TextField
+                  fullWidth
+                  label="Last Name"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  margin="normal"
+                  required
+                />
                 <FormControl fullWidth margin="normal">
+                  <InputLabel>Gender</InputLabel>
                   <Select
                     name="gender"
                     value={formData.gender}
                     onChange={handleChange}
-                    displayEmpty
+                    label="Gender"
+                    required
                   >
-                    <MenuItem value="" disabled>
-                      Select your gender
-                    </MenuItem>
                     <MenuItem value="male">Male</MenuItem>
                     <MenuItem value="female">Female</MenuItem>
+                    <MenuItem value="other">Other</MenuItem>
                   </Select>
                 </FormControl>
-
-                <TextField
-                  label="Phone Number"
-                  name="phone"
-                  type="tel"
-                  fullWidth
-                  margin="normal"
-                  value={formData.phone}
-                  onChange={handleChange}
-                />
               </>
             )}
-
             <TextField
               fullWidth
               label="Email"
               name="email"
+              type="email"
               value={formData.email}
               onChange={handleChange}
               margin="normal"
+              required
             />
+            {!isLogin && (
+              <TextField
+                fullWidth
+                label="Phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                margin="normal"
+                required
+              />
+            )}
             <TextField
               fullWidth
               label="Password"
@@ -230,10 +194,8 @@ const Authentication = ({ open, handleClose, isLogin }) => {
               value={formData.password}
               onChange={handleChange}
               margin="normal"
+              required
             />
-
-            {error && <p style={{ color: "red", fontSize: "14px" }}>{error}</p>}
-
             <Button
               variant="contained"
               fullWidth
@@ -241,27 +203,26 @@ const Authentication = ({ open, handleClose, isLogin }) => {
               onClick={handleSubmit}
               disabled={loading}
             >
-              {loading ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : isLogin ? (
-                "Log in"
-              ) : (
-                "Register"
-              )}
+              {loading ? "Processing..." : isLogin ? "Login" : "Sign Up"}
+            </Button>
+            <Button
+              variant="text"
+              fullWidth
+              sx={{ mt: 1 }}
+              onClick={() => navigate(`/auth?mode=${isLogin ? "register" : "login"}`, { replace: true })}
+            >
+              {isLogin ? "Need an account? Sign Up" : "Already have an account? Login"}
             </Button>
           </Box>
-        </animated.div>
+        </Box>
       </Modal>
-
       <OTPModal
         open={otpOpen}
-        handleClose={() => setOtpOpen(false)}
+        handleClose={() => {
+          setOtpOpen(false);
+          navigate("/"); // Close OTP and return to landing page
+        }}
         email={emailForOTP}
-        first_name={formData.firstName} // ✅ Corrected to `formData`
-        last_name={formData.lastName}
-        password={formData.password}
-        phone={formData.phone}
-        gender={formData.gender}
       />
     </>
   );
