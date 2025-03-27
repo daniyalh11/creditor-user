@@ -32,7 +32,7 @@ const Authentication = ({ open, handleClose, isLogin }) => {
     email: "",
     phone: "",
     password: "",
-    dateOfBirth: "",
+    dob: "",
   });
 
   const handleChange = (e) => {
@@ -66,7 +66,7 @@ const Authentication = ({ open, handleClose, isLogin }) => {
             phone: formData.phone,
             password: formData.password,
             gender: formData.gender,
-            date_of_birth: formData.dateOfBirth,
+            dob: formData.dob,
           })
         );
         setOtpOpen(true);

@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
         password,
         phone,
         gender,
-        date_of_birth,
+        dob,
         otp,
       });
       if (data.success) {
