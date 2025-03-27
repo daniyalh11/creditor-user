@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const verifyOtp = async (otp, email, { first_name, last_name, phone, password, gender } = {}) => {
+  const verifyOtp = async (otp, email, { first_name, last_name, phone, password, gender, dob} = {}) => {
     try {
       const { data } = await api.post("/api/auth/verify-otp", {
         first_name,
