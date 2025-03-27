@@ -32,6 +32,7 @@ const Authentication = ({ open, handleClose, isLogin }) => {
     email: "",
     phone: "",
     password: "",
+    dateOfBirth: "",
   });
 
   const handleChange = (e) => {
@@ -65,6 +66,7 @@ const Authentication = ({ open, handleClose, isLogin }) => {
             phone: formData.phone,
             password: formData.password,
             gender: formData.gender,
+            date_of_birth: formData.dateOfBirth,
           })
         );
         setOtpOpen(true);
@@ -106,7 +108,14 @@ const Authentication = ({ open, handleClose, isLogin }) => {
     <>
       <Modal open={open} onClose={handleFullClose}>
         <Box sx={modalStyle}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
+          >
             <Typography variant="h5" align="center">
               {isLogin ? "Login" : "Sign Up"}
             </Typography>
@@ -163,6 +172,16 @@ const Authentication = ({ open, handleClose, isLogin }) => {
                     <MenuItem value="other">Other</MenuItem>
                   </Select>
                 </FormControl>
+                <TextField
+                  fullWidth
+                  label="Date of Birth"
+                  name="dateOfBirth"
+                  type="date" // Date picker
+                  value={formData.dateOfBirth}
+                  onChange={handleChange}
+                  margin="normal"
+                  required
+                />
               </>
             )}
             <TextField
@@ -209,9 +228,15 @@ const Authentication = ({ open, handleClose, isLogin }) => {
               variant="text"
               fullWidth
               sx={{ mt: 1 }}
-              onClick={() => navigate(`/auth?mode=${isLogin ? "register" : "login"}`, { replace: true })}
+              onClick={() =>
+                navigate(`/auth?mode=${isLogin ? "register" : "login"}`, {
+                  replace: true,
+                })
+              }
             >
-              {isLogin ? "Need an account? Sign Up" : "Already have an account? Login"}
+              {isLogin
+                ? "Need an account? Sign Up"
+                : "Already have an account? Login"}
             </Button>
           </Box>
         </Box>

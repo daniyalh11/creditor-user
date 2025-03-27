@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
           setUser(null);
         }
       } catch (error) {
-        console.error("Auth check failed:", error);
+        console.error("Auth check failed:", error.response?.data || error.message);
         setUser(null);
       } finally {
         setLoading(false);
@@ -66,6 +66,7 @@ export const AuthProvider = ({ children }) => {
         password,
         phone,
         gender,
+        date_of_birth,
         otp,
       });
       if (data.success) {
