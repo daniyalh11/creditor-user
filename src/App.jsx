@@ -6,13 +6,16 @@ import HeroSection from "./components/HeroSection.jsx";
 import FeaturesSection from "./components/FeaturesSection.jsx";
 import Footer from "./components/Footer.jsx";
 import Home from "./pages/Home.jsx";
+import Admin from "./pages/Admin.jsx";
+import Profile from "./pages/Profile.jsx"; // Renamed from Settings.jsx
+import Settings from "./pages/Settings.jsx"; // New Settings component
 import Authentication from "./components/Authentication.jsx";
 import PrivateRoute from "./PrivateRoute.jsx";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 
 const AuthPage = () => {
   const location = useLocation();
-  const navigate = useNavigate(); // Now defined with import
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const mode = searchParams.get("mode");
 
@@ -38,7 +41,7 @@ const AppRoutes = () => {
           path="/"
           element={
             user ? (
-              <Navigate to="/home" />
+              <Navigate to={user.role === "admin" ? "/admin" : "/home"} />
             ) : (
               <>
                 <HeroSection />
@@ -51,8 +54,32 @@ const AppRoutes = () => {
         <Route
           path="/home"
           element={
-            <PrivateRoute>
+            <PrivateRoute requiredRole="user">
               <Home />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <PrivateRoute requiredRole="admin">
+              <Admin />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute requiredRole="user">
+              <Profile />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <PrivateRoute requiredRole="user">
+              <Settings />
             </PrivateRoute>
           }
         />

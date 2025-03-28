@@ -8,12 +8,24 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshUser = async () => {
+    try {
+      const { data } = await api.get("/api/auth/check");
+      if (data.success) {
+        setUser(data.user);
+        return data.user;
+      }
+    } catch (error) {
+      console.error("Failed to refresh user:", error);
+    }
+  };
+
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
         const { data } = await api.get("/api/auth/check");
         if (data.success) {
-          setUser(data.user); // Set full user object from backend
+          setUser(data.user);
         } else {
           setUser(null);
         }
@@ -31,8 +43,12 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await api.post("/api/auth/login", { email, password });
       if (data.success) {
-        setUser({ email }); // Set minimal user, updated by /check
-        return { success: true };
+        const { data: checkData } = await api.get("/api/auth/check");
+        if (checkData.success) {
+          setUser(checkData.user);
+          return { success: true, role: checkData.user.role };
+        }
+        throw new Error("Failed to fetch user data after login");
       } else {
         throw new Error(data.message || "Login failed");
       }
@@ -57,21 +73,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const verifyOtp = async (otp, email, { first_name, last_name, phone, password, gender, dob} = {}) => {
+  const verifyOtp = async (otp, email, formData) => {
     try {
-      const { data } = await api.post("/api/auth/verify-otp", {
-        first_name,
-        last_name,
-        email,
-        password,
-        phone,
-        gender,
-        dob,
-        otp,
-      });
+      const { data } = await api.post(
+        "/api/auth/verify-otp",
+        { ...formData, otp }, // Spread FormData doesn’t work; use proper FormData
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
       if (data.success) {
-        setUser({ email }); // Set minimal user, updated by /check
-        return { success: true };
+        const { data: checkData } = await api.get("/api/auth/check");
+        if (checkData.success) {
+          setUser(checkData.user);
+          return { success: true, role: checkData.user.role };
+        }
+        throw new Error("Failed to fetch user data after OTP verification");
       } else {
         throw new Error(data.message || "Invalid OTP");
       }
@@ -91,7 +106,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, verifyOtp, logout }}
+      value={{ user, loading, login, register, verifyOtp, logout, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

@@ -54,19 +54,27 @@ const OTPModal = ({ open, handleClose, email }) => {
     }
 
     try {
-      const formData =
-        JSON.parse(localStorage.getItem("registrationFormData")) || {};
-      const { first_name, last_name, phone, password, gender } = formData;
-      await verifyOtp(otp, email, {
-        first_name,
-        last_name,
-        phone,
-        password,
-        gender,
-      });
-      alert("OTP verified successfully!");
-      handleClose();
-      navigate("/home");
+      const storedData = JSON.parse(localStorage.getItem("registrationFormData")) || {};
+      const { first_name, last_name, phone, password, gender, dob, image } = storedData;
+
+      const formData = new FormData();
+      formData.append("first_name", first_name || "");
+      formData.append("last_name", last_name || "");
+      formData.append("email", email);
+      formData.append("phone", phone || "");
+      formData.append("password", password || "");
+      formData.append("gender", gender || "");
+      formData.append("dob", dob || "");
+      formData.append("otp", otp);
+      if (image) formData.append("image", image);
+
+      const result = await verifyOtp(otp, email, formData);
+      if (result.success) {
+        alert("OTP verified successfully!");
+        localStorage.removeItem("registrationFormData");
+        handleClose();
+        navigate(result.role === "admin" ? "/admin" : "/home");
+      }
     } catch (err) {
       setError(err.message || "Invalid OTP");
       setAttempts((prev) => prev + 1);

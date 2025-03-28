@@ -33,13 +33,14 @@ const Authentication = ({ open, handleClose, isLogin }) => {
     phone: "",
     password: "",
     dob: "",
+    image: null, // New field for image file
   });
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, files } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: files ? files[0] : value, // Handle file input
     }));
   };
 
@@ -53,22 +54,24 @@ const Authentication = ({ open, handleClose, isLogin }) => {
 
     try {
       if (isLogin) {
-        await login(formData.email, formData.password);
-        navigate("/home"); // Matches your /home route
+        const result = await login(formData.email, formData.password);
+        if (result.success) {
+          handleClose();
+          navigate(result.role === "admin" ? "/admin" : "/home");
+        }
       } else {
         await register(formData);
         setEmailForOTP(formData.email);
-        localStorage.setItem(
-          "registrationFormData",
-          JSON.stringify({
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            phone: formData.phone,
-            password: formData.password,
-            gender: formData.gender,
-            dob: formData.dob,
-          })
-        );
+        const registrationData = {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          password: formData.password,
+          gender: formData.gender,
+          dob: formData.dob,
+          image: formData.image, // Include image file
+        };
+        localStorage.setItem("registrationFormData", JSON.stringify(registrationData));
         setOtpOpen(true);
       }
     } catch (error) {
@@ -83,8 +86,8 @@ const Authentication = ({ open, handleClose, isLogin }) => {
   };
 
   const handleFullClose = () => {
-    handleClose(); // Close the current modal
-    navigate("/"); // Navigate to landing page to reset auth flow
+    handleClose();
+    navigate("/");
   };
 
   const modalStyle = {
@@ -92,7 +95,7 @@ const Authentication = ({ open, handleClose, isLogin }) => {
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
-    width: isLogin ? 400 : 350,
+    width: isLogin ? 400 : 450, // Increased width for signup
     bgcolor: "background.paper",
     borderRadius: "8px",
     boxShadow: 24,
@@ -100,7 +103,7 @@ const Authentication = ({ open, handleClose, isLogin }) => {
   };
 
   const contentStyle = {
-    maxHeight: isLogin ? "60vh" : "50vh",
+    maxHeight: isLogin ? "60vh" : "70vh",
     overflowY: "auto",
   };
 
@@ -108,14 +111,7 @@ const Authentication = ({ open, handleClose, isLogin }) => {
     <>
       <Modal open={open} onClose={handleFullClose}>
         <Box sx={modalStyle}>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 2,
-            }}
-          >
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
             <Typography variant="h5" align="center">
               {isLogin ? "Login" : "Sign Up"}
             </Typography>
@@ -175,12 +171,21 @@ const Authentication = ({ open, handleClose, isLogin }) => {
                 <TextField
                   fullWidth
                   label="Date of Birth"
-                  name="dateOfBirth"
-                  type="date" // Date picker
-                  value={formData.dateOfBirth}
+                  name="dob"
+                  type="date"
+                  value={formData.dob}
                   onChange={handleChange}
                   margin="normal"
                   required
+                />
+                <TextField
+                  fullWidth
+                  label="Profile Picture"
+                  name="image"
+                  type="file"
+                  inputProps={{ accept: "image/*" }}
+                  onChange={handleChange}
+                  margin="normal"
                 />
               </>
             )}
@@ -228,15 +233,9 @@ const Authentication = ({ open, handleClose, isLogin }) => {
               variant="text"
               fullWidth
               sx={{ mt: 1 }}
-              onClick={() =>
-                navigate(`/auth?mode=${isLogin ? "register" : "login"}`, {
-                  replace: true,
-                })
-              }
+              onClick={() => navigate(`/auth?mode=${isLogin ? "register" : "login"}`, { replace: true })}
             >
-              {isLogin
-                ? "Need an account? Sign Up"
-                : "Already have an account? Login"}
+              {isLogin ? "Need an account? Sign Up" : "Already have an account? Login"}
             </Button>
           </Box>
         </Box>
@@ -245,7 +244,7 @@ const Authentication = ({ open, handleClose, isLogin }) => {
         open={otpOpen}
         handleClose={() => {
           setOtpOpen(false);
-          navigate("/"); // Close OTP and return to landing page
+          navigate("/");
         }}
         email={emailForOTP}
       />
