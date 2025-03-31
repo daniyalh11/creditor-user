@@ -5,104 +5,202 @@ import api from "../utils/axios.js";
 import {
   Box,
   Typography,
+  Card,
+  CardMedia,
+  CardContent,
+  Drawer,
   List,
   ListItem,
+  ListItemIcon,
   ListItemText,
-  Drawer,
+  Button,
 } from "@mui/material";
+import HomeIcon from "@mui/icons-material/Home";
+import GroupIcon from "@mui/icons-material/Group";
+import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
+import PeopleIcon from "@mui/icons-material/People";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import SettingsIcon from "@mui/icons-material/Settings";
+import HelpIcon from "@mui/icons-material/Help";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 const Home = () => {
   const { user } = useAuth();
   const [userDetails, setUserDetails] = useState(null);
-  const [selectedPillar, setSelectedPillar] = useState(null);
+  const [selectedPillar, setSelectedPillar] = useState(null); // Track selected pillar
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUserDetails = async () => {
       try {
-        const { data } = await api.get("/api/auth/user/details");
+        console.log("Fetching user details for user:", user);
+        const { data } = await api.get("/api/users/get/userdetails");
+        console.log("API response:", data);
         if (data.success) {
-          setUserDetails(data.user_details);
-          const pillars = data.user_details.user_pillar_access.map((upa) => upa.pillar);
-          setSelectedPillar(pillars[0] || dummyPillars[0]);
+          setUserDetails(data.user);
+        } else {
+          console.log("API success false:", data);
         }
       } catch (error) {
-        console.error("Failed to fetch user details:", error);
+        console.error("Failed to fetch user details:", error.response?.data || error.message);
+      } finally {
+        setLoading(false);
       }
     };
     fetchUserDetails();
-  }, []);
+  }, [user]);
 
   const handlePillarClick = (pillar) => {
     setSelectedPillar(pillar);
   };
 
+  const handleBackClick = () => {
+    setSelectedPillar(null); // Reset to show pillars
+  };
+
   const userName = user?.first_name || "User";
 
-  const dummyPillars = [
-    {
-      id: "1",
-      name: "Finance Basics",
-      courses: [
-        { id: "c1", name: "Introduction to Budgeting" },
-        { id: "c2", name: "Credit Management" },
-        { id: "c3", name: "Savings Strategies" },
-      ],
-    },
-  ];
+  if (loading) {
+    return <Typography>Loading...</Typography>;
+  }
 
-  const pillars = userDetails?.user_pillar_access?.map((upa) => upa.pillar) || dummyPillars;
+  if (!userDetails) {
+    return <Typography>No user data available.</Typography>;
+  }
+
+  const pillars = userDetails?.user_pillar_access?.map((upa) => upa.pillars) || [];
 
   return (
-    <Box sx={{ display: "flex", height: "100vh" }}>
+    <Box sx={{ display: "flex", height: "100vh", pt: "64px" /* Adjust for navbar height */ }}>
+      {/* Sidebar */}
       <Drawer
         variant="permanent"
         sx={{
-          width: "25%",
+          width: "200px",
           flexShrink: 0,
           "& .MuiDrawer-paper": {
-            width: "25%",
+            width: "200px",
             boxSizing: "border-box",
-            bgcolor: "#f5f5f5",
-            p: 2,
+            bgcolor: "#1A3C34",
+            color: "white",
+            pt: "64px",
           },
         }}
       >
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Your Pillars
-        </Typography>
+        {/* <Box sx={{ p: 2, textAlign: "center" }}>
+          <Typography variant="h6">Creditor Academy</Typography>
+        </Box> */}
         <List>
-          {pillars.map((pillar) => (
-            <ListItem
-              button
-              key={pillar.id}
-              onClick={() => handlePillarClick(pillar)}
-              sx={{ bgcolor: selectedPillar?.id === pillar.id ? "#e0e0e0" : "inherit" }}
-            >
-              <ListItemText primary={pillar.name} />
+          {[
+            { text: "Home", icon: <HomeIcon /> },
+            { text: "Groups", icon: <GroupIcon /> },
+            { text: "Catalog", icon: <LibraryBooksIcon /> },
+            { text: "Users", icon: <PeopleIcon /> },
+            { text: "Surveys", icon: <AssignmentIcon /> },
+            { text: "Admin", icon: <SettingsIcon /> },
+            { text: "Help", icon: <HelpIcon /> },
+          ].map((item) => (
+            <ListItem button key={item.text}>
+              <ListItemIcon sx={{ color: "white" }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} />
             </ListItem>
           ))}
         </List>
       </Drawer>
 
-      <Box sx={{ width: "75%", p: 4, overflowY: "auto" }}>
-        <Typography variant="h4" component="h1" sx={{ mb: 4 }}>
-          Welcome, {userName}!
-        </Typography>
-
-        <Box>
-          <Typography variant="h6">
-            {selectedPillar ? `${selectedPillar.name} Courses` : "Select a Pillar"}
-          </Typography>
-          {selectedPillar && (
-            <List>
-              {(selectedPillar.courses || []).map((course) => (
-                <ListItem key={course.id}>
-                  <ListItemText primary={course.name} />
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </Box>
+      {/* Main Content */}
+      <Box sx={{ flexGrow: 1, p: 4, bgcolor: "#F5F7FA" }}>
+        {selectedPillar ? (
+          // Show Courses for the Selected Pillar
+          <>
+            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+              <Button
+                startIcon={<ArrowBackIcon />}
+                onClick={handleBackClick}
+                sx={{ mr: 2 }}
+              >
+                Back to Pillars
+              </Button>
+              <Typography variant="h5">
+                {selectedPillar.name} Courses
+              </Typography>
+            </Box>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+              {selectedPillar.courses.length > 0 ? (
+                selectedPillar.courses.map((course) => (
+                  <Card
+                    key={course.id}
+                    sx={{
+                      width: "300px",
+                      boxShadow: 3,
+                      transition: "0.3s",
+                      "&:hover": { boxShadow: 6 },
+                    }}
+                  >
+                    <CardMedia
+                      component="img"
+                      height="140"
+                      image="https://via.placeholder.com/300x140?text=Course+Image" // Placeholder image
+                      alt={course.title}
+                    />
+                    <CardContent>
+                      <Typography variant="h6">{course.title}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {course.description || "No description available"}
+                      </Typography>
+                      {course.instructor && (
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                          Instructor: {course.instructor}
+                        </Typography>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Typography>No courses available for this pillar.</Typography>
+              )}
+            </Box>
+          </>
+        ) : (
+          // Show Pillars
+          <>
+            <Typography variant="h5" sx={{ mb: 2 }}>
+              Pillars
+            </Typography>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+              {pillars.length > 0 ? (
+                pillars.map((pillar) => (
+                  <Card
+                    key={pillar.id}
+                    sx={{
+                      width: "300px",
+                      boxShadow: 3,
+                      transition: "0.3s",
+                      "&:hover": { boxShadow: 6 },
+                      cursor: "pointer",
+                    }}
+                    onClick={() => handlePillarClick(pillar)}
+                  >
+                    <CardMedia
+                      component="img"
+                      height="140"
+                      image="https://via.placeholder.com/300x140?text=Pillar+Image"
+                      alt={pillar.name}
+                    />
+                    <CardContent>
+                      <Typography variant="h6">{pillar.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {pillar.description || "No description available"}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Typography>No pillars assigned.</Typography>
+              )}
+            </Box>
+          </>
+        )}
       </Box>
     </Box>
   );
