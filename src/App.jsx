@@ -1,17 +1,18 @@
 // src/App.jsx
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
-import Navbar from "./components/Navbar.jsx";
 import HeroSection from "./components/HeroSection.jsx";
 import FeaturesSection from "./components/FeaturesSection.jsx";
 import Footer from "./components/Footer.jsx";
 import Home from "./pages/Home.jsx";
 import Admin from "./pages/Admin.jsx";
-import Profile from "./pages/Profile.jsx"; // Renamed from Settings.jsx
-import Settings from "./pages/Settings.jsx"; // New Settings component
+import Profile from "./pages/Profile.jsx";
+import Settings from "./pages/Settings.jsx";
 import Authentication from "./components/Authentication.jsx";
 import PrivateRoute from "./PrivateRoute.jsx";
+import Layout from "./components/Layout.jsx";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
+import Navbar from "./components/Navbar.jsx";
 
 const AuthPage = () => {
   const location = useLocation();
@@ -34,23 +35,27 @@ const AppRoutes = () => {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <>
-      <Navbar />
-      <Routes>
-        <Route
-          path="/"
-          element={
-            user ? (
-              <Navigate to={user.role === "admin" ? "/admin" : "/home"} />
-            ) : (
-              <>
-                <HeroSection />
-                <FeaturesSection />
-                <Footer />
-              </>
-            )
-          }
-        />
+    <Routes>
+      {/* Public Routes */}
+      <Route
+        path="/"
+        element={
+          user ? (
+            <Navigate to={user.role === "admin" ? "/admin" : "/home"} />
+          ) : (
+            <>
+              <Navbar />
+              <HeroSection />
+              <FeaturesSection />
+              <Footer />
+            </>
+          )
+        }
+      />
+      <Route path="/auth" element={<AuthPage />} />
+
+      {/* Protected Routes with Layout */}
+      <Route element={<Layout />}>
         <Route
           path="/home"
           element={
@@ -83,9 +88,18 @@ const AppRoutes = () => {
             </PrivateRoute>
           }
         />
-        <Route path="/auth" element={<AuthPage />} />
-      </Routes>
-    </>
+        <Route path="/groups" element={<div>Groups Page (Placeholder)</div>} />
+        <Route path="/catalog" element={<div>Catalog Page (Placeholder)</div>} />
+        <Route path="/users" element={<div>Users Page (Placeholder)</div>} />
+        <Route path="/surveys" element={<div>Surveys Page (Placeholder)</div>} />
+        <Route path="/help" element={<div>Help Page (Placeholder)</div>} />
+        <Route path="/privacy" element={<div>Privacy Page (Placeholder)</div>} />
+        <Route path="/friends" element={<div>Friends Page (Placeholder)</div>} />
+        <Route path="/copilot" element={<div>Copilot Page (Placeholder)</div>} />
+        <Route path="/login-history" element={<div>Login History Page (Placeholder)</div>} />
+        <Route path="/notes" element={<div>Notes Page (Placeholder)</div>} />
+      </Route>
+    </Routes>
   );
 };
 
