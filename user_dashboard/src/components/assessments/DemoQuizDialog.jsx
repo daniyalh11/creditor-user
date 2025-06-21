@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,26 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Clock, Info, GripVertical } from "lucide-react";
 
-interface DemoQuestion {
-  id: string;
-  question: string;
-  type: "multiple-choice" | "true-false" | "fill-blank" | "matching" | "dropdown" | "numeric" | "short-answer" | "essay" | "case-study" | "drag-drop" | "hotspot" | "scenario" | "assignment" | "project" | "proctored";
-  options?: string[];
-  correctAnswer?: string;
-  blanks?: string[];
-  pairs?: { left: string; right: string }[];
-  dropdownOptions?: string[];
-  dragItems?: string[];
-}
-
-interface DemoQuizDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  assessmentTitle: string;
-  assessmentType: string;
-}
-
-const demoQuestions: Record<string, DemoQuestion> = {
+const demoQuestions = {
   "Multiple Choice Quiz": {
     id: "mcq-1",
     question: "What is the primary purpose of React hooks?",
@@ -126,32 +106,32 @@ const demoQuestions: Record<string, DemoQuestion> = {
   }
 };
 
-export function DemoQuizDialog({ open, onOpenChange, assessmentTitle, assessmentType }: DemoQuizDialogProps) {
-  const [selectedAnswer, setSelectedAnswer] = useState<string>("");
-  const [textAnswer, setTextAnswer] = useState<string>("");
-  const [numericAnswer, setNumericAnswer] = useState<string>("");
+export function DemoQuizDialog({ open, onOpenChange, assessmentTitle, assessmentType }) {
+  const [selectedAnswer, setSelectedAnswer] = useState("");
+  const [textAnswer, setTextAnswer] = useState("");
+  const [numericAnswer, setNumericAnswer] = useState("");
   const [currentQuestion] = useState(1);
   const [totalQuestions] = useState(5);
-  const [draggedItems, setDraggedItems] = useState<string[]>([]);
-  const [draggedItem, setDraggedItem] = useState<string | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [draggedItems, setDraggedItems] = useState([]);
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
 
   const demoQuestion = demoQuestions[assessmentTitle];
 
   // Initialize drag items
-  React.useEffect(() => {
+  useEffect(() => {
     if (demoQuestion?.type === "drag-drop" && demoQuestion.dragItems) {
       setDraggedItems([...demoQuestion.dragItems]);
     }
   }, [demoQuestion]);
 
-  const handleDragStart = (e: React.DragEvent, item: string) => {
+  const handleDragStart = (e, item) => {
     setDraggedItem(item);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", item);
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e, index) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     setDragOverIndex(index);
@@ -161,7 +141,7 @@ export function DemoQuizDialog({ open, onOpenChange, assessmentTitle, assessment
     setDragOverIndex(null);
   };
 
-  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+  const handleDrop = (e, targetIndex) => {
     e.preventDefault();
     setDragOverIndex(null);
     
