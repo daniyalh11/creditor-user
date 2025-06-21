@@ -64,7 +64,7 @@ const SidebarItem = ({ icon: Icon, label, href, active, collapsed, dropdownConte
             : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
         )}
       >
-        <Icon size={20} />
+        <Icon size={collapsed ? 24 : 20} />
         {!collapsed && <span className="font-medium">{label}</span>}
       </Link>
     );
@@ -80,12 +80,13 @@ const SidebarItem = ({ icon: Icon, label, href, active, collapsed, dropdownConte
               onClick={handleClick}
               className={cn(
                 "flex items-center gap-4 px-4 py-3 mx-2 rounded-xl transition-all duration-200 relative group",
+                collapsed ? "justify-center px-2" : "",
                 active
                   ? "bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 shadow-md border-l-4 border-blue-600 font-semibold"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:shadow-sm"
               )}
             >
-              <Icon size={20} className={cn(
+              <Icon size={collapsed ? 24 : 20} className={cn(
                 "transition-all duration-200",
                 active ? "text-blue-700" : "text-gray-500 group-hover:text-gray-700"
               )} />
@@ -133,6 +134,9 @@ export function Sidebar() {
 
   const handleLogoClick = () => {
     navigate('/');
+    if (collapsed) {
+      setCollapsed(false);
+    }
   };
 
   // Help section navigation items
@@ -178,7 +182,10 @@ export function Sidebar() {
       initial={false}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-200 p-4 bg-gradient-to-r from-blue-600 to-blue-700 shadow-md">
+      <div className={cn(
+        "flex items-center border-b border-gray-200 p-4 bg-gradient-to-r from-blue-600 to-blue-700 shadow-md",
+        collapsed ? "justify-center" : "justify-between"
+      )}>
         {!collapsed && (
           <motion.button
             onClick={handleLogoClick}
@@ -199,35 +206,59 @@ export function Sidebar() {
             </div>
           </motion.button>
         )}
+        
         {collapsed && (
-          <motion.button
-            onClick={handleLogoClick}
-            className="mx-auto cursor-pointer"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.5 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg">
-              <BookOpen size={22} className="text-blue-600" />
-            </div>
-          </motion.button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.button
+                  onClick={handleLogoClick}
+                  className="cursor-pointer"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg">
+                    <BookOpen size={22} className="text-blue-600" />
+                  </div>
+                </motion.button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-gray-900 text-white shadow-xl">
+                Creditor Academy
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
 
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCollapsed(!collapsed)}
-            className="text-white hover:bg-white/20 border-none rounded-lg"
-          >
-            {collapsed ? 
-              <ChevronRight size={18} /> : 
+        {!collapsed && (
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCollapsed(!collapsed)}
+              className="text-white hover:bg-white/20 border-none rounded-lg"
+            >
               <ChevronLeft size={18} />
-            }
-          </Button>
-        </motion.div>
+            </Button>
+          </motion.div>
+        )}
+        
+        {collapsed && (
+          <div className="absolute -right-3 top-1/2 transform -translate-y-1/2">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCollapsed(false)}
+                className="h-8 w-8 bg-white text-blue-600 hover:bg-gray-50 border border-gray-200 rounded-full shadow-lg"
+              >
+                <ChevronRight size={16} />
+              </Button>
+            </motion.div>
+          </div>
+        )}
       </div>
 
       {/* Navigation Items */}
@@ -321,7 +352,7 @@ export function Sidebar() {
                       className="w-full flex justify-center p-3 hover:bg-gray-200 rounded-xl transition-all duration-200 text-gray-600 group shadow-sm"
                       whileTap={{ scale: 0.98 }}
                     >
-                      <HelpCircle size={20} />
+                      <HelpCircle size={24} />
                     </motion.button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { ChevronLeft, Clock, Users, MessageSquare, AlertTriangle, CheckCircle, BookOpen } from "lucide-react";
+import { ChevronLeft, Users, MessageSquare, AlertTriangle, CheckCircle, BookOpen } from "lucide-react";
 
 export function DebateInstructionPage() {
   const { debateId } = useParams();
@@ -20,7 +20,6 @@ export function DebateInstructionPage() {
     description: "Engage in a structured debate about whether technology has more positive or negative impacts on modern society.",
     topic: "Technology has done more harm than good to society",
     totalMarks: 50,
-    timeLimit: "1 minute",
     participants: "Class participants",
     rules: [
       "Arguments must be presented in clear, formal English",
@@ -29,9 +28,8 @@ export function DebateInstructionPage() {
       "Respect opposing viewpoints and maintain professional discourse",
       "Stay focused on the debate topic at all times",
       "No personal attacks or inappropriate language",
-      "Each participant can post multiple arguments during the time limit",
-      "You can like/dislike and comment on other participants' statements",
-      "The debate will automatically end when time expires"
+      "Each participant can post multiple arguments",
+      "You can like/dislike and comment on other participants' statements"
     ]
   };
 
@@ -70,7 +68,7 @@ export function DebateInstructionPage() {
         </Card>
 
         {/* Debate Details */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-2 mb-2">
@@ -78,16 +76,6 @@ export function DebateInstructionPage() {
                 <span className="font-medium">Total Marks</span>
               </div>
               <p className="text-2xl font-bold text-primary">{debateInfo.totalMarks}</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-5 w-5 text-orange-500" />
-                <span className="font-medium">Time Limit</span>
-              </div>
-              <p className="text-2xl font-bold text-orange-500">{debateInfo.timeLimit}</p>
             </CardContent>
           </Card>
           
@@ -135,7 +123,7 @@ export function DebateInstructionPage() {
                 <li>• Post your arguments in the discussion area</li>
                 <li>• Engage with other participants by liking/disliking their posts</li>
                 <li>• Add thoughtful comments to build on the discussion</li>
-                <li>• Monitor the timer and submit before time expires</li>
+                <li>• Submit your debate when you're ready</li>
               </ul>
             </div>
           </CardContent>
