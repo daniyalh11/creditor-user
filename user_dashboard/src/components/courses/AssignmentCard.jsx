@@ -5,16 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AssignmentData } from "@/types/unit";
 
-interface AssignmentCardProps {
-  assignment: AssignmentData;
-  className?: string;
-  onSubmit?: () => void;
-  onViewSubmission?: () => void;
-}
-
-export function AssignmentCard({ assignment, className, onSubmit, onViewSubmission }: AssignmentCardProps) {
+export function AssignmentCard({ assignment, className, onSubmit, onViewSubmission }) {
   // Check if assignment is due soon (within 2 days)
   const isDueSoon = () => {
     const dueDate = new Date(assignment.dueDate);

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,16 +12,7 @@ import { CheckCircle, ChevronLeft, Clock, Film, FileText, LockIcon, PlayCircle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "react-router-dom";
 
-interface LessonProps {
-  id: string;
-  title: string;
-  duration: string;
-  type: "video" | "text";
-  completed: boolean;
-  locked: boolean;
-}
-
-const Lesson = ({ id, title, duration, type, completed, locked }: LessonProps) => {
+const Lesson = ({ id, title, duration, type, completed, locked }) => {
   const Icon = type === "video" ? Film : FileText;
   
   return (
@@ -51,35 +41,10 @@ const Lesson = ({ id, title, duration, type, completed, locked }: LessonProps) =
   );
 };
 
-type LessonType = "video" | "text";
-
-interface LessonData {
-  id: string;
-  title: string;
-  duration: string;
-  type: LessonType;
-  completed: boolean;
-  locked: boolean;
-}
-
-interface UnitData {
-  id: string;
-  title: string;
-  lessons: LessonData[];
-}
-
-interface ModuleData {
-  id: string;
-  title: string;
-  description: string;
-  progress: number;
-  units: UnitData[];
-}
-
 export function CourseDetail() {
   const [activeTab, setActiveTab] = useState("content");
 
-  const modules: ModuleData[] = [
+  const modules = [
     {
       id: "1",
       title: "Getting Started",
@@ -94,7 +59,7 @@ export function CourseDetail() {
               id: "1-1-1",
               title: "Welcome to the course",
               duration: "5:20",
-              type: "video" as LessonType,
+              type: "video",
               completed: true,
               locked: false
             },
@@ -102,7 +67,7 @@ export function CourseDetail() {
               id: "1-1-2",
               title: "How to use this platform",
               duration: "8:45",
-              type: "video" as LessonType,
+              type: "video",
               completed: true,
               locked: false
             }
@@ -116,7 +81,7 @@ export function CourseDetail() {
               id: "1-2-1",
               title: "Environment setup",
               duration: "12:30",
-              type: "video" as LessonType,
+              type: "video",
               completed: true,
               locked: false
             },
@@ -124,7 +89,7 @@ export function CourseDetail() {
               id: "1-2-2",
               title: "Installation guide",
               duration: "5 min read",
-              type: "text" as LessonType,
+              type: "text",
               completed: true,
               locked: false
             }
@@ -146,7 +111,7 @@ export function CourseDetail() {
               id: "2-1-1",
               title: "Understanding the basics",
               duration: "10:15",
-              type: "video" as LessonType,
+              type: "video",
               completed: true,
               locked: false
             },
@@ -154,7 +119,7 @@ export function CourseDetail() {
               id: "2-1-2",
               title: "Key concepts explained",
               duration: "15:40",
-              type: "video" as LessonType,
+              type: "video",
               completed: false,
               locked: false
             }
@@ -168,7 +133,7 @@ export function CourseDetail() {
               id: "2-2-1",
               title: "Diving deeper",
               duration: "18:20",
-              type: "video" as LessonType,
+              type: "video",
               completed: false,
               locked: false
             },
@@ -176,7 +141,7 @@ export function CourseDetail() {
               id: "2-2-2",
               title: "Case studies",
               duration: "12 min read",
-              type: "text" as LessonType,
+              type: "text",
               completed: false,
               locked: false
             }
@@ -198,7 +163,7 @@ export function CourseDetail() {
               id: "3-1-1",
               title: "Project initialization",
               duration: "8:50",
-              type: "video" as LessonType,
+              type: "video",
               completed: false,
               locked: true
             },
@@ -206,7 +171,7 @@ export function CourseDetail() {
               id: "3-1-2",
               title: "Configuration guide",
               duration: "7 min read",
-              type: "text" as LessonType,
+              type: "text",
               completed: false,
               locked: true
             }
@@ -220,7 +185,7 @@ export function CourseDetail() {
               id: "3-2-1",
               title: "Building the core features",
               duration: "22:10",
-              type: "video" as LessonType,
+              type: "video",
               completed: false,
               locked: true
             },
@@ -228,7 +193,7 @@ export function CourseDetail() {
               id: "3-2-2",
               title: "Testing and deployment",
               duration: "15:30",
-              type: "video" as LessonType,
+              type: "video",
               completed: false,
               locked: true
             }
@@ -398,22 +363,11 @@ export function CourseDetail() {
                 <div className="flex items-start gap-3 p-3 border rounded-md bg-accent/20">
                   <FileText className="h-5 w-5 mt-1 text-primary" />
                   <div>
-                    <h3 className="text-base font-medium m-0">Cheat Sheets</h3>
-                    <p className="text-sm text-muted-foreground mt-1 mb-2">
-                      Quick reference guides for React, Redux, and more
-                    </p>
-                    <Button size="sm" variant="outline">Download</Button>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3 p-3 border rounded-md bg-accent/20">
-                  <FileText className="h-5 w-5 mt-1 text-primary" />
-                  <div>
                     <h3 className="text-base font-medium m-0">Additional Reading</h3>
                     <p className="text-sm text-muted-foreground mt-1 mb-2">
-                      Recommended books and articles to deepen your knowledge
+                      Recommended articles and documentation to deepen your understanding
                     </p>
-                    <Button size="sm" variant="outline">View List</Button>
+                    <Button size="sm" variant="outline">View Resources</Button>
                   </div>
                 </div>
               </div>
