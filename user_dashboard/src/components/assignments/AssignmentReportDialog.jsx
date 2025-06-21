@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,20 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, XCircle, Clock, FileText, Award } from "lucide-react";
 
-interface AssignmentReportDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  assignment: {
-    title: string;
-    score: number;
-    maxScore: number;
-    submittedAt: string;
-    gradedAt: string;
-    feedback?: string;
-  };
-}
-
-export function AssignmentReportDialog({ open, onOpenChange, assignment }: AssignmentReportDialogProps) {
+export function AssignmentReportDialog({ open, onOpenChange, assignment }) {
   const percentage = Math.round((assignment.score / assignment.maxScore) * 100);
   const isPassing = percentage >= 70;
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,29 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, FileText, Send } from "lucide-react";
 import { toast } from "sonner";
 
-interface Question {
-  id: string;
-  question: string;
-  type: "multiple-choice" | "text";
-  options?: string[];
-  points: number;
-}
+export function AssignmentSubmissionDialog({ open, onOpenChange, assignment }) {
+  const [answers, setAnswers] = useState({});
 
-interface AssignmentSubmissionDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  assignment: {
-    title: string;
-    description: string;
-    maxScore: number;
-    estimatedTime: string;
-  };
-}
-
-export function AssignmentSubmissionDialog({ open, onOpenChange, assignment }: AssignmentSubmissionDialogProps) {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-
-  const questions: Question[] = [
+  const questions = [
     {
       id: "q1",
       question: "What is the main advantage of using React Context API over prop drilling?",
@@ -70,7 +50,7 @@ export function AssignmentSubmissionDialog({ open, onOpenChange, assignment }: A
     }
   ];
 
-  const handleAnswerChange = (questionId: string, answer: string) => {
+  const handleAnswerChange = (questionId, answer) => {
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
