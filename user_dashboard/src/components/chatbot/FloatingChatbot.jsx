@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -132,24 +131,20 @@ const faqCategories = [
   }
 ];
 
-interface Message {
-  content: string;
-  isUser: boolean;
-  isLoading?: boolean;
-}
-
-export function FloatingChatbot() {
+function FloatingChatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([{
-    content: "Hi there! How can I help you today? You can ask a question or browse our frequently asked questions by category below.",
-    isUser: false
-  }]);
+  const [messages, setMessages] = useState([
+    {
+      content: "Hi there! How can I help you today? You can ask a question or browse our frequently asked questions by category below.",
+      isUser: false
+    }
+  ]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showCategories, setShowCategories] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [activeCategory, setActiveCategory] = useState(null);
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
   const [isMobileView, setIsMobileView] = useState(false);
 
   // Check if it's mobile view
@@ -178,7 +173,7 @@ export function FloatingChatbot() {
   }, [isOpen]);
 
   // Find answer from FAQ data
-  const findFaqAnswer = (question: string): string => {
+  const findFaqAnswer = (question) => {
     // First check for exact question match
     for (const category of faqCategories) {
       for (const faq of category.questions) {
@@ -237,11 +232,11 @@ export function FloatingChatbot() {
     }, 1200);
   };
 
-  const handleCategorySelect = (categoryId: string) => {
+  const handleCategorySelect = (categoryId) => {
     setActiveCategory(categoryId);
   };
 
-  const handleQuestionSelect = (question: string, answer: string) => {
+  const handleQuestionSelect = (question, answer) => {
     // Add the user question as a message
     setMessages(prev => [...prev, { content: question, isUser: true }]);
     
@@ -262,7 +257,7 @@ export function FloatingChatbot() {
     }, 1000);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleSendMessage();
     }
