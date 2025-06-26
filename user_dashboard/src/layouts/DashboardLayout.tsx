@@ -1,10 +1,10 @@
-
 import React from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "@/components/layout/Sidebar";
 import { motion } from "framer-motion";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import BackButton from "@/components/navigation/BackButton";
+import ChatbotContainer from "@/components/layout/ChatbotContainer";
 
 export function DashboardLayout() {
   const location = useLocation();
@@ -23,23 +23,26 @@ export function DashboardLayout() {
   const showBackButton = pathsWithBackButton.some(path => location.pathname.startsWith(path));
 
   return (
-    <motion.div 
-      className="flex min-h-screen w-full bg-gradient-to-br from-gray-50 to-white"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
+    <div className="flex min-h-screen w-full bg-gradient-to-br from-gray-50 to-white">
+      {/* Sidebar – participates in flex layout; it is sticky inside the component */}
       <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <DashboardHeader />
-        <div className="flex-1 bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      
+      {/* Main column */}
+      <div className="flex-1 flex flex-col min-h-screen">
+        {/* Header – stays at top of the column */}
+        <header className="sticky top-0 z-10 bg-white border-b border-gray-200 h-16">
+          <DashboardHeader />
+        </header>
+        
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-auto">
           {showBackButton && (
             <div className="px-6 pt-6">
               <BackButton />
             </div>
           )}
           <motion.main 
-            className="flex-1 overflow-auto p-6 pt-4"
+            className="p-6 pt-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.5 }}
@@ -48,7 +51,10 @@ export function DashboardLayout() {
           </motion.main>
         </div>
       </div>
-    </motion.div>
+      
+      {/* Floating chatbot */}
+      <ChatbotContainer />
+    </div>
   );
 }
 
