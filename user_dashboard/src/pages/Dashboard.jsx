@@ -73,13 +73,13 @@ export function Dashboard() {
       <main className="flex-1">
         <div className="container py-6 max-w-7xl">
           {/* Top grid section - align greeting with latest updates */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-8">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-8 relative z-0">
             {/* Left section - greeting and latest updates */}
             <div className="xl:col-span-8 space-y-8">
               {/* Enhanced Greeting Section */}
-              <div className="rounded-2xl overflow-hidden relative shadow-lg border border-gray-200">
+              <div className="relative rounded-2xl overflow-hidden shadow-lg border border-gray-200">
                 <div className="animate-gradient-shift absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-emerald-500/10"></div>
-                <div className="relative z-10 p-8 rounded-2xl bg-white/80 backdrop-blur-sm">
+                <div className="relative z-10 p-8 bg-white/80 backdrop-blur-sm">
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
                       <GraduationCap className="text-white" size={28} />
