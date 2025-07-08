@@ -56,7 +56,7 @@ import DemoQuizPage from "@/pages/DemoQuizPage";
 import CalendarPage from "@/pages/CalendarPage";
 import TodoPage from "@/pages/TodoPage";
 import ClassRecordings from "@/pages/ClassRecordings";
-
+import CertificatePage from "../src/pages/CertificatePage";
 import SurveyInstructionPage from "@/pages/SurveyInstructionPage";
 import DebateInstructionPage from "@/pages/DebateInstructionPage";
 import DebateTakePage from "@/pages/DebateTakePage";
@@ -71,6 +71,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="courses" element={<Courses />} />
           <Route path="courses/:courseId" element={<CourseView />} />
+          <Route path="certificate/:courseId" element={<CertificatePage />} />
           <Route path="courses/modules" element={<ModulesList />} />
           <Route path="courses/module/:moduleId" element={<ModuleDetail />} />
           <Route path="courses/module/:moduleId/lessons" element={<ModuleLessonsView />} />
