@@ -24,6 +24,7 @@ import EssayTakePage from "@/pages/EssayTakePage";
 import EssayResultsPage from "@/pages/EssayResultsPage";
 import  Groups  from "@/pages/Groups";
 import Catalog from "@/pages/Catalog";
+
 import Progress from "@/pages/Progress";
 import Messages from "@/pages/Messages";
 import  Profile  from "@/pages/Profile";
@@ -55,10 +56,12 @@ import DemoQuizPage from "@/pages/DemoQuizPage";
 import CalendarPage from "@/pages/CalendarPage";
 import TodoPage from "@/pages/TodoPage";
 import ClassRecordings from "@/pages/ClassRecordings";
-
+import CertificatePage from "../src/pages/CertificatePage";
 import SurveyInstructionPage from "@/pages/SurveyInstructionPage";
 import DebateInstructionPage from "@/pages/DebateInstructionPage";
 import DebateTakePage from "@/pages/DebateTakePage";
+import Games from "@/pages/Games";
+import GameDetailView from "@/components/games/GameDetailView";
 
 function App() {
   return (
@@ -68,6 +71,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="courses" element={<Courses />} />
           <Route path="courses/:courseId" element={<CourseView />} />
+          <Route path="certificate/:courseId" element={<CertificatePage />} />
           <Route path="courses/modules" element={<ModulesList />} />
           <Route path="courses/module/:moduleId" element={<ModuleDetail />} />
           <Route path="courses/module/:moduleId/lessons" element={<ModuleLessonsView />} />
@@ -121,6 +125,7 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Route>
         <Route path="/speechify-reader" element={<SpeechifyReaderView />} />
+        <Route path="/games" element={<Games />} />
       </Routes>
       <Toaster />
       <ChatbotContainer />

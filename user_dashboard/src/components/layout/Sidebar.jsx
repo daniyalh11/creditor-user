@@ -323,23 +323,14 @@ export function Sidebar() {
           </motion.div>
 
           <motion.div variants={itemVariants}>
-            <a
-              href="https://preview--learn-hub-user-view-34-88.lovable.app/games"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                "flex items-center gap-4 px-4 py-3 mx-2 rounded-xl transition-all duration-200 relative group",
-                collapsed ? "justify-center px-2" : "",
-                "text-gray-600 hover:text-gray-900 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:shadow-sm"
-              )}
-            >
-              <Gamepad2 size={20} className="text-gray-500 group-hover:text-gray-700" />
-              {!collapsed && (
-                <span className="text-gray-700 group-hover:text-gray-900">
-                  Games
-                </span>
-              )}
-            </a>
+            <SidebarItem
+              icon={Gamepad2}
+              label="Games"
+              href="/games"
+              active={isActive("/games")}
+              collapsed={collapsed}
+              onNavigate={handleNavigate}
+            />
           </motion.div>
         </motion.div>
       </div>

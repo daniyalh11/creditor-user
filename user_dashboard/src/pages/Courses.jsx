@@ -1,23 +1,25 @@
-import React, { useEffect } from "react";
+  import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { BookOpen, Clock, Filter, Search, SortAsc } from "lucide-react";
-import { Input } from "@/components/ui/input";
+ 
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 
-// Dummy data for courses
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Progress } from "../components/ui/progress";
+import { BookOpen, Clock, Filter, Search, SortAsc, Award } from "lucide-react";
+import { Input } from "../components/ui/input";
+
 const courses = [
   {
     id: "react-2023",
     title: "Complete React Developer in 2023",
     description: "Learn React from scratch with hooks, Redux, and more",
     category: "Web Development",
-    progress: 62,
+    progress: 100,
     instructor: "John Smith",
     duration: "25 hours",
-    image: "https://images.unsplash.com/photo-1633356122102-3fe601e05bd2?q=80&w=1000"
+    image: "https://images.unsplash.com/photo-1633356122102-3fe601e05bd2?q=80&w=1000",
+    completionDate: "15 Aug 2023"
   },
   {
     id: "node-backend",
@@ -34,10 +36,11 @@ const courses = [
     title: "Python for Data Science",
     description: "Master data analysis and visualization with Python",
     category: "Data Science",
-    progress: 0,
+    progress: 100,
     instructor: "Michael Chen",
     duration: "22 hours",
-    image: "https://images.unsplash.com/photo-1526379879527-8559ecfcaec0?q=80&w=1000"
+    image: "https://images.unsplash.com/photo-1526379879527-8559ecfcaec0?q=80&w=1000",
+    completionDate: "22 Jul 2023"
   },
   {
     id: "ui-design",
@@ -72,7 +75,6 @@ const courses = [
 ];
 
 export function Courses() {
-  // Animation effect when component mounts
   useEffect(() => {
     const courseCards = document.querySelectorAll(".course-card");
     courseCards.forEach((card, index) => {
@@ -155,12 +157,21 @@ export function Courses() {
                     )}
                   </CardContent>
                   
-                  <CardFooter className="pt-2">
+                  <CardFooter className="pt-2 flex flex-col gap-2">
                     <Link to={`/courses/${course.id}`} className="w-full">
                       <Button variant="default" className="w-full">
                         {course.progress > 0 ? "Continue Learning" : "Start Course"}
                       </Button>
                     </Link>
+                    
+                    {course.progress === 100 && (
+                      <Link to={`/certificate/${course.id}`} className="w-full">
+                        <Button variant="outline" className="w-full">
+                          <Award size={16} className="mr-2" />
+                          View Certificate
+                        </Button>
+                      </Link>
+                    )}
                   </CardFooter>
                 </Card>
               </div>
