@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Lightbulb, BookOpen, Settings, DollarSign, ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-import { 
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Categorized FAQ questions
 const faqCategories = [
   {
     id: "general",
@@ -107,27 +106,16 @@ function FAQs() {
   const [customQuestion, setCustomQuestion] = useState("");
   const [activeCategory, setActiveCategory] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Handle search functionality
-  const filteredCategories = faqCategories.map(category => {
-    return {
-      ...category,
-      questions: category.questions.filter(faq => 
-        faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    };
-  }).filter(category => category.questions.length > 0);
+  const [showAll, setShowAll] = useState(false);
 
   const handleSendQuestion = () => {
     if (customQuestion.trim() === "") {
       toast.error("Please enter your question");
       return;
     }
-    
+
     setIsLoading(true);
-    
-    // Simulate loading state
+
     setTimeout(() => {
       toast.success("Your question has been sent to support. We'll get back to you soon!");
       setCustomQuestion("");
@@ -135,50 +123,46 @@ function FAQs() {
     }, 1000);
   };
 
-  // Toggle category expansion
   const toggleCategory = (categoryId) => {
     setActiveCategory(activeCategory === categoryId ? null : categoryId);
   };
 
+  const filteredCategories = faqCategories.map(category => {
+    return {
+      ...category,
+      questions: category.questions.filter(faq =>
+        faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    };
+  }).filter(category => category.questions.length > 0);
+
+  const categoriesToShow = searchQuery
+    ? filteredCategories
+    : faqCategories.filter(cat =>
+        showAll || ["general", "courses", "technical"].includes(cat.id)
+      );
+
   return (
     <div className="container max-w-4xl py-8 px-4 md:px-0">
-      <div className="flex items-center justify-between mb-6">
-        <Link to="/">
-          <Button variant="ghost" size="sm" className="gap-1">
-            <ChevronLeft size={16} />
-            <span>Back to Dashboard</span>
-          </Button>
-        </Link>
-        
-        {/* View All FAQs button moved to the top right */}
-        <Button
-          className="shadow-lg transition-all bg-primary text-white flex items-center gap-2"
-          size="sm"
-          asChild
-        >
-          <Link to="/faqs">
-            <span>View All FAQs</span>
-          </Link>
-        </Button>
-      </div>
-      
+
+
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold mb-2">Frequently Asked Questions</h1>
         <p className="text-muted-foreground">Find answers to common questions about our platform</p>
       </div>
-      
+
       <div className="sticky top-4 z-10 mb-6">
         <div className="bg-background/80 backdrop-blur-sm rounded-lg p-4 shadow-sm">
           <Input
             placeholder="Search FAQs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="mb-0"
           />
         </div>
       </div>
-      
-      {searchQuery && filteredCategories.length === 0 && (
+
+      {searchQuery && categoriesToShow.length === 0 && (
         <div className="text-center py-8">
           <p className="text-muted-foreground mb-2">No results found for "{searchQuery}"</p>
           <p className="text-sm">Try a different search term or ask us directly below</p>
@@ -186,7 +170,7 @@ function FAQs() {
       )}
 
       <div className="space-y-6">
-        {filteredCategories.map((category) => (
+        {categoriesToShow.map((category) => (
           <Collapsible
             key={category.id}
             open={activeCategory === category.id || searchQuery !== ""}
@@ -204,7 +188,7 @@ function FAQs() {
                 </Button>
               </CollapsibleTrigger>
             </div>
-            
+
             <CollapsibleContent className="p-4">
               <Accordion type="single" collapsible className="w-full">
                 {category.questions.map((faq, index) => (
@@ -222,7 +206,15 @@ function FAQs() {
           </Collapsible>
         ))}
       </div>
-      
+
+      {!showAll && !searchQuery && (
+        <div className="flex justify-center mt-6">
+          <Button size="sm" variant="outline" onClick={() => setShowAll(true)}>
+            View All FAQs
+          </Button>
+        </div>
+      )}
+
       <div className="mt-12 border-t pt-8">
         <h2 className="text-xl font-semibold mb-4">Still have questions?</h2>
         <div className="flex gap-2">

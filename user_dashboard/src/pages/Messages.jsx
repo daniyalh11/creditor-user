@@ -3,26 +3,46 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Search, Send, Smile } from "lucide-react";
-import { useState } from "react";
+import { MessageCircle, Search, Send, Smile, Paperclip, Mic, Plus } from "lucide-react";
+import { useState, useRef } from "react";
 import { VoiceRecorder } from "@/components/messages/VoiceRecorder";
 import { VoiceMessage } from "@/components/messages/VoiceMessage";
+import EmojiPicker from "emoji-picker-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Dummy data - replace with real data later
-const friends = [
-  { id: 1, name: "Sarah Wilson", avatar: "/placeholder.svg", lastMessage: "Hey there!" },
-  { id: 2, name: "Michael Chen", avatar: "/placeholder.svg", lastMessage: "Let's catch up later" },
-  { id: 3, name: "Emily Brown", avatar: "/placeholder.svg", lastMessage: "Did you see the new course?" },
-  { id: 4, name: "David Kim", avatar: "/placeholder.svg", lastMessage: "Thanks for your help!" },
-  { id: 5, name: "Jessica Taylor", avatar: "/placeholder.svg", lastMessage: "Are you free tomorrow?" },
-  { id: 6, name: "Robert Johnson", avatar: "/placeholder.svg", lastMessage: "I'll get back to you" },
+const allUsers = [
+  { id: 1, name: "Sarah Wilson", avatar: "/placeholder.svg" },
+  { id: 2, name: "Michael Chen", avatar: "/placeholder.svg" },
+  { id: 3, name: "Emily Brown", avatar: "/placeholder.svg" },
+  { id: 4, name: "David Kim", avatar: "/placeholder.svg" },
+  { id: 5, name: "Jessica Taylor", avatar: "/placeholder.svg" },
+  { id: 6, name: "Robert Johnson", avatar: "/placeholder.svg" },
+  { id: 7, name: "Alex Morgan", avatar: "/placeholder.svg" },
+  { id: 8, name: "Lisa Wong", avatar: "/placeholder.svg" },
 ];
 
 function Messages() {
+  const [friends, setFriends] = useState([
+    { id: 1, name: "Sarah Wilson", avatar: "/placeholder.svg", lastMessage: "Hey there!" },
+    { id: 2, name: "Michael Chen", avatar: "/placeholder.svg", lastMessage: "Let's catch up later" },
+    { id: 3, name: "Emily Brown", avatar: "/placeholder.svg", lastMessage: "Did you see the new course?" },
+    { id: 4, name: "David Kim", avatar: "/placeholder.svg", lastMessage: "Thanks for your help!" },
+    { id: 5, name: "Jessica Taylor", avatar: "/placeholder.svg", lastMessage: "Are you free tomorrow?" },
+    { id: 6, name: "Robert Johnson", avatar: "/placeholder.svg", lastMessage: "I'll get back to you" },
+  ]);
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [messages, setMessages] = useState([
     { id: 1, senderId: 1, text: "Hey there!", timestamp: "10:30 AM", type: 'text' },
     { id: 2, senderId: 0, text: "Hi! How are you?", timestamp: "10:31 AM", type: 'text' },
@@ -30,6 +50,9 @@ function Messages() {
     { id: 4, senderId: 0, text: "That's awesome! I'm still working on it.", timestamp: "10:34 AM", type: 'text' },
     { id: 5, senderId: 1, text: "Let me know if you need any help with it.", timestamp: "10:36 AM", type: 'text' },
   ]);
+  const [newChatUsers, setNewChatUsers] = useState([]);
+  const [newChatSearch, setNewChatSearch] = useState("");
+  const fileInputRef = useRef(null);
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
@@ -68,17 +91,87 @@ function Messages() {
     setShowVoiceRecorder(false);
   };
 
-  const handleEmojiClick = () => {
-    console.log("Emoji picker clicked");
-    // Add emoji picker functionality here
+  const handleSendAttachment = (file) => {
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setMessages([
+        ...messages,
+        {
+          id: messages.length + 1,
+          senderId: 0,
+          file: e.target.result,
+          fileName: file.name,
+          fileType: file.type.startsWith('image/') ? 'image' : 'video',
+          timestamp: new Date().toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          type: 'attachment',
+        },
+      ]);
+    };
+    
+    reader.readAsDataURL(file);
   };
 
-  const handleMicClick = () => {
-    setShowVoiceRecorder(true);
+  const handleEmojiClick = (emojiData) => {
+    setNewMessage(prev => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+  };
+
+  const handleAttachmentClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      handleSendAttachment(file);
+    }
+    e.target.value = '';
+  };
+
+  const handleNewChatUserSelect = (userId) => {
+    setNewChatUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleCreateNewChat = () => {
+    if (newChatUsers.length === 0) return;
+    
+    // Find the selected users
+    const selectedUsers = allUsers.filter(user => newChatUsers.includes(user.id));
+    
+    // For simplicity, we'll just add the first selected user to friends
+    // In a real app, you might create a group chat or handle multiple users differently
+    const newFriend = selectedUsers[0];
+    
+    if (!friends.some(f => f.id === newFriend.id)) {
+      setFriends(prev => [
+        ...prev,
+        {
+          ...newFriend,
+          lastMessage: "New conversation started",
+        }
+      ]);
+    }
+    
+    setSelectedFriend(newFriend.id);
+    setNewChatUsers([]);
   };
 
   const filteredFriends = friends.filter(friend => 
     friend.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredNewChatUsers = allUsers.filter(user => 
+    user.name.toLowerCase().includes(newChatSearch.toLowerCase()) &&
+    !friends.some(friend => friend.id === user.id)
   );
 
   return (
@@ -87,8 +180,61 @@ function Messages() {
         <div className="flex h-[700px]">
           {/* Friends List Sidebar */}
           <div className="w-80 border-r flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Messages</h2>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>New Chat</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search users..."
+                        className="pl-8"
+                        value={newChatSearch}
+                        onChange={(e) => setNewChatSearch(e.target.value)}
+                      />
+                    </div>
+                    <ScrollArea className="h-64">
+                      <div className="space-y-2">
+                        {filteredNewChatUsers.map((user) => (
+                          <div 
+                            key={user.id}
+                            className="flex items-center gap-3 p-2 hover:bg-accent rounded cursor-pointer"
+                            onClick={() => handleNewChatUserSelect(user.id)}
+                          >
+                            <Checkbox 
+                              checked={newChatUsers.includes(user.id)}
+                              onCheckedChange={() => handleNewChatUserSelect(user.id)}
+                            />
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={user.avatar} />
+                              <AvatarFallback>{user.name[0]}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{user.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                    <Button 
+                      onClick={handleCreateNewChat}
+                      disabled={newChatUsers.length === 0}
+                      className="w-full"
+                    >
+                      Start Chat
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
             <div className="p-4 border-b">
-              <h2 className="text-xl font-semibold mb-3">Messages</h2>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -183,6 +329,31 @@ function Messages() {
                               {message.timestamp}
                             </p>
                           </div>
+                        ) : message.type === 'attachment' ? (
+                          <div className="max-w-[70%]">
+                            <div className={`rounded-lg overflow-hidden ${
+                              message.senderId === 0 
+                                ? "border border-primary/20" 
+                                : "border border-muted"
+                            }`}>
+                              {message.fileType === 'image' ? (
+                                <img 
+                                  src={message.file} 
+                                  alt={message.fileName} 
+                                  className="max-h-64 object-cover"
+                                />
+                              ) : (
+                                <video 
+                                  src={message.file} 
+                                  controls 
+                                  className="max-h-64"
+                                />
+                              )}
+                            </div>
+                            <p className="text-xs mt-1 opacity-70 text-right">
+                              {message.timestamp}
+                            </p>
+                          </div>
                         ) : (
                           <div
                             className={`max-w-[70%] rounded-lg p-3 ${
@@ -210,50 +381,88 @@ function Messages() {
 
                 {/* Message Input */}
                 <div className="p-4 border-t bg-background">
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange}
+                    accept="image/*, video/*"
+                    className="hidden"
+                  />
+                  
                   {showVoiceRecorder ? (
                     <VoiceRecorder 
                       onSendVoiceMessage={handleSendVoiceMessage}
                       onCancel={() => setShowVoiceRecorder(false)}
                     />
                   ) : (
-                    <div className="flex gap-3 items-center">
-                      <div className="flex-1 relative">
+                    <div className="relative">
+                      {showEmojiPicker && (
+                        <div className="absolute bottom-16 left-0 z-10">
+                          <EmojiPicker 
+                            onEmojiClick={handleEmojiClick}
+                            width={300}
+                            height={350}
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-3 items-center">
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="absolute left-3 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground hover:text-foreground z-10"
-                          onClick={handleEmojiClick}
+                          className="h-10 w-10 text-muted-foreground hover:text-foreground"
+                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                         >
                           <Smile className="h-5 w-5" />
                         </Button>
-                        <Input
-                          placeholder="Type a message..."
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleSendMessage();
-                            }
-                          }}
-                          className="rounded-full pl-12 pr-4 h-12 text-base bg-gray-100 border-gray-200 focus:bg-white"
-                        />
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-10 w-10 text-muted-foreground hover:text-foreground"
+                          onClick={handleAttachmentClick}
+                        >
+                          <Paperclip className="h-5 w-5" />
+                        </Button>
+                        
+                        <div className="flex-1 relative">
+                          <Input
+                            placeholder="Type a message..."
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                handleSendMessage();
+                              }
+                            }}
+                            className="rounded-full pl-4 pr-20 h-12 text-base bg-gray-100 border-gray-200 focus:bg-white"
+                          />
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={() => setShowVoiceRecorder(true)} 
+                            variant="ghost"
+                            size="icon"
+                            className="h-12 w-12 rounded-full"
+                          >
+                            <Mic className="h-5 w-5" />
+                          </Button>
+                          
+                          <Button 
+                            onClick={handleSendMessage} 
+                            className={`rounded-full h-12 w-12 transition-all ${
+                              newMessage.trim() 
+                                ? "bg-purple-500 hover:bg-purple-600 text-white" 
+                                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                            }`}
+                            size="icon"
+                            disabled={!newMessage.trim()}
+                          >
+                            <Send className="h-5 w-5" />
+                          </Button>
+                        </div>
                       </div>
-                      <VoiceRecorder 
-                        onSendVoiceMessage={handleSendVoiceMessage}
-                        onCancel={() => setShowVoiceRecorder(false)}
-                      />
-                      <Button 
-                        onClick={handleSendMessage} 
-                        className={`rounded-full h-12 w-12 transition-all ${
-                          newMessage.trim() 
-                            ? "bg-purple-500 hover:bg-purple-600 text-white" 
-                            : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        }`}
-                        size="icon"
-                        disabled={!newMessage.trim()}
-                      >
-                        <Send className="h-5 w-5" />
-                      </Button>
                     </div>
                   )}
                 </div>
