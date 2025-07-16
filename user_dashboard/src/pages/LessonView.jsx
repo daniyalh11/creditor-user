@@ -9,8 +9,6 @@ import {
   Clock,
   Bookmark,
   BookmarkPlus,
-  Download,
-  Share2,
   Play,
   Pause,
   Volume2,
@@ -238,15 +236,6 @@ function LessonView() {
             )}
           </Button>
           
-          <Button variant="outline" size="sm">
-            <Download size={16} className="mr-2" />
-            Download
-          </Button>
-          
-          <Button variant="outline" size="sm">
-            <Share2 size={16} className="mr-2" />
-            Share
-          </Button>
         </div>
       </div>
       

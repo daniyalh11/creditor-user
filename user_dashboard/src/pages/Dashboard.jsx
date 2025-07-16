@@ -126,9 +126,6 @@ export function Dashboard() {
               <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-bold text-gray-800">Latest Updates</h3>
-                  <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50">
-                    View All
-                  </Button>
                 </div>
                 <DashboardCarousel />
               </div>
@@ -206,12 +203,6 @@ export function Dashboard() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">Recommended for You</h2>
-              <Button variant="outline" asChild className="border-blue-200 text-blue-600 hover:bg-blue-50">
-                <Link to="/catalog" className="flex items-center gap-2">
-                  Browse catalog
-                  <ChevronRight size={16} />
-                </Link>
-              </Button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
