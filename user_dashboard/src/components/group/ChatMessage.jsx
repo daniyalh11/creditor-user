@@ -1,6 +1,7 @@
 import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { VoiceMessage } from "@/components/messages/VoiceMessage";
+import { Download } from "lucide-react";
 
 export function ChatMessage({ message, currentUserId }) {
   const isUser = message.senderId === currentUserId;
@@ -32,6 +33,26 @@ export function ChatMessage({ message, currentUserId }) {
             duration={message.duration}
             isUser={isUser}
           />
+        ) : message.type === 'file' && message.fileUrl && message.fileName ? (
+          <div
+            className={`rounded-2xl px-4 py-3 shadow-sm break-words word-wrap overflow-wrap-anywhere max-w-full ${
+              isUser
+                ? "bg-gradient-to-r from-purple-500 to-purple-600 text-white"
+                : "bg-gray-100 text-gray-800 border border-gray-200"
+            }`}
+          >
+            <a
+              href={message.fileUrl}
+              download={message.fileName}
+              className={`flex items-center gap-2 hover:underline ${isUser ? 'text-white' : 'text-blue-600'}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span role="img" aria-label="attachment">📎</span>
+              <span className={isUser ? 'text-white' : 'text-blue-600'}>{message.fileName}</span>
+              <Download className={`ml-2 h-4 w-4 ${isUser ? 'text-red' : 'text-blue-500'}`} />
+            </a>
+          </div>
         ) : (
           <div
             className={`rounded-2xl px-4 py-3 shadow-sm break-words word-wrap overflow-wrap-anywhere max-w-full ${

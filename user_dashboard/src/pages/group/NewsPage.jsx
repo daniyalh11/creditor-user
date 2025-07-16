@@ -120,28 +120,6 @@ export function NewsPage() {
     toast("You liked this post");
   };
   
-  const handleCreateAnnouncement = () => {
-    if (!newPostContent.trim()) return;
-    
-    const newAnnouncement = {
-      id: Date.now(),
-      author: {
-        name: "Admin",
-        avatar: "",
-        isAdmin: true
-      },
-      content: newPostContent,
-      timestamp: "Just now",
-      likes: 0,
-      isAnnouncement: true,
-      comments: []
-    };
-    
-    setPosts([newAnnouncement, ...posts]);
-    setNewPostContent("");
-    toast.success("Announcement created!");
-  };
-  
   const toggleCommentField = (postId) => {
     setShowCommentFields({
       ...showCommentFields,
@@ -172,19 +150,6 @@ export function NewsPage() {
           />
         </CardContent>
         <CardFooter className="flex justify-between">
-          <div>
-            {isAdmin && (
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2"
-                onClick={handleCreateAnnouncement}
-                disabled={!newPostContent.trim()}
-              >
-                <Bell className="h-4 w-4" />
-                Post as Announcement
-              </Button>
-            )}
-          </div>
           <Button 
             onClick={handlePostSubmit}
             disabled={!newPostContent.trim()}

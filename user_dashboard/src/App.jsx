@@ -62,6 +62,7 @@ import DebateInstructionPage from "@/pages/DebateInstructionPage";
 import DebateTakePage from "@/pages/DebateTakePage";
 import Games from "@/pages/Games";
 import GameDetailView from "@/components/games/GameDetailView";
+import MyTickets from "@/pages/MyTickets";
 
 function App() {
   return (
@@ -122,6 +123,7 @@ function App() {
           <Route path="support" element={<Support />} />
           <Route path="guides" element={<Guides />} />
           <Route path="support/ticket" element={<SupportTicket />} />
+          <Route path="support/tickets" element={<MyTickets />} />
           <Route path="*" element={<NotFound />} />
         </Route>
         <Route path="/speechify-reader" element={<SpeechifyReaderView />} />
