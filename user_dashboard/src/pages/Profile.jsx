@@ -13,6 +13,7 @@ import ProfileSecurity from "@/components/profile/ProfileSecurity";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Bell, Shield, Camera } from "lucide-react";
 import { getUserAvatarUrl } from "@/lib/avatar-utils";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 
 function Profile() {
   const [avatarUrl, setAvatarUrl] = useState(getUserAvatarUrl());
@@ -25,7 +26,8 @@ function Profile() {
       bio: "Learning enthusiast and software developer",
       title: "Software Developer",
       phone: "+1 (555) 123-4567",
-      location: "San Francisco, CA"
+      location: "San Francisco, CA",
+      timezone: "Asia/Kolkata" // Default to IST
     }
   });
 
@@ -183,6 +185,34 @@ function Profile() {
                         <FormLabel>Bio</FormLabel>
                         <FormControl>
                           <Textarea {...field} rows={4} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Timezone selection */}
+                  <FormField
+                    control={form.control}
+                    name="timezone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Timezone</FormLabel>
+                        <FormControl>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select timezone" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Asia/Kolkata">IST (India Standard Time)</SelectItem>
+                              <SelectItem value="UTC">UTC (Coordinated Universal Time)</SelectItem>
+                              <SelectItem value="America/New_York">EST (Eastern Time US & Canada)</SelectItem>
+                              <SelectItem value="Europe/London">GMT (Greenwich Mean Time)</SelectItem>
+                              <SelectItem value="Asia/Tokyo">JST (Japan Standard Time)</SelectItem>
+                              <SelectItem value="Australia/Sydney">AEST (Australian Eastern Time)</SelectItem>
+                              {/* Add more as needed */}
+                            </SelectContent>
+                          </Select>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
