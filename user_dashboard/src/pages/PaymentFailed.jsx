@@ -1,5 +1,5 @@
 import React from "react";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+
 import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -10,7 +10,7 @@ function PaymentFailed() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <DashboardHeader />
+      
       
       <main className="flex-1 flex items-center justify-center">
         <div className="container py-12 max-w-xl">
