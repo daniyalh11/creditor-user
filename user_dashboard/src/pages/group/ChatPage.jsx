@@ -159,12 +159,13 @@ export function ChatPage() {
         senderId: currentUserId,
         senderName: "You",
         senderAvatar: "",
-        content: `📎 ${file.name}`,
+        fileName: file.name,
+        fileUrl: URL.createObjectURL(file),
         timestamp: new Date().toLocaleTimeString([], { 
           hour: '2-digit', 
           minute: '2-digit' 
         }),
-        type: 'text'
+        type: 'file'
       };
       setMessages([...messages, message]);
     }

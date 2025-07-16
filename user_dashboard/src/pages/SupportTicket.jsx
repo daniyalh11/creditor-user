@@ -87,7 +87,7 @@ function SupportTicket() {
             <Button variant="outline" onClick={() => window.location.href = "/"}>
               Return to Dashboard
             </Button>
-            <Button onClick={() => window.location.href = "/support"}>
+            <Button onClick={() => window.location.href = "/support/tickets"}>
               View All Tickets
             </Button>
           </div>
