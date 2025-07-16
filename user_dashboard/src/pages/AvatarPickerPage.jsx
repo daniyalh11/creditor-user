@@ -7,6 +7,7 @@ import { Check, ChevronLeft, Upload, Camera, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getUserAvatarUrl, notifyAvatarChange } from "@/lib/avatar-utils";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // Generate professional avatar collections
 const generateProfessionalAvatarGrid = (count, baseColor, category, style) => {
@@ -96,6 +97,9 @@ function AvatarPickerPage() {
   const [activeAvatarCategory, setActiveAvatarCategory] = useState("male");
   const [customImage, setCustomImage] = useState(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const [capturedPhoto, setCapturedPhoto] = useState(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -115,6 +119,18 @@ function AvatarPickerPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (showCameraModal && videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(() => {});
+    }
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [showCameraModal, cameraStream]);
 
   const handleSelectAvatar = (avatarSrc) => {
     setSelectedAvatar(avatarSrc);
@@ -195,6 +211,42 @@ function AvatarPickerPage() {
         toast.success("Photo captured successfully!");
       }
     }
+  };
+
+  const handleOpenCamera = async () => {
+    setCapturedPhoto(null);
+    setShowCameraModal(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setCameraStream(stream);
+    } catch (err) {
+      toast.error("Unable to access camera. Please check permissions.");
+      setShowCameraModal(false);
+    }
+  };
+
+  const handleCapturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL('image/jpeg', 0.9);
+      setCapturedPhoto(imageData);
+    }
+  };
+
+  const handleRetakePhoto = () => {
+    setCapturedPhoto(null);
+  };
+
+  const handleUsePhoto = () => {
+    setCustomImage(capturedPhoto);
+    setSelectedAvatar(capturedPhoto);
+    setShowCameraModal(false);
+    toast.success("Photo captured successfully!");
   };
 
   const handleSaveAvatar = () => {
@@ -324,7 +376,7 @@ function AvatarPickerPage() {
 
                     {/* Camera button */}
                     <Button 
-                      onClick={startCamera}
+                      onClick={handleOpenCamera}
                       variant="outline"
                       className="flex items-center gap-2"
                     >
@@ -416,6 +468,47 @@ function AvatarPickerPage() {
           </Tabs>
         </div>
       </div>
+
+      {/* Camera Modal */}
+      {showCameraModal && (
+        <Dialog open={showCameraModal} onOpenChange={setShowCameraModal}>
+          <DialogContent className="flex flex-col items-center justify-center">
+            <DialogHeader>
+              <DialogTitle>Take a Photo</DialogTitle>
+            </DialogHeader>
+            {!capturedPhoto ? (
+              <>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-80 h-60 border rounded-lg bg-black mb-4"
+                  style={{ background: '#000' }}
+                />
+                <canvas ref={canvasRef} className="hidden" />
+                <div className="flex gap-3 mt-4">
+                  <Button onClick={handleCapturePhoto} className="flex items-center gap-2">
+                    <Camera className="h-4 w-4" />
+                    Capture Photo
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowCameraModal(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <img src={capturedPhoto} alt="Captured preview" className="w-80 h-60 object-cover rounded-lg border mb-4" />
+                <div className="flex gap-3 mt-4">
+                  <Button variant="outline" onClick={handleRetakePhoto}>Retake</Button>
+                  <Button onClick={handleUsePhoto} className="bg-gradient-to-r from-primary to-purple-400">Use Photo</Button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
