@@ -96,6 +96,11 @@ export function AvatarSelector({
   );
   const fileInputRef = useRef(null);
   const isMobile = useIsMobile();
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const [capturedPhoto, setCapturedPhoto] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   
   // DiceBear configuration with professional colors
   const [dicebearConfig, setDicebearConfig] = useState({
@@ -210,6 +215,56 @@ export function AvatarSelector({
       ...prev,
       [id]: true
     }));
+  };
+
+  // Camera logic
+  const handleOpenCamera = async () => {
+    setCapturedPhoto(null);
+    setShowCameraModal(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setCameraStream(stream);
+    } catch (err) {
+      toast.error("Unable to access camera. Please check permissions.");
+      setShowCameraModal(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showCameraModal && videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(() => {});
+    }
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [showCameraModal, cameraStream]);
+
+  const handleCapturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL('image/jpeg', 0.9);
+      setCapturedPhoto(imageData);
+    }
+  };
+
+  const handleRetakePhoto = () => {
+    setCapturedPhoto(null);
+  };
+
+  const handleUsePhoto = () => {
+    setCustomImage(capturedPhoto);
+    setSelectedAvatar(capturedPhoto);
+    setAvatarType("custom");
+    setShowCameraModal(false);
+    toast.success("Photo captured successfully!");
   };
 
   return (
@@ -491,22 +546,71 @@ export function AvatarSelector({
                       className="hidden"
                       onChange={handleImageUpload}
                     />
-                    <Button 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-2"
-                    >
-                      <Upload className="h-4 w-4" />
-                      {customImage ? "Change Image" : "Upload Image"}
-                    </Button>
-                    
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-2"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {customImage ? "Change Image" : "Upload Image"}
+                      </Button>
+                      <Button 
+                        onClick={handleOpenCamera}
+                        className="flex items-center gap-2"
+                        variant="outline"
+                      >
+                        <Camera className="h-4 w-4" />
+                        Take Photo
+                      </Button>
+                    </div>
                     <div className="text-sm text-muted-foreground text-center mt-2">
-                      <p>Upload a personal photo for your avatar</p>
+                      <p>Upload a personal photo for your avatar or take a new one</p>
                       <p className="text-xs mt-1">Maximum file size: 5MB</p>
                       <p className="text-xs">Supported formats: JPEG, PNG, GIF</p>
                     </div>
                   </div>
                 </ScrollArea>
               </div>
+              {/* Camera Modal */}
+              {showCameraModal && (
+                <Dialog open={showCameraModal} onOpenChange={setShowCameraModal}>
+                  <DialogContent className="flex flex-col items-center justify-center">
+                    <DialogHeader>
+                      <DialogTitle>Take a Photo</DialogTitle>
+                    </DialogHeader>
+                    {!capturedPhoto ? (
+                      <>
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-80 h-60 border rounded-lg bg-black mb-4"
+                          style={{ background: '#000' }}
+                        />
+                        <canvas ref={canvasRef} className="hidden" />
+                        <div className="flex gap-3 mt-4">
+                          <Button onClick={handleCapturePhoto} className="flex items-center gap-2">
+                            <Camera className="h-4 w-4" />
+                            Capture Photo
+                          </Button>
+                          <Button variant="outline" onClick={() => setShowCameraModal(false)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <img src={capturedPhoto} alt="Captured preview" className="w-80 h-60 object-cover rounded-lg border mb-4" />
+                        <div className="flex gap-3 mt-4">
+                          <Button variant="outline" onClick={handleRetakePhoto}>Retake</Button>
+                          <Button onClick={handleUsePhoto} className="bg-gradient-to-r from-primary to-purple-400">Use Photo</Button>
+                        </div>
+                      </>
+                    )}
+                  </DialogContent>
+                </Dialog>
+              )}
             </TabsContent>
           </div>
         </Tabs>
