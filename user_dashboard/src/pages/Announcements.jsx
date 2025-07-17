@@ -6,8 +6,33 @@ import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 
 export function Announcements() {
-  // This would be replaced with actual data from an API in a real application
-  const announcements = [];
+  // Use the same sample announcements as DashboardAnnouncements for now
+  const announcements = [
+    {
+      id: 1,
+      title: "New Course Available",
+      content: "Constitutional Law Advanced Topics is now available",
+      date: "Today",
+      priority: "high",
+      isNew: true,
+    },
+    {
+      id: 2,
+      title: "System Maintenance",
+      content: "Platform will be down for maintenance this weekend",
+      date: "Yesterday",
+      priority: "medium",
+      isNew: true,
+    },
+    {
+      id: 3,
+      title: "Holiday Schedule",
+      content: "Check updated course schedule for the holidays",
+      date: "3 days ago",
+      priority: "low",
+      isNew: false,
+    }
+  ];
 
   return (
     <div className="container max-w-4xl py-8 px-4 md:px-0">

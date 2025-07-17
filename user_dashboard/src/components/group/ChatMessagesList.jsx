@@ -4,13 +4,11 @@ import { ChatMessage } from "./ChatMessage";
 
 export function ChatMessagesList({ messages, currentUserId }) {
   const scrollAreaRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
@@ -25,6 +23,7 @@ export function ChatMessagesList({ messages, currentUserId }) {
               currentUserId={currentUserId} 
             />
           ))}
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
     </div>

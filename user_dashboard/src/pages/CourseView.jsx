@@ -189,10 +189,10 @@ export function CourseView() {
                             className="w-full" 
                             disabled={module.status === "locked"}
                           >
-                            <Link to={`/courses/module/${module.id}/lessons`}>
-                              📄 View Lessons
-                            </Link>
+                            <Link to={`/scorm/${module.id}`}> Open Lesson</Link>
                           </Button>
+
+
                           <Button 
                             asChild 
                             variant="outline" 
