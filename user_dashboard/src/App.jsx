@@ -24,6 +24,7 @@ import EssayTakePage from "@/pages/EssayTakePage";
 import EssayResultsPage from "@/pages/EssayResultsPage";
 import  Groups  from "@/pages/Groups";
 import Catalog from "@/pages/Catalog";
+import CatelogCourses from "@/pages/CatelogCourses";
 
 import Progress from "@/pages/Progress";
 import Messages from "@/pages/Messages";
@@ -119,6 +120,7 @@ function App() {
             <Route path="*" element={<NewsPage />} />
           </Route>
           <Route path="catalog" element={<Catalog />} />
+          <Route path="catalog/category/:categoryName" element={<CatelogCourses />} />
           <Route path="course-enrollment/:courseId" element={<CourseEnrollment />} />
           <Route path="payment-success/:courseId" element={<PaymentSuccess />} />
           <Route path="payment-failed/:courseId" element={<PaymentFailed />} />
