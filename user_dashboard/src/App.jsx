@@ -63,6 +63,7 @@ import DebateTakePage from "@/pages/DebateTakePage";
 import Games from "@/pages/Games";
 import GameDetailView from "@/components/games/GameDetailView";
 import MyTickets from "@/pages/MyTickets";
+import Scorm from "@/pages/Scrompack";
 
 function App() {
   return (
@@ -125,6 +126,8 @@ function App() {
           <Route path="support/ticket" element={<SupportTicket />} />
           <Route path="support/tickets" element={<MyTickets />} />
           <Route path="*" element={<NotFound />} />
+          <Route path="/scorm/:courseId" element={<Scorm />} />
+
         </Route>
         <Route path="/speechify-reader" element={<SpeechifyReaderView />} />
         <Route path="/games" element={<Games />} />
