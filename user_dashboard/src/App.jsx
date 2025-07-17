@@ -63,6 +63,16 @@ import DebateTakePage from "@/pages/DebateTakePage";
 import Games from "@/pages/Games";
 import GameDetailView from "@/components/games/GameDetailView";
 import MyTickets from "@/pages/MyTickets";
+import ScormPage from "@/pages/ScormPage";
+import { allowedScormUserIds } from "@/data/allowedScormUsers";
+import { currentUserId } from "@/data/currentUser";
+
+function ProtectedScormRoute() {
+  if (!allowedScormUserIds.includes(currentUserId)) {
+    return <div style={{padding: 24}}><h2>Access Denied</h2><p>You do not have permission to view this page.</p></div>;
+  }
+  return <ScormPage />;
+}
 
 function App() {
   return (
@@ -124,6 +134,7 @@ function App() {
           <Route path="guides" element={<Guides />} />
           <Route path="support/ticket" element={<SupportTicket />} />
           <Route path="support/tickets" element={<MyTickets />} />
+          <Route path="scorm" element={<ProtectedScormRoute />} />
           <Route path="*" element={<NotFound />} />
         </Route>
         <Route path="/speechify-reader" element={<SpeechifyReaderView />} />

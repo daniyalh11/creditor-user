@@ -18,6 +18,8 @@ import {
   ChevronDown,
   Gamepad2
 } from "lucide-react";
+import { allowedScormUserIds } from "@/data/allowedScormUsers";
+import { currentUserId } from "@/data/currentUser";
 import {
   Tooltip,
   TooltipContent,
@@ -125,6 +127,9 @@ export function Sidebar() {
       setCollapsed(false);
     }
   };
+
+  // Replace localStorage logic with a constant for testing
+  const isScormAllowed = allowedScormUserIds.includes(currentUserId);
 
   // Help section navigation items
   const helpItems = [
@@ -332,6 +337,19 @@ export function Sidebar() {
               onNavigate={handleNavigate}
             />
           </motion.div>
+
+          {isScormAllowed && (
+            <motion.div variants={itemVariants}>
+              <SidebarItem
+                icon={BookOpen}
+                label="SCORM"
+                href="/scorm"
+                active={isActive("/scorm")}
+                collapsed={collapsed}
+                onNavigate={handleNavigate}
+              />
+            </motion.div>
+          )}
         </motion.div>
       </div>
 
