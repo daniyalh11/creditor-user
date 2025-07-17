@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import ProgressStats from "@/components/dashboard/ProgressStats";
 import CourseCard from "@/components/dashboard/CourseCard";
 import { Button } from "@/components/ui/button";
-import { BookOpen, ChevronRight, GraduationCap, Target, Clock } from "lucide-react";
+import { BookOpen, ChevronRight, GraduationCap, Target, Clock, ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import DashboardCarousel from "@/components/dashboard/DashboardCarousel";
 import DashboardCalendar from "@/components/dashboard/DashboardCalendar";
@@ -68,6 +68,26 @@ export function Dashboard() {
     }
   ];
 
+  // Carousel state for My Courses
+  const courseScrollRef = useRef(null);
+  const [scrollIndex, setScrollIndex] = useState(0);
+  const visibleCards = 2;
+  const totalCards = inProgressCourses.length;
+
+  const handleScroll = (direction) => {
+    let newIndex = scrollIndex + direction;
+    if (newIndex < 0) newIndex = 0;
+    if (newIndex > totalCards - visibleCards) newIndex = totalCards - visibleCards;
+    setScrollIndex(newIndex);
+    if (courseScrollRef.current) {
+      const cardWidth = courseScrollRef.current.firstChild?.offsetWidth || 320;
+      courseScrollRef.current.scrollTo({
+        left: newIndex * (cardWidth + 24), // 24px gap
+        behavior: 'smooth',
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-white">      
       <main className="flex-1">
@@ -122,8 +142,8 @@ export function Dashboard() {
                 </div>
               </div>
 
-              {/* My Courses Section (horizontally scrollable, only two visible) */}
-              <div className="mb-8">
+              {/* My Courses Section (carousel with arrows) */}
+              <div className="mb-8 relative">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold text-gray-800">My Courses</h2>
                   <Button variant="outline" asChild className="border-blue-200 text-blue-600 hover:bg-blue-50">
@@ -133,19 +153,45 @@ export function Dashboard() {
                     </Link>
                   </Button>
                 </div>
-                {/* Horizontally scrollable row */}
-                <div
-                  className="flex gap-6 overflow-x-auto pb-4 pr-2 custom-horizontal-scroll"
-                  style={{ WebkitOverflowScrolling: 'touch', overflowY: 'hidden' }}
-                >
-                  {inProgressCourses.map((course) => (
-                    <div
-                      key={course.id}
-                      className="min-w-[320px] max-w-xs flex-shrink-0 transform transition-all duration-300 hover:scale-105"
+                {/* Carousel row with arrows */}
+                <div className="relative">
+                  {/* Left Arrow */}
+                  {scrollIndex > 0 && (
+                    <button
+                      onClick={() => handleScroll(-1)}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 rounded-full shadow-md p-2 hover:bg-blue-50 transition disabled:opacity-40"
+                      style={{ marginLeft: '-24px' }}
+                      aria-label="Scroll left"
                     >
-                      <CourseCard {...course} />
-                    </div>
-                  ))}
+                      <ChevronLeft size={24} />
+                    </button>
+                  )}
+                  {/* Cards Row */}
+                  <div
+                    ref={courseScrollRef}
+                    className="flex gap-6 overflow-x-hidden scroll-smooth"
+                    style={{ scrollBehavior: 'smooth' }}
+                  >
+                    {inProgressCourses.map((course) => (
+                      <div
+                        key={course.id}
+                        className="min-w-[320px] max-w-xs flex-shrink-0"
+                      >
+                        <CourseCard {...course} />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Right Arrow */}
+                  {scrollIndex < totalCards - visibleCards && (
+                    <button
+                      onClick={() => handleScroll(1)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 rounded-full shadow-md p-2 hover:bg-blue-50 transition disabled:opacity-40"
+                      style={{ marginRight: '-24px' }}
+                      aria-label="Scroll right"
+                    >
+                      <ChevronRight size={24} />
+                    </button>
+                  )}
                 </div>
               </div>
 

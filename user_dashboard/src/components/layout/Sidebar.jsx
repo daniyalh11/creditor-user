@@ -336,7 +336,7 @@ export function Sidebar() {
               collapsed={collapsed}
               onNavigate={handleNavigate}
             />
-          </motion.div>
+          </motion.div> */}
 
           {isScormAllowed && (
             <motion.div variants={itemVariants}>
@@ -350,7 +350,6 @@ export function Sidebar() {
               />
             </motion.div>
           )}
-          </motion.div> */}
         </motion.div>
       </div>
 
