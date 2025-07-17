@@ -73,7 +73,7 @@ function ProtectedScormRoute() {
   }
   return <ScormPage />;
 }
-import Scorm from "@/pages/Scrompack";
+import Scrompack from "@/pages/Scrompack";
 
 function App() {
   return (
@@ -137,7 +137,7 @@ function App() {
           <Route path="support/tickets" element={<MyTickets />} />
           <Route path="scorm" element={<ProtectedScormRoute />} />
           <Route path="*" element={<NotFound />} />
-          <Route path="/scorm/:courseId" element={<Scorm />} />
+          <Route path="/scorm/:courseId" element={<Scrompack />} />
 
         </Route>
         <Route path="/speechify-reader" element={<SpeechifyReaderView />} />

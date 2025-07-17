@@ -189,7 +189,7 @@ export function CourseView() {
                             className="w-full" 
                             disabled={module.status === "locked"}
                           >
-                            <Link to={`/scorm/${module.id}`}>🎓 Open SCORM Lesson</Link>
+                            <Link to={`/scorm/${module.id}`}> Open Lesson</Link>
                           </Button>
 
 
