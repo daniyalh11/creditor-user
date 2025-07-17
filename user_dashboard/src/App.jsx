@@ -2,7 +2,7 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
-import ChatbotContainer from "@/components/layout/ChatbotContainer";
+// import ChatbotContainer from "@/components/layout/ChatbotContainer";
 
 import DashboardLayout from "@/layouts/DashboardLayout";
 import  Dashboard  from "@/pages/Dashboard";
@@ -130,7 +130,7 @@ function App() {
         <Route path="/games" element={<Games />} />
       </Routes>
       <Toaster />
-      <ChatbotContainer />
+      {/** <ChatbotContainer /> */}
     </ThemeProvider>
   );
 }

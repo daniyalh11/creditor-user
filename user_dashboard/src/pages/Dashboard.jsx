@@ -122,6 +122,33 @@ export function Dashboard() {
                 </div>
               </div>
 
+              {/* My Courses Section (horizontally scrollable, only two visible) */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800">My Courses</h2>
+                  <Button variant="outline" asChild className="border-blue-200 text-blue-600 hover:bg-blue-50">
+                    <Link to="/courses" className="flex items-center gap-2">
+                      View all courses
+                      <ChevronRight size={16} />
+                    </Link>
+                  </Button>
+                </div>
+                {/* Horizontally scrollable row */}
+                <div
+                  className="flex gap-6 overflow-x-auto pb-4 pr-2 custom-horizontal-scroll"
+                  style={{ WebkitOverflowScrolling: 'touch', overflowY: 'hidden' }}
+                >
+                  {inProgressCourses.map((course) => (
+                    <div
+                      key={course.id}
+                      className="min-w-[320px] max-w-xs flex-shrink-0 transform transition-all duration-300 hover:scale-105"
+                    >
+                      <CourseCard {...course} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Latest Updates Section */}
               <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -131,28 +158,28 @@ export function Dashboard() {
               </div>
 
               {/* Your Progress */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+              {/* <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-6">Your Progress Overview</h3>
                 <ProgressStats />
-              </div>
+              </div> */}
 
               {/* Monthly Overview */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+              {/* <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-6">Monthly Learning Analytics</h3>
                 <MonthlyProgress />
-              </div>
+              </div> */}
             </div>
             
             {/* Right section - enhanced sidebar widgets */}
             <div className="xl:col-span-4 space-y-6">
-              {/* Announcements */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+              {/* Announcements*/}
+              {/*<div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-gray-800">Announcements</h3>
                   <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                 </div>
                 <DashboardAnnouncements />
-              </div>
+              </div> */}
 
               {/* Calendar */}
               <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
@@ -163,31 +190,10 @@ export function Dashboard() {
               </div>
 
               {/* Todo */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+              {/* <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">Upcoming Tasks</h3>
                 <DashboardTodo />
-              </div>
-            </div>
-          </div>
-          
-          {/* Continue Learning Section */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Continue Learning</h2>
-              <Button variant="outline" asChild className="border-blue-200 text-blue-600 hover:bg-blue-50">
-                <Link to="/courses" className="flex items-center gap-2">
-                  View all courses
-                  <ChevronRight size={16} />
-                </Link>
-              </Button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {inProgressCourses.map((course) => (
-                <div key={course.id} className="transform transition-all duration-300 hover:scale-105">
-                  <CourseCard {...course} />
-                </div>
-              ))}
+              </div> */}
             </div>
           </div>
           

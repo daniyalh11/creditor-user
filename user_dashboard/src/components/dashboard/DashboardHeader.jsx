@@ -169,17 +169,17 @@ export function DashboardHeader() {
         {/* Right - Enhanced Icons and Profile */}
         <div className="flex items-center gap-3">
           {/* Calendar Icon */}
-          <Button 
+          {/* <Button 
             size="icon" 
             variant="ghost" 
             className="relative text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 h-10 w-10 rounded-xl"
             onClick={() => setCalendarModalOpen(true)}
           >
             <Calendar className="h-5 w-5" />
-          </Button>
+          </Button> */}
 
           {/* Messages Icon */}
-          <Button 
+          {/* <Button 
             size="icon" 
             variant="ghost" 
             className="relative text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 h-10 w-10 rounded-xl"
@@ -187,10 +187,10 @@ export function DashboardHeader() {
           >
             <Mail className="h-5 w-5" />
             <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500 border-2 border-white shadow-sm"></div>
-          </Button>
+          </Button> */}
           
           {/* Notifications */}
-          <Button 
+          {/* <Button 
             size="icon" 
             variant="ghost" 
             className="relative text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 h-10 w-10 rounded-xl"
@@ -198,7 +198,7 @@ export function DashboardHeader() {
           >
             <BellDot className="h-5 w-5" />
             <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500 border-2 border-white shadow-sm animate-pulse"></div>
-          </Button>
+          </Button> */}
           
           {/* Profile Dropdown */}
           <div className="ml-2">

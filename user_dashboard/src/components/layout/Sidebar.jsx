@@ -278,7 +278,7 @@ export function Sidebar() {
             />
           </motion.div>
 
-          <motion.div variants={itemVariants}>
+          {/* <motion.div variants={itemVariants}>
             <SidebarItem
               icon={Users}
               label="Study Groups"
@@ -287,7 +287,7 @@ export function Sidebar() {
               collapsed={collapsed}
               onNavigate={handleNavigate}
             />
-          </motion.div>
+          </motion.div> */}
 
           <motion.div variants={itemVariants}>
             <SidebarItem
@@ -300,7 +300,7 @@ export function Sidebar() {
             />
           </motion.div>
 
-          <motion.div variants={itemVariants}>
+          {/* <motion.div variants={itemVariants}>
             <SidebarItem
               icon={BarChart}
               label="My Progress"
@@ -309,9 +309,9 @@ export function Sidebar() {
               collapsed={collapsed}
               onNavigate={handleNavigate}
             />
-          </motion.div>
+          </motion.div> */}
 
-          <motion.div variants={itemVariants}>
+          {/* <motion.div variants={itemVariants}>
             <SidebarItem
               icon={MessageSquare}
               label="Messages"
@@ -320,9 +320,9 @@ export function Sidebar() {
               collapsed={collapsed}
               onNavigate={handleNavigate}
             />
-          </motion.div>
+          </motion.div> */}
 
-          <motion.div variants={itemVariants}>
+          {/* <motion.div variants={itemVariants}>
             <SidebarItem
               icon={Gamepad2}
               label="Games"
@@ -331,11 +331,11 @@ export function Sidebar() {
               collapsed={collapsed}
               onNavigate={handleNavigate}
             />
-          </motion.div>
+          </motion.div> */}
         </motion.div>
       </div>
 
-      {/* Help & Support Footer */}
+      {/* Help & Support Footer
       <motion.div 
         className="border-t border-gray-200 p-4 bg-gradient-to-r from-gray-50 to-gray-100"
         variants={itemVariants}
@@ -406,7 +406,7 @@ export function Sidebar() {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-      </motion.div>
+      </motion.div> */}
     </motion.div>
   );
 }
