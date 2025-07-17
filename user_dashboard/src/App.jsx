@@ -63,6 +63,7 @@ import DebateTakePage from "@/pages/DebateTakePage";
 import Games from "@/pages/Games";
 import GameDetailView from "@/components/games/GameDetailView";
 import MyTickets from "@/pages/MyTickets";
+<<<<<<< HEAD
 import ScormPage from "@/pages/ScormPage";
 import { allowedScormUserIds } from "@/data/allowedScormUsers";
 import { currentUserId } from "@/data/currentUser";
@@ -73,6 +74,9 @@ function ProtectedScormRoute() {
   }
   return <ScormPage />;
 }
+=======
+import Scorm from "@/pages/Scrompack";
+>>>>>>> 91047ea9078d6592bbe11a96e6e35100f183ec4d
 
 function App() {
   return (
@@ -136,6 +140,8 @@ function App() {
           <Route path="support/tickets" element={<MyTickets />} />
           <Route path="scorm" element={<ProtectedScormRoute />} />
           <Route path="*" element={<NotFound />} />
+          <Route path="/scorm/:courseId" element={<Scorm />} />
+
         </Route>
         <Route path="/speechify-reader" element={<SpeechifyReaderView />} />
         <Route path="/games" element={<Games />} />
