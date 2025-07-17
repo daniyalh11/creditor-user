@@ -152,7 +152,7 @@ export function DashboardCarousel() {
       </Carousel>
 
       {/* Register Modal */}
-      <Dialog open={showRegisterModal} onOpenChange={setShowRegisterModal}>
+      {/* <Dialog open={showRegisterModal} onOpenChange={setShowRegisterModal}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Register for Mock Trial</DialogTitle>
@@ -166,7 +166,7 @@ export function DashboardCarousel() {
             <Button onClick={() => setShowRegisterModal(false)}>Submit</Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
     </>
   );
 }
