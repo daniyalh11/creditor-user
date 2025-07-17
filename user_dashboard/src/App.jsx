@@ -63,7 +63,6 @@ import DebateTakePage from "@/pages/DebateTakePage";
 import Games from "@/pages/Games";
 import GameDetailView from "@/components/games/GameDetailView";
 import MyTickets from "@/pages/MyTickets";
-<<<<<<< HEAD
 import ScormPage from "@/pages/ScormPage";
 import { allowedScormUserIds } from "@/data/allowedScormUsers";
 import { currentUserId } from "@/data/currentUser";
@@ -74,9 +73,7 @@ function ProtectedScormRoute() {
   }
   return <ScormPage />;
 }
-=======
 import Scorm from "@/pages/Scrompack";
->>>>>>> 91047ea9078d6592bbe11a96e6e35100f183ec4d
 
 function App() {
   return (
