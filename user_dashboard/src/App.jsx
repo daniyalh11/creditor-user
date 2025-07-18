@@ -2,7 +2,7 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
-import ChatbotContainer from "@/components/layout/ChatbotContainer";
+// import ChatbotContainer from "@/components/layout/ChatbotContainer";
 
 import DashboardLayout from "@/layouts/DashboardLayout";
 import  Dashboard  from "@/pages/Dashboard";
@@ -64,6 +64,17 @@ import Games from "@/pages/Games";
 import GameDetailView from "@/components/games/GameDetailView";
 import MyTickets from "@/pages/MyTickets";
 import { CourseTimerProvider } from "@/components/courses/CourseTimerProvider";
+import ScormPage from "@/pages/ScormPage";
+import { allowedScormUserIds } from "@/data/allowedScormUsers";
+import { currentUserId } from "@/data/currentUser";
+
+function ProtectedScormRoute() {
+  if (!allowedScormUserIds.includes(currentUserId)) {
+    return <div style={{padding: 24}}><h2>Access Denied</h2><p>You do not have permission to view this page.</p></div>;
+  }
+  return <ScormPage />;
+}
+import Scrompack from "@/pages/Scrompack";
 
 function App() {
   return (
@@ -123,13 +134,16 @@ function App() {
           <Route path="guides" element={<Guides />} />
           <Route path="support/ticket" element={<SupportTicket />} />
           <Route path="support/tickets" element={<MyTickets />} />
+          <Route path="scorm" element={<ProtectedScormRoute />} />
           <Route path="*" element={<NotFound />} />
+          <Route path="/scorm/:courseId" element={<Scrompack />} />
+
         </Route>
         <Route path="/speechify-reader" element={<SpeechifyReaderView />} />
         <Route path="/games" element={<Games />} />
       </Routes>
       <Toaster />
-      <ChatbotContainer />
+      {/** <ChatbotContainer /> */}
     </ThemeProvider>
   );
 }

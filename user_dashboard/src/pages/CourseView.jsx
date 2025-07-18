@@ -197,6 +197,8 @@ export function CourseView() {
                               📄 View Lessons
                             </Link>
                           </Button>
+
+
                           <Button 
                             asChild 
                             variant="outline" 

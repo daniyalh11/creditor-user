@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Search, Send, Smile, Paperclip, Mic, Plus } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { VoiceRecorder } from "@/components/messages/VoiceRecorder";
 import { VoiceMessage } from "@/components/messages/VoiceMessage";
 import EmojiPicker from "emoji-picker-react";
@@ -53,6 +53,13 @@ function Messages() {
   const [newChatUsers, setNewChatUsers] = useState([]);
   const [newChatSearch, setNewChatSearch] = useState("");
   const fileInputRef = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
@@ -376,6 +383,7 @@ function Messages() {
                         )}
                       </div>
                     ))}
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
 

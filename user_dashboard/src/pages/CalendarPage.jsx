@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
+import { getAllEvents } from "@/services/calendarService";
 
 const today = new Date();
 const tomorrow = new Date(today);
@@ -17,61 +18,33 @@ nextWeek.setDate(nextWeek.getDate() + 7);
 const threedays = new Date(today);
 threedays.setDate(threedays.getDate() + 3);
 
-const calendarEvents = [
-  {
-    id: 1,
-    title: "Mock Trial Competition",
-    date: tomorrow,
-    time: "10:00 AM - 12:00 PM",
-    location: "Virtual Court Room",
-    status: 'upcoming',
-    description: "Practice trial simulation with real case scenarios",
-    meetingLink: "https://zoom.us/j/mocktrial123"
-  },
-  {
-    id: 2,
-    title: "Legal Research Workshop",
-    date: today,
-    time: "2:00 PM - 4:00 PM",
-    location: "Online",
-    status: 'ongoing',
-    description: "Learn advanced legal research techniques and databases",
-    meetingLink: "https://zoom.us/j/legalresearch456"
-  },
-  {
-    id: 3,
-    title: "Bar Exam Study Group",
-    date: nextWeek,
-    time: "7:00 PM - 9:00 PM",
-    location: "Study Hall",
-    status: 'upcoming',
-    description: "Collaborative study session for bar exam preparation",
-    meetingLink: "https://zoom.us/j/barexam789"
-  },
-  {
-    id: 4,
-    title: "Contract Law Webinar",
-    date: threedays,
-    time: "1:00 PM - 2:30 PM",
-    location: "Zoom Meeting",
-    status: 'upcoming',
-    description: "Advanced contract drafting and negotiation strategies",
-    meetingLink: "https://zoom.us/j/contractlaw012"
-  },
-  {
-    id: 5,
-    title: "Constitutional Law Lecture",
-    date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5),
-    time: "11:00 AM - 12:30 PM",
-    location: "Lecture Hall A",
-    status: 'upcoming',
-    description: "Supreme Court case analysis and constitutional interpretation",
-    meetingLink: "https://zoom.us/j/constitutional345"
-  }
-];
-
 export function CalendarPage() {
-  const [selectedDate, setSelectedDate] = React.useState(today);
+  const [selectedDate, setSelectedDate] = React.useState(new Date());
+  const [calendarEvents, setCalendarEvents] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+
+  React.useEffect(() => {
+    async function fetchEvents() {
+      setLoading(true);
+      setError(null);
+      try {
+        const events = await getAllEvents();
+        console.log("Fetched events from backend:", events);
+        setCalendarEvents(
+          events.map(event => ({
+            ...event,
+            date: event.date ? new Date(event.date) : null,
+          }))
+        );
+      } catch (err) {
+        setError('Failed to load events');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEvents();
+  }, []);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -84,13 +57,13 @@ export function CalendarPage() {
 
   const selectedDateEvents = React.useMemo(() => {
     if (!selectedDate) return [];
-    
-    return calendarEvents.filter(event => 
+    return calendarEvents.filter(event =>
+      event.date &&
       event.date.getDate() === selectedDate.getDate() &&
       event.date.getMonth() === selectedDate.getMonth() &&
       event.date.getFullYear() === selectedDate.getFullYear()
     );
-  }, [selectedDate]);
+  }, [selectedDate, calendarEvents]);
 
   const handleJoinMeeting = (link) => {
     window.open(link, '_blank');
@@ -140,7 +113,11 @@ export function CalendarPage() {
                 : `No events for ${selectedDate?.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`}
             </h3>
             
-            {selectedDateEvents.length > 0 ? (
+            {loading ? (
+              <div>Loading events...</div>
+            ) : error ? (
+              <div className="text-red-500">{error}</div>
+            ) : selectedDateEvents.length > 0 ? (
               <div className="space-y-4">
                 {selectedDateEvents.map((event) => (
                   <Card key={event.id} className="p-4 hover:shadow-md transition-shadow">
@@ -150,6 +127,7 @@ export function CalendarPage() {
                         <Badge className={getStatusColor(event.status)}>
                           {event.status}
                         </Badge>
+                        {/*
                         {event.meetingLink && (
                           <Button
                             size="sm"
@@ -161,6 +139,7 @@ export function CalendarPage() {
                             <ExternalLink className="h-3 w-3" />
                           </Button>
                         )}
+                        */}
                       </div>
                     </div>
                     
@@ -202,7 +181,7 @@ export function CalendarPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {calendarEvents
             .filter(event => event.status === 'upcoming')
-            .sort((a, b) => a.date.getTime() - b.date.getTime())
+            .sort((a, b) => (a.date && b.date ? a.date.getTime() - b.date.getTime() : 0))
             .map((event) => (
               <Card key={event.id} className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-2">
@@ -211,6 +190,7 @@ export function CalendarPage() {
                     <Badge className={getStatusColor(event.status)}>
                       {event.status}
                     </Badge>
+                    {/*
                     {event.meetingLink && (
                       <Button
                         size="sm"
@@ -222,6 +202,7 @@ export function CalendarPage() {
                         <ExternalLink className="h-3 w-3" />
                       </Button>
                     )}
+                    */}
                   </div>
                 </div>
                 
