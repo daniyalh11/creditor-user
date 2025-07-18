@@ -63,6 +63,7 @@ import DebateTakePage from "@/pages/DebateTakePage";
 import Games from "@/pages/Games";
 import GameDetailView from "@/components/games/GameDetailView";
 import MyTickets from "@/pages/MyTickets";
+import { CourseTimerProvider } from "@/components/courses/CourseTimerProvider";
 
 function App() {
   return (
@@ -71,15 +72,13 @@ function App() {
         <Route path="/" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="courses" element={<Courses />} />
-          <Route path="courses/:courseId" element={<CourseView />} />
+          {/* Course timer context for all course subpages */}
+          <Route path="courses/:courseId/*" element={
+            <CourseTimerProviderWrapper />
+          } />
           <Route path="certificate/:courseId" element={<CertificatePage />} />
           <Route path="courses/modules" element={<ModulesList />} />
           <Route path="courses/module/:moduleId" element={<ModuleDetail />} />
-          <Route path="courses/module/:moduleId/lessons" element={<ModuleLessonsView />} />
-          <Route path="courses/module/:moduleId/assessments" element={<ModuleAssessmentsView />} />
-          <Route path="courses/module/:moduleId/lesson/:lessonId" element={<LessonView />} />
-          <Route path="courses/module/:moduleId/lesson/:lessonId" element={<LessonDetail />} />
-          <Route path="courses/module/:moduleId/lesson/:lessonId/lesson/:lessonId" element={<LessonView />} />
           <Route path="quiz/:quizType" element={<QuizTypePage />} />
           <Route path="quiz-instruction/:quizId" element={<QuizInstructionPage />} />
           <Route path="quiz-take/:quizId" element={<QuizTakePage />} />
@@ -132,6 +131,24 @@ function App() {
       <Toaster />
       <ChatbotContainer />
     </ThemeProvider>
+  );
+}
+
+// Helper wrapper to extract courseId param and wrap children in CourseTimerProvider
+import { useParams, Routes as SubRoutes, Route as SubRoute } from "react-router-dom";
+function CourseTimerProviderWrapper() {
+  const { courseId } = useParams();
+  return (
+    <CourseTimerProvider courseId={courseId}>
+      <SubRoutes>
+        <SubRoute index element={<CourseView />} />
+        <SubRoute path="module/:moduleId/lessons" element={<ModuleLessonsView />} />
+        <SubRoute path="module/:moduleId/assessments" element={<ModuleAssessmentsView />} />
+        <SubRoute path="module/:moduleId/lesson/:lessonId" element={<LessonView />} />
+        <SubRoute path="module/:moduleId/lesson/:lessonId/detail" element={<LessonDetail />} />
+        {/* Add more subroutes as needed */}
+      </SubRoutes>
+    </CourseTimerProvider>
   );
 }
 

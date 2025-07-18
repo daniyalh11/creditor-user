@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -78,6 +78,37 @@ export function Courses() {
   const [showFilters, setShowFilters] = useState(false);
   const [progressFilter, setProgressFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const location = useLocation();
+
+  // Helper to format seconds as HH:MM:SS
+  function formatTime(secs) {
+    const h = Math.floor(secs / 3600).toString().padStart(2, "0");
+    const m = Math.floor((secs % 3600) / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${h}:${m}:${s}`;
+  }
+  // Get time spent for all courses from localStorage
+  const getCourseTimes = () => {
+    const times = {};
+    courses.forEach(course => {
+      const t = localStorage.getItem(`course_time_${course.id}`);
+      times[course.id] = t ? parseInt(t, 10) : 0;
+    });
+    return times;
+  };
+  const [courseTimes, setCourseTimes] = useState(getCourseTimes());
+  // Update times when component mounts and when tab regains focus
+  useEffect(() => {
+    const updateTimes = () => setCourseTimes(getCourseTimes());
+    window.addEventListener("focus", updateTimes);
+    return () => window.removeEventListener("focus", updateTimes);
+  }, []);
+  // Update times when route changes to /courses
+  useEffect(() => {
+    if (location.pathname === "/courses") {
+      setCourseTimes(getCourseTimes());
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     const courseCards = document.querySelectorAll(".course-card");
@@ -247,6 +278,12 @@ export function Courses() {
                           <Clock size={14} />
                           <span>{course.duration}</span>
                         </div>
+                      </div>
+                      {/* Time spent display */}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                        <Clock size={12} />
+                        <span>Time spent:</span>
+                        <span className="font-mono">{formatTime(courseTimes[course.id] || 0)}</span>
                       </div>
                       
                       {course.progress > 0 && (
