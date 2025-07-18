@@ -342,8 +342,8 @@ export function Sidebar() {
             <motion.div variants={itemVariants}>
               <SidebarItem
                 icon={BookOpen}
-                label="SCORM"
-                href="/scorm"
+                label="Instructor"
+                href="/instructor"
                 active={isActive("/scorm")}
                 collapsed={collapsed}
                 onNavigate={handleNavigate}

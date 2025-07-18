@@ -67,6 +67,7 @@ import MyTickets from "@/pages/MyTickets";
 import ScormPage from "@/pages/ScormPage";
 import { allowedScormUserIds } from "@/data/allowedScormUsers";
 import { currentUserId } from "@/data/currentUser";
+import Instructorpage from "@/pages/Instructorpage";
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -138,6 +139,7 @@ function App() {
           <Route path="support/ticket" element={<SupportTicket />} />
           <Route path="support/tickets" element={<MyTickets />} />
           <Route path="scorm" element={<ProtectedScormRoute />} />
+          <Route path="instructor" element={<Instructorpage />} />
           <Route path="*" element={<NotFound />} />
           <Route path="/scorm/:courseId" element={<Scrompack />} />
 
