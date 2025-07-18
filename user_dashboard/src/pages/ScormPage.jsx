@@ -5,7 +5,7 @@ import { currentUserId } from "@/data/currentUser";
 // Dummy data for courses and modules
 const dummyCourses = [
   {
-    id: 'react-2023',
+    id: 'course-1',
     name: 'Complete React Developer in 2023',
     description: 'Learn React from scratch with hooks, Redux, and more',
     modules: [
@@ -15,7 +15,7 @@ const dummyCourses = [
     ],
   },
   {
-    id: 'node-backend',
+    id: 'course-2',
     name: 'Node.js Backend Development',
     description: 'Build scalable backend applications with Node.js and Express',
     modules: [
@@ -47,34 +47,70 @@ const ScormPage = () => {
     const file = event.target.files[0];
     setScormUploadState((prev) => ({
       ...prev,
-      [moduleId]: { ...prev[moduleId], file, uploaded: false, error: '' },
+      [moduleId]: { ...prev[moduleId], file, previewUrl: null, error: '' }
     }));
   };
 
-  const handleUpload = (moduleId) => {
+  const handleDescriptionChange = (moduleId, event) => {
+    const description = event.target.value;
     setScormUploadState((prev) => ({
       ...prev,
-      [moduleId]: { ...prev[moduleId], uploading: true, error: '' },
+      [moduleId]: { ...prev[moduleId], description }
     }));
-    setTimeout(() => {
-      setScormUploadState((prev) => ({
+  };
+
+  const handlePublish = async (moduleId) => {
+    console.log("handle publish working");
+    
+    const { file, description } = scormUploadState[moduleId] || {};
+    if (!file || !description) {
+      setScormUploadState(prev => ({
         ...prev,
-        [moduleId]: { 
-          ...prev[moduleId], 
-          uploading: false, 
-          uploaded: true,
-          // In a real app, this would be the actual URL from your server
-          previewUrl: "https://example.com/scorm-preview" 
-        },
+        [moduleId]: { ...prev[moduleId], error: "File and description required" }
       }));
-    }, 1200);
-  };
+      return;
+    }
+    const { courseId } = activeModule; // <-- get the correct courseId
+    const formData = new FormData();
+    formData.append("course_id", courseId); // <-- send the real course ID
+    formData.append("module_id", moduleId); // <-- optional, if you want to track module
+    formData.append("description", description);
+    formData.append("scorm_package", file);
+    formData.append("uploaded_by", "03d5a951-6de5-4753-bcd4-bab106b0f806");
 
-  const handlePublish = (moduleId) => {
-    setScormUploadState((prev) => ({
-      ...prev,
-      [moduleId]: { ...prev[moduleId], published: true },
-    }));
+    try {
+          console.log(formData);
+      // Assuming API_BASE_URL is defined elsewhere or needs to be imported
+      const API_BASE_URL = "http://localhost:9000/api"; // Placeholder for backend URL
+      const res = await fetch(`${API_BASE_URL}/scorm/upload_scorm`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjQ2Yjc2OWMxLTNjMTEtNDBkZC05ODM4LTVhMGUzZTU4ODEwZSIsImVtYWlsIjoiZGVlcHJhakBjcmVkaXRvcmFjYWRlbXkuY29tIiwiaWF0IjoxNzUyODAwMTI1LCJleHAiOjE3NTUzOTIxMjV9.S-R9DqNw9loIB_tsLuQwbXpIq9f2NnFKLBd2SDXJAJk`,
+        },
+        body: formData,
+      });
+      console.log("Response status:", res.status);
+      console.log("Response headers:", res.headers);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Error response:", errorText);
+        throw new Error(`Upload failed: ${res.status} - ${errorText}`);
+      }
+      
+      const data = await res.json();
+      console.log("Success response:", data);
+      
+      setScormUploadState(prev => ({
+        ...prev,
+        [moduleId]: { ...prev[moduleId], previewUrl: data.previewUrl, error: "" }
+      }));
+    } catch (err) {
+      setScormUploadState(prev => ({
+        ...prev,
+        [moduleId]: { ...prev[moduleId], error: err.message }
+      }));
+    }
   };
 
   return (
@@ -148,94 +184,26 @@ const ScormPage = () => {
                           </div>
 
                           {isActive && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <div className="space-y-4">
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Upload SCORM Zip File
-                                  </label>
-                                  <div className="flex items-center">
-                                    <input
-                                      type="file"
-                                      accept=".zip"
-                                      onChange={e => handleFileChange(mod.id, e)}
-                                      className="hidden"
-                                      id={`file-upload-${mod.id}`}
-                                    />
-                                    <label
-                                      htmlFor={`file-upload-${mod.id}`}
-                                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
-                                    >
-                                      Choose file
-                                    </label>
-                                    {uploadState.file && (
-                                      <span className="ml-3 text-sm text-gray-600 truncate max-w-xs">
-                                        {uploadState.file.name}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center space-x-3">
-                                  <button
-                                    onClick={() => handleUpload(mod.id)}
-                                    disabled={!uploadState.file || uploadState.uploading || uploadState.uploaded}
-                                    className={`px-4 py-2 rounded-md text-sm font-medium text-white ${uploadState.uploading ? 'bg-blue-400' : uploadState.uploaded ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ${(!uploadState.file || uploadState.uploading || uploadState.uploaded) ? 'cursor-not-allowed' : ''}`}
-                                  >
-                                    {uploadState.uploading ? (
-                                      <span className="flex items-center">
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Uploading...
-                                      </span>
-                                    ) : uploadState.uploaded ? 'Uploaded' : 'Upload'}
-                                  </button>
-
-                                  {uploadState.uploaded && !uploadState.published && (
-                                    <button
-                                      onClick={() => handlePublish(mod.id)}
-                                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                                    >
-                                      Publish
-                                    </button>
-                                  )}
-
-                                  {uploadState.published && (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                      <svg className="-ml-1 mr-1.5 h-2 w-2 text-green-500" fill="currentColor" viewBox="0 0 8 8">
-                                        <circle cx="4" cy="4" r="3" />
-                                      </svg>
-                                      Published
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* SCORM Preview Section */}
-                                {uploadState.uploaded && !uploadState.published && uploadState.previewUrl && (
-                                  <div className="mt-4">
-                                    <h4 className="text-sm font-medium text-gray-700 mb-2">SCORM Preview</h4>
-                                    <div className="border border-gray-200 rounded-md overflow-hidden">
-                                      <iframe 
-                                        src={uploadState.previewUrl}
-                                        className="w-full h-96"
-                                        title="SCORM Preview"
-                                        sandbox="allow-scripts allow-same-origin"
-                                      />
-                                    </div>
-                                    <p className="mt-1 text-xs text-gray-500">
-                                      This is a preview of your SCORM content. Please review before publishing.
-                                    </p>
-                                  </div>
-                                )}
-
-                                {uploadState.error && (
-                                  <div className="text-sm text-red-600 mt-2">
-                                    {uploadState.error}
-                                  </div>
-                                )}
-                              </div>
+                            <div>
+                              <input type="file" accept=".zip" onChange={e => handleFileChange(mod.id, e)} />
+                              <input
+                                type="text"
+                                placeholder="Description"
+                                value={scormUploadState[mod.id]?.description || ""}
+                                onChange={e => handleDescriptionChange(mod.id, e)}
+                              />
+                              <button onClick={() => handlePublish(mod.id)}>Publish</button>
+                              {scormUploadState[mod.id]?.previewUrl && (
+                                <iframe
+                                  src={scormUploadState[mod.id].previewUrl}
+                                  className="w-full h-96"
+                                  title="SCORM Preview"
+                                  sandbox="allow-scripts allow-same-origin"
+                                />
+                              )}
+                              {scormUploadState[mod.id]?.error && (
+                                <div className="text-red-600">{scormUploadState[mod.id].error}</div>
+                              )}
                             </div>
                           )}
                         </div>

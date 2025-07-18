@@ -1,7 +1,7 @@
 // SCORM Service for handling backend API calls
 // Replace the base URL with your actual backend API endpoint
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/api';
 
 class ScormService {
   // Fetch course data from backend
