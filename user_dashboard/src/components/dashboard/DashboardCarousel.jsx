@@ -123,7 +123,7 @@ export function DashboardCarousel() {
                       <p className="text-lg opacity-90 max-w-[80%] line-clamp-3">{item.description}</p>
                     </div>
 
-                    {item.buttonText && (
+                    {/* {item.buttonText && (
                       <Button
                         variant="outline"
                         className="self-start bg-white/10 border-white/30 hover:bg-white/20 backdrop-blur text-white"
@@ -137,7 +137,7 @@ export function DashboardCarousel() {
                       >
                         {item.buttonText}
                       </Button>
-                    )}
+                    )} */}
                   </div>
                 </div>
               </CarouselItem>

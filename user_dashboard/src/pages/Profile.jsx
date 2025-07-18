@@ -21,8 +21,8 @@ function Profile() {
 
   const form = useForm({
     defaultValues: {
-      fullName: "Alex Johnson",
-      email: "alex.johnson@example.com",
+      fullName: "",
+      email: "",
       bio: "Learning enthusiast and software developer",
       title: "Software Developer",
       phone: "+1 (555) 123-4567",
@@ -31,9 +31,35 @@ function Profile() {
     }
   });
 
-  const onSubmit = (data) => {
-    toast.success("Profile updated successfully");
-    console.log("Profile data:", data);
+  // Fetch user profile on mount
+  useEffect(() => {
+    async function loadProfile() {
+      console.log("Calling fetchUserProfile API...");
+      try {
+        const { data } = await fetchUserProfile();
+        form.reset({
+          fullName: `${data.first_name} ${data.last_name}`,
+          email: data.email,
+          // ...other fields if needed
+        });
+      } catch (err) {
+        toast.error("Failed to load profile");
+      }
+    }
+    loadProfile();
+  }, [form]);
+
+  // Update user profile on submit
+  const onSubmit = async (values) => {
+    try {
+      // Split fullName into first and last name
+      const [first_name, ...rest] = values.fullName.split(" ");
+      const last_name = rest.join(" ");
+      await updateUserProfile({ first_name, last_name });
+      toast.success("Profile updated successfully");
+    } catch (err) {
+      toast.error("Failed to update profile");
+    }
   };
 
   const handleAvatarClick = () => {
@@ -64,7 +90,7 @@ function Profile() {
             <AvatarFallback className="bg-gradient-to-br from-primary to-purple-400 text-white">AJ</AvatarFallback>
           </Avatar>
           
-          <Button 
+          {/* <Button 
             size="icon"
             variant="secondary" 
             className="absolute bottom-0 right-0 rounded-full w-8 h-8 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
@@ -72,7 +98,7 @@ function Profile() {
           >
             <Camera size={15} />
             <span className="sr-only">Change avatar</span>
-          </Button>
+          </Button> */}
         </div>
 
         <div>
@@ -87,14 +113,14 @@ function Profile() {
             <User size={16} />
             <span className="hidden sm:inline">Personal</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
+          {/* <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell size={16} />
             <span className="hidden sm:inline">Notifications</span>
           </TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Shield size={16} />
             <span className="hidden sm:inline">Security</span>
-          </TabsTrigger>
+          </TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="personal" className="space-y-6">
@@ -127,14 +153,14 @@ function Profile() {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input {...field} type="email" />
+                            <Input {...field} type="email" readOnly disabled className="bg-gray-100 cursor-not-allowed" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    <FormField
+                    {/* <FormField
                       control={form.control}
                       name="title"
                       render={({ field }) => (
@@ -146,9 +172,9 @@ function Profile() {
                           <FormMessage />
                         </FormItem>
                       )}
-                    />
+                    /> */}
 
-                    <FormField
+                    {/* <FormField
                       control={form.control}
                       name="phone"
                       render={({ field }) => (
@@ -160,10 +186,10 @@ function Profile() {
                           <FormMessage />
                         </FormItem>
                       )}
-                    />
+                    /> */}
                   </div>
 
-                  <FormField
+                  {/* <FormField
                     control={form.control}
                     name="location"
                     render={({ field }) => (
@@ -175,9 +201,9 @@ function Profile() {
                         <FormMessage />
                       </FormItem>
                     )}
-                  />
+                  /> */}
 
-                  <FormField
+                  {/* <FormField
                     control={form.control}
                     name="bio"
                     render={({ field }) => (
@@ -189,7 +215,7 @@ function Profile() {
                         <FormMessage />
                       </FormItem>
                     )}
-                  />
+                  /> */}
 
                   {/* Timezone selection */}
                   <FormField
