@@ -42,12 +42,7 @@ const courses = [
     title: "UI/UX Design Masterclass",
     description: "Create stunning user interfaces and improve user experiences for web applications.",
     image: "https://images.unsplash.com/photo-1545235617-9465d2a55698?q=80&w=1000",
-    category: "Design",
-    level: "Beginner",
-    duration: "22 hours",
-    lessons: 36,
-    instructor: "Michael Chen",
-    price: 99.99
+    
   },
   {
     id: "4",
@@ -136,61 +131,34 @@ export function CatalogPage() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCourses.map((course) => (
-              <div key={course.id} className="group flex flex-col overflow-hidden rounded-lg border bg-card hover:shadow-lg transition-all">
-                <div className="aspect-video w-full relative overflow-hidden">
-                  <img
-                    src={course.image}
-                    alt={course.title}
-                    className="object-cover w-full h-full transition-transform group-hover:scale-105"
-                  />
-                  <Badge 
-                    className="absolute top-2 right-2"
-                    variant="secondary"
-                  >
-                    {course.category}
-                  </Badge>
-                </div>
-                
-                <div className="flex flex-col flex-1 p-4">
-                  <h3 className="font-semibold text-lg mb-2">{course.title}</h3>
-                  <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
-                    {course.description}
-                  </p>
-                  
-                  <div className="mt-auto space-y-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-1">
-                        <Clock size={14} />
-                        <span>{course.duration}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <BookOpen size={14} />
-                        <span>{course.lessons} lessons</span>
-                      </div>
-                      <Badge variant="outline">{course.level}</Badge>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Instructor</p>
-                        <p className="font-medium">{course.instructor}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Price</p>
-                        <p className="font-medium">${course.price}</p>
-                      </div>
-                    </div>
-                    
-                    <Button className="w-full" asChild>
-                      <Link to={`/course-enrollment/${course.id}`}>
-                        Enroll Now
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
+          {filteredCourses.map((course) => (
+            <div key={course.id} className="group overflow-hidden rounded-lg border bg-card hover:shadow-md transition-all">
+              <div className="aspect-video w-full relative overflow-hidden">
+                <img
+                  src={course.image}
+                  alt={course.title}
+                  className="object-cover w-full h-full transition-transform group-hover:scale-105"
+                />
+                <Badge 
+                  className="absolute top-2 right-2"
+                  variant="secondary"
+                >
+                  {course.category}
+                </Badge>
               </div>
-            ))}
+
+              <div className="p-4 space-y-2">
+                <h3 className="font-semibold text-lg line-clamp-1">{course.title}</h3>
+                <p className="text-muted-foreground text-sm line-clamp-2">{course.description}</p>
+
+                <Button className="w-full mt-2" asChild>
+                  <Link to={`/catalog/category/${encodeURIComponent(course.category)}`}>
+                    Explore
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ))}
           </div>
         </div>
       </main>

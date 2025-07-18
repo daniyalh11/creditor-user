@@ -40,3 +40,29 @@
 .read-the-docs {
   color: #888;
 }
+
+.custom-horizontal-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.custom-horizontal-scroll::-webkit-scrollbar-thumb {
+  background: #bfdbfe; /* blue-200 */
+  border-radius: 4px;
+}
+.custom-horizontal-scroll::-webkit-scrollbar-track {
+  background: #f0f9ff; /* blue-50 */
+}
+@media (max-width: 640px) {
+  .custom-horizontal-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.custom-horizontal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #bfdbfe #f0f9ff;
+}
+@media (max-width: 640px) {
+  .custom-horizontal-scroll {
+    scrollbar-width: none;
+  }
+}

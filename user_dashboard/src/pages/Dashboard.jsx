@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import ProgressStats from "@/components/dashboard/ProgressStats";
 import CourseCard from "@/components/dashboard/CourseCard";
 import { Button } from "@/components/ui/button";
-import { BookOpen, ChevronRight, GraduationCap, Target, Clock } from "lucide-react";
+import { BookOpen, ChevronRight, GraduationCap, Target, Clock, ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import DashboardCarousel from "@/components/dashboard/DashboardCarousel";
 import DashboardCalendar from "@/components/dashboard/DashboardCalendar";
@@ -68,6 +68,26 @@ export function Dashboard() {
     }
   ];
 
+  // Carousel state for My Courses
+  const courseScrollRef = useRef(null);
+  const [scrollIndex, setScrollIndex] = useState(0);
+  const visibleCards = 2;
+  const totalCards = inProgressCourses.length;
+
+  const handleScroll = (direction) => {
+    let newIndex = scrollIndex + direction;
+    if (newIndex < 0) newIndex = 0;
+    if (newIndex > totalCards - visibleCards) newIndex = totalCards - visibleCards;
+    setScrollIndex(newIndex);
+    if (courseScrollRef.current) {
+      const cardWidth = courseScrollRef.current.firstChild?.offsetWidth || 320;
+      courseScrollRef.current.scrollTo({
+        left: newIndex * (cardWidth + 24), // 24px gap
+        behavior: 'smooth',
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-white">      
       <main className="flex-1">
@@ -122,6 +142,59 @@ export function Dashboard() {
                 </div>
               </div>
 
+              {/* My Courses Section (carousel with arrows) */}
+              <div className="mb-8 relative">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800">My Courses</h2>
+                  <Button variant="outline" asChild className="border-blue-200 text-blue-600 hover:bg-blue-50">
+                    <Link to="/courses" className="flex items-center gap-2">
+                      View all courses
+                      <ChevronRight size={16} />
+                    </Link>
+                  </Button>
+                </div>
+                {/* Carousel row with arrows */}
+                <div className="relative">
+                  {/* Left Arrow */}
+                  {scrollIndex > 0 && (
+                    <button
+                      onClick={() => handleScroll(-1)}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 rounded-full shadow-md p-2 hover:bg-blue-50 transition disabled:opacity-40"
+                      style={{ marginLeft: '-24px' }}
+                      aria-label="Scroll left"
+                    >
+                      <ChevronLeft size={24} />
+                    </button>
+                  )}
+                  {/* Cards Row */}
+                  <div
+                    ref={courseScrollRef}
+                    className="flex gap-6 overflow-x-hidden scroll-smooth"
+                    style={{ scrollBehavior: 'smooth' }}
+                  >
+                    {inProgressCourses.map((course) => (
+                      <div
+                        key={course.id}
+                        className="min-w-[320px] max-w-xs flex-shrink-0"
+                      >
+                        <CourseCard {...course} />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Right Arrow */}
+                  {scrollIndex < totalCards - visibleCards && (
+                    <button
+                      onClick={() => handleScroll(1)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 rounded-full shadow-md p-2 hover:bg-blue-50 transition disabled:opacity-40"
+                      style={{ marginRight: '-24px' }}
+                      aria-label="Scroll right"
+                    >
+                      <ChevronRight size={24} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Latest Updates Section */}
               <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -131,28 +204,28 @@ export function Dashboard() {
               </div>
 
               {/* Your Progress */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+              {/* <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-6">Your Progress Overview</h3>
                 <ProgressStats />
-              </div>
+              </div> */}
 
               {/* Monthly Overview */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+              {/* <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-6">Monthly Learning Analytics</h3>
                 <MonthlyProgress />
-              </div>
+              </div> */}
             </div>
             
             {/* Right section - enhanced sidebar widgets */}
             <div className="xl:col-span-4 space-y-6">
-              {/* Announcements */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+              {/* Announcements*/}
+              {/*<div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-gray-800">Announcements</h3>
                   <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                 </div>
                 <DashboardAnnouncements />
-              </div>
+              </div> */}
 
               {/* Calendar */}
               <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
@@ -163,31 +236,10 @@ export function Dashboard() {
               </div>
 
               {/* Todo */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+              {/* <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4">Upcoming Tasks</h3>
                 <DashboardTodo />
-              </div>
-            </div>
-          </div>
-          
-          {/* Continue Learning Section */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Continue Learning</h2>
-              <Button variant="outline" asChild className="border-blue-200 text-blue-600 hover:bg-blue-50">
-                <Link to="/courses" className="flex items-center gap-2">
-                  View all courses
-                  <ChevronRight size={16} />
-                </Link>
-              </Button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {inProgressCourses.map((course) => (
-                <div key={course.id} className="transform transition-all duration-300 hover:scale-105">
-                  <CourseCard {...course} />
-                </div>
-              ))}
+              </div> */}
             </div>
           </div>
           

@@ -2,7 +2,7 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
-import ChatbotContainer from "@/components/layout/ChatbotContainer";
+// import ChatbotContainer from "@/components/layout/ChatbotContainer";
 
 import DashboardLayout from "@/layouts/DashboardLayout";
 import  Dashboard  from "@/pages/Dashboard";
@@ -24,6 +24,7 @@ import EssayTakePage from "@/pages/EssayTakePage";
 import EssayResultsPage from "@/pages/EssayResultsPage";
 import  Groups  from "@/pages/Groups";
 import Catalog from "@/pages/Catalog";
+import CatelogCourses from "@/pages/CatelogCourses";
 
 import Progress from "@/pages/Progress";
 import Messages from "@/pages/Messages";
@@ -119,6 +120,7 @@ function App() {
             <Route path="*" element={<NewsPage />} />
           </Route>
           <Route path="catalog" element={<Catalog />} />
+          <Route path="catalog/category/:categoryName" element={<CatelogCourses />} />
           <Route path="course-enrollment/:courseId" element={<CourseEnrollment />} />
           <Route path="payment-success/:courseId" element={<PaymentSuccess />} />
           <Route path="payment-failed/:courseId" element={<PaymentFailed />} />
@@ -144,7 +146,7 @@ function App() {
         <Route path="/games" element={<Games />} />
       </Routes>
       <Toaster />
-      <ChatbotContainer />
+      {/** <ChatbotContainer /> */}
     </ThemeProvider>
   );
 }

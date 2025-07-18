@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import BackButton from "@/components/navigation/BackButton";
-import ChatbotContainer from "@/components/layout/ChatbotContainer";
+// import ChatbotContainer from "@/components/layout/ChatbotContainer";
 
 export function DashboardLayout() {
   const location = useLocation();
@@ -57,9 +57,11 @@ export function DashboardLayout() {
       </div>
       
       {/* Floating chatbot - fixed position in viewport */}
+      {/**
       <div className="fixed bottom-4 right-4 z-50">
         <ChatbotContainer />
       </div>
+      */}
     </div>
   );
 }
