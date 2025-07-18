@@ -124,14 +124,14 @@ function Profile() {
         </TabsList>
 
         <TabsContent value="personal" className="space-y-6">
-          <Card className="transition-all duration-300 hover:shadow-md">
+          <Card className="w-full transition-all duration-300 hover:shadow-md">
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 w-full">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                     <FormField
                       control={form.control}
                       name="fullName"
@@ -233,6 +233,67 @@ function Profile() {
                               <SelectItem value="Asia/Kolkata">IST (India Standard Time)</SelectItem>
                               <SelectItem value="UTC">UTC (Coordinated Universal Time)</SelectItem>
                               <SelectItem value="America/New_York">EST (Eastern Time US & Canada)</SelectItem>
+                              <SelectItem value="America/Chicago">CST (Central Time US & Canada)</SelectItem>
+                              <SelectItem value="America/Denver">MST (Mountain Time US & Canada)</SelectItem>
+                              <SelectItem value="America/Los_Angeles">PST (Pacific Time US & Canada)</SelectItem>
+                              <SelectItem value="America/Phoenix">MST (Arizona - no DST)</SelectItem>
+                              <SelectItem value="America/Anchorage">AKST (Alaska Standard Time)</SelectItem>
+                              <SelectItem value="America/Adak">HST (Hawaii-Aleutian Standard Time)</SelectItem>
+                              <SelectItem value="America/Argentina/Buenos_Aires">ART (Argentina Time)</SelectItem>
+                              <SelectItem value="America/Sao_Paulo">BRT (Brasilia Time, Brazil)</SelectItem>
+                              <SelectItem value="America/Bogota">COT (Colombia Time)</SelectItem>
+                              <SelectItem value="America/Caracas">VET (Venezuela Time)</SelectItem>
+                              <SelectItem value="America/Lima">PET (Peru Time)</SelectItem>
+                              <SelectItem value="America/Mexico_City">CST (Mexico City)</SelectItem>
+                              <SelectItem value="America/Toronto">EST (Toronto, Canada)</SelectItem>
+                              <SelectItem value="America/Vancouver">PST (Vancouver, Canada)</SelectItem>
+                              <SelectItem value="America/Guatemala">CST (Central America)</SelectItem>
+                              <SelectItem value="America/La_Paz">BOT (Bolivia Time)</SelectItem>
+                              <SelectItem value="America/Santiago">CLT (Chile Standard Time)</SelectItem>
+                              <SelectItem value="America/Halifax">AST (Atlantic Standard Time, Canada)</SelectItem>
+                              <SelectItem value="America/St_Johns">NST (Newfoundland Standard Time, Canada)</SelectItem>
+                              <SelectItem value="America/Montevideo">UYT (Uruguay Time)</SelectItem>
+                              <SelectItem value="America/Panama">EST (Panama Time)</SelectItem>
+                              <SelectItem value="America/Port_of_Spain">AST (Trinidad & Tobago)</SelectItem>
+                              <SelectItem value="America/Puerto_Rico">AST (Puerto Rico)</SelectItem>
+                              <SelectItem value="America/El_Salvador">CST (El Salvador)</SelectItem>
+                              <SelectItem value="America/Managua">CST (Nicaragua)</SelectItem>
+                              <SelectItem value="America/Costa_Rica">CST (Costa Rica)</SelectItem>
+                              <SelectItem value="America/Guayaquil">ECT (Ecuador Time)</SelectItem>
+                              <SelectItem value="America/Asuncion">PYT (Paraguay Time)</SelectItem>
+                              <SelectItem value="America/Havana">CST (Cuba Standard Time)</SelectItem>
+                              <SelectItem value="America/Barbados">AST (Barbados)</SelectItem>
+                              <SelectItem value="America/Jamaica">EST (Jamaica)</SelectItem>
+                              <SelectItem value="America/Belize">CST (Belize)</SelectItem>
+                              <SelectItem value="America/Aruba">AST (Aruba)</SelectItem>
+                              <SelectItem value="America/Curacao">AST (Curacao)</SelectItem>
+                              <SelectItem value="America/Port-au-Prince">EST (Haiti)</SelectItem>
+                              <SelectItem value="America/Paramaribo">SRT (Suriname Time)</SelectItem>
+                              <SelectItem value="America/Grand_Turk">EST (Turks and Caicos)</SelectItem>
+                              <SelectItem value="America/Martinique">AST (Martinique)</SelectItem>
+                              <SelectItem value="America/Cayenne">GFT (French Guiana Time)</SelectItem>
+                              <SelectItem value="America/Grenada">AST (Grenada)</SelectItem>
+                              <SelectItem value="America/Dominica">AST (Dominica)</SelectItem>
+                              <SelectItem value="America/Antigua">AST (Antigua & Barbuda)</SelectItem>
+                              <SelectItem value="America/St_Lucia">AST (Saint Lucia)</SelectItem>
+                              <SelectItem value="America/St_Vincent">AST (Saint Vincent & Grenadines)</SelectItem>
+                              <SelectItem value="America/St_Kitts">AST (Saint Kitts & Nevis)</SelectItem>
+                              <SelectItem value="America/Montserrat">AST (Montserrat)</SelectItem>
+                              <SelectItem value="America/Bahia">BRT (Bahia, Brazil)</SelectItem>
+                              <SelectItem value="America/Fortaleza">BRT (Fortaleza, Brazil)</SelectItem>
+                              <SelectItem value="America/Recife">BRT (Recife, Brazil)</SelectItem>
+                              <SelectItem value="America/Belem">BRT (Belem, Brazil)</SelectItem>
+                              <SelectItem value="America/Manaus">AMT (Manaus, Brazil)</SelectItem>
+                              <SelectItem value="America/Boa_Vista">AMT (Boa Vista, Brazil)</SelectItem>
+                              <SelectItem value="America/Porto_Velho">AMT (Porto Velho, Brazil)</SelectItem>
+                              <SelectItem value="America/Campo_Grande">AMT (Campo Grande, Brazil)</SelectItem>
+                              <SelectItem value="America/Cuiaba">AMT (Cuiaba, Brazil)</SelectItem>
+                              <SelectItem value="America/Rio_Branco">ACT (Acre, Brazil)</SelectItem>
+                              <SelectItem value="America/Nassau">EST (Bahamas)</SelectItem>
+                              <SelectItem value="America/Tegucigalpa">CST (Honduras)</SelectItem>
+                              <SelectItem value="America/Santo_Domingo">AST (Dominican Republic)</SelectItem>
+                              <SelectItem value="America/Guadeloupe">AST (Guadeloupe)</SelectItem>
+                              <SelectItem value="America/St_Barthelemy">AST (Saint Barthelemy)</SelectItem>
                               <SelectItem value="Europe/London">GMT (Greenwich Mean Time)</SelectItem>
                               <SelectItem value="Asia/Tokyo">JST (Japan Standard Time)</SelectItem>
                               <SelectItem value="Australia/Sydney">AEST (Australian Eastern Time)</SelectItem>
