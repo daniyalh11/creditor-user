@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=1000";
 
+const PAGE_SIZE = 3;
+
 const CreateCourse = ({ onCourseCreated }) => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,8 @@ const CreateCourse = ({ onCourseCreated }) => {
   });
   const [formError, setFormError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -24,8 +28,7 @@ const CreateCourse = ({ onCourseCreated }) => {
       try {
         const res = await fetch("http://localhost:9000/api/getAllCourses");
         const response = await res.json();
-        if (response.success ) {
-          console.log(response.data);
+        if (response.success) {
           setCourses(response.data);
         } else {
           setError("Failed to fetch courses");
@@ -58,7 +61,6 @@ const CreateCourse = ({ onCourseCreated }) => {
     setFormError("");
     setSuccess(true);
 
-    // Add all expected fields for consistency
     const newCourse = {
       id: `course-${courses.length + 1}`,
       title: form.title,
@@ -94,58 +96,104 @@ const CreateCourse = ({ onCourseCreated }) => {
     });
     setShowModal(false);
     setTimeout(() => setSuccess(false), 2000);
+    setPage(0);
   };
+
+  const filteredCourses = courses.filter(course =>
+    course.title.toLowerCase().includes(search.toLowerCase()) ||
+    course.description.toLowerCase().includes(search.toLowerCase())
+  );
+  const paginatedCourses = filteredCourses.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const hasPrev = page > 0;
+  const hasNext = (page + 1) * PAGE_SIZE < filteredCourses.length;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <h2 className="text-xl font-semibold">Courses</h2>
+        <div className="flex-1 max-w-md">
+          <input
+            type="text"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(0); }}
+            placeholder="Search courses..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
         <button
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 whitespace-nowrap"
           onClick={() => setShowModal(true)}
         >
           Create Course
         </button>
       </div>
+
       {loading ? (
         <div className="text-center text-gray-500 py-8">Loading courses...</div>
       ) : error ? (
         <div className="text-center text-red-600 py-8">{error}</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {courses.map((course) => (
-            <div key={course.id} className="flex flex-col border rounded-lg overflow-hidden bg-gray-50">
-              <img
-                src={course.thumbnail ? course.thumbnail : PLACEHOLDER_IMAGE}
-                alt={course.title}
-                className="h-32 w-full object-cover"
-              />
-              <div className="p-4 flex-1 flex flex-col">
-                <h3 className="font-semibold text-lg mb-1">{course.title}</h3>
-                <p className="text-gray-600 text-sm line-clamp-2 mb-1">{course.description}</p>
-                <div className="text-xs text-gray-500 mb-1">Category: {course.category}</div>
-                <div className="text-xs text-gray-500 mb-1">Duration: {course.estimated_duration} min</div>
-                <div className="text-xs text-gray-500 mb-1">Price: ${course.price}</div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {paginatedCourses.map((course) => (
+              <div key={course.id} className="flex flex-col border rounded-lg overflow-hidden bg-gray-50 hover:shadow-md transition-shadow">
+                <img
+                  src={course.thumbnail ? course.thumbnail : PLACEHOLDER_IMAGE}
+                  alt={course.title}
+                  className="h-40 w-full object-cover"
+                />
+                <div className="p-4 flex-1 flex flex-col">
+                  <h3 className="font-semibold text-lg mb-2 text-gray-800">{course.title}</h3>
+                  <p className="text-gray-600 text-sm line-clamp-3 mb-3">{course.description}</p>
+                  <div className="mt-auto space-y-1">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Category: {course.category}</span>
+                      <span>${course.price}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Duration: {course.estimated_duration} min
+                    </div>
+                  </div>
+                </div>
               </div>
+            ))}
+          </div>
+          
+          {filteredCourses.length > PAGE_SIZE && (
+            <div className="flex justify-center gap-4">
+              <button
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                onClick={() => setPage(page - 1)}
+                disabled={!hasPrev}
+              >
+                Previous
+              </button>
+              <button
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                onClick={() => setPage(page + 1)}
+                disabled={!hasNext}
+              >
+                Next
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
-      {/* Modal for creating a course */}
+
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative">
             <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl"
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
               onClick={() => setShowModal(false)}
               aria-label="Close"
             >
               &times;
             </button>
-            <h2 className="text-xl font-semibold mb-4">Create a New Course</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Create New Course</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Course Title</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Course Title*</label>
                 <input
                   type="text"
                   name="title"
@@ -153,10 +201,11 @@ const CreateCourse = ({ onCourseCreated }) => {
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter course title"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Course Description</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description*</label>
                 <textarea
                   name="description"
                   value={form.description}
@@ -164,32 +213,38 @@ const CreateCourse = ({ onCourseCreated }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter course description"
                   rows={3}
+                  required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <input
-                  type="text"
-                  name="category"
-                  value={form.category}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter category"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category*</label>
+                  <input
+                    type="text"
+                    name="category"
+                    value={form.category}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g. Web Development"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration (min)*</label>
+                  <input
+                    type="number"
+                    name="estimated_duration"
+                    value={form.estimated_duration}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g. 120"
+                    min="0"
+                    required
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Duration (minutes)</label>
-                <input
-                  type="number"
-                  name="estimated_duration"
-                  value={form.estimated_duration}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g. 120"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Price*</label>
                 <input
                   type="number"
                   name="price"
@@ -197,25 +252,42 @@ const CreateCourse = ({ onCourseCreated }) => {
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="e.g. 0 or 199.99"
+                  min="0"
+                  step="0.01"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail (optional)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail Image</label>
                 <input
                   type="file"
                   name="thumbnail"
                   accept="image/*"
                   onChange={handleInputChange}
-                  className="w-full"
+                  className="w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-md file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-blue-50 file:text-blue-700
+                    hover:file:bg-blue-100"
                 />
               </div>
-              {formError && <div className="text-sm text-red-600">{formError}</div>}
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Create Course
-              </button>
+              {formError && <div className="text-sm text-red-600 py-2">{formError}</div>}
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Create Course
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -224,4 +296,4 @@ const CreateCourse = ({ onCourseCreated }) => {
   );
 };
 
-export default CreateCourse; 
+export default CreateCourse;
