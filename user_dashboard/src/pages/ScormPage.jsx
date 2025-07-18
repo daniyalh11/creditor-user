@@ -95,10 +95,10 @@ const ScormPage = () => {
         throw new Error(`Upload failed: ${res.status} - ${errorText}`);
       }
       
-      const data = await res.json();
-      console.log("Success response:", data);
+      const response = await res.json();
+      console.log("Success response:", response);
       
-      const previewUrl = data.url || data.previewUrl || data.scormUrl;
+      const previewUrl = response.data.url || data.previewUrl || data.scormUrl;
       
       setScormUploadState(prev => ({
         ...prev,
@@ -243,7 +243,7 @@ const ScormPage = () => {
                                 <div className="mt-4">
                                   <h4 className="text-sm font-medium text-gray-700 mb-2">SCORM Preview:</h4>
                                   <iframe
-                                    src={uploadState.previewUrl}
+                                    src={`http://localhost:9000${uploadState.previewUrl}`}
                                     className="w-full h-96 border rounded-md"
                                     title="SCORM Preview"
                                     sandbox="allow-scripts allow-same-origin"
