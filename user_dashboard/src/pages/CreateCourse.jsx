@@ -23,9 +23,10 @@ const CreateCourse = ({ onCourseCreated }) => {
       setLoading(true);
       try {
         const res = await fetch("http://localhost:9000/api/getAllCourses");
-        const data = await res.json();
-        if (data.success && Array.isArray(data.data)) {
-          setCourses(data.data);
+        const response = await res.json();
+        if (response.success ) {
+          console.log(response.data);
+          setCourses(response.data);
         } else {
           setError("Failed to fetch courses");
         }
