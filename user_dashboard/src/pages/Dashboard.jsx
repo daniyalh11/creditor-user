@@ -42,6 +42,36 @@ export function Dashboard() {
       lessonsCount: 36,
       category: "Criminal Justice",
       duration: "22 hours"
+    },
+    {
+      id: "4",
+      title: "Intellectual Property Law",
+      description: "Explore copyright, trademark, and patent law with real-world case studies.",
+      image: "https://images.unsplash.com/photo-1464983953574-0892a716854b?q=80&w=1000",
+      progress: 50,
+      lessonsCount: 30,
+      category: "IP Law",
+      duration: "20 hours"
+    },
+    {
+      id: "5",
+      title: "Family Law Essentials",
+      description: "Understand the basics of family law, including divorce, custody, and adoption.",
+      image: "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?q=80&w=1000",
+      progress: 20,
+      lessonsCount: 18,
+      category: "Family Law",
+      duration: "12 hours"
+    },
+    {
+      id: "6",
+      title: "International Business Law",
+      description: "Gain insights into cross-border transactions, trade regulations, and dispute resolution.",
+      image: "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?q=80&w=1000",
+      progress: 10,
+      lessonsCount: 25,
+      category: "Business Law",
+      duration: "16 hours"
     }
   ];
 
@@ -99,16 +129,16 @@ export function Dashboard() {
               {/* Enhanced Greeting Section */}
               <div className="relative rounded-2xl overflow-hidden shadow-lg border border-gray-200">
                 <div className="animate-gradient-shift absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-emerald-500/10"></div>
-                <div className="relative z-10 p-8 bg-white/80 backdrop-blur-sm">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                      <GraduationCap className="text-white" size={28} />
+                <div className="relative z-10 p-4 bg-white/80 backdrop-blur-sm">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                      <GraduationCap className="text-white" size={22} />
                     </div>
                     <div>
-                      <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+                      <h2 className="text-2xl font-bold mb-1 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
                         Welcome Back, Alex! 👋
                       </h2>
-                      <p className="text-gray-600 text-lg">Continue your legal education journey and achieve your learning goals.</p>
+                      <p className="text-gray-600 text-base">Continue your legal education journey and achieve your learning goals.</p>
                     </div>
                   </div>
                   
@@ -196,12 +226,12 @@ export function Dashboard() {
               </div>
 
               {/* Latest Updates Section */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+              {/* <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-bold text-gray-800">Latest Updates</h3>
                 </div>
                 <DashboardCarousel />
-              </div>
+              </div> */}
 
               {/* Your Progress */}
               {/* <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
@@ -242,7 +272,13 @@ export function Dashboard() {
               </div> */}
             </div>
           </div>
-          
+              {/* Latest Updates Section - now full width */}
+          <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-200 p-6 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-800">Latest Updates</h3>
+            </div>
+            <DashboardCarousel />
+          </div>
           {/* Live Classes Section */}
           <div className="mb-8">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">

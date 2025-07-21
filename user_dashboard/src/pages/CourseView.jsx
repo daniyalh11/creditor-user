@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, SortAsc, BookOpen, FileCheck, Clock, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useCourseTimer } from "@/components/courses/CourseTimerProvider";
 
 // Sample modules data structure for courses
 const courseModules = [
@@ -56,6 +57,8 @@ export function CourseView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [filteredModules, setFilteredModules] = useState(courseModules);
+  // Use timer context
+  const { timeSpent, formatTime } = useCourseTimer();
 
   useEffect(() => {
     // Simulate loading data
@@ -109,13 +112,14 @@ export function CourseView() {
               </div>
 
               <div className="flex items-center justify-between mb-6">
-                <div>
+                <div className="flex items-center gap-6">
                   <h1 className="text-3xl font-bold">Course Modules</h1>
-                  <p className="text-muted-foreground mt-1">
-                    Access modules in any order
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <Clock className="text-muted-foreground" size={20} />
+                    <span className="font-medium">Time Spent:</span>
+                    <span className="font-mono text-lg">{formatTime(timeSpent)}</span>
+                  </div>
                 </div>
-                
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -189,7 +193,9 @@ export function CourseView() {
                             className="w-full" 
                             disabled={module.status === "locked"}
                           >
-                            <Link to={`/scorm/${module.id}`}> Open Lesson</Link>
+                            <Link to={`/courses/${courseId}/module/${module.id}/lessons`}>
+                              📄 View Lessons
+                            </Link>
                           </Button>
 
 
@@ -199,7 +205,7 @@ export function CourseView() {
                             className="w-full"
                             disabled={module.status === "locked"}
                           >
-                            <Link to={`/courses/module/${module.id}/assessments`}>
+                            <Link to={`/courses/${courseId}/module/${module.id}/assessments`}>
                               📋 View Assessments
                             </Link>
                           </Button>
