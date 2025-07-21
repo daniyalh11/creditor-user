@@ -2,16 +2,17 @@ import React from "react";
 import CreateCourse from "./CreateCourse";
 import ScormPage from "./ScormPage";
 import AddEvent from "./AddEvent";
+import AddCatelog from "./AddCatelog";
 import { allowedInstructorUserIds } from "@/data/allowedInstructorUsers";
 import { currentUserId } from "@/data/currentUser";
 
-const InstructorPage = () => {
+const Instructorpage = () => {
   const isAllowed = allowedInstructorUserIds.includes(currentUserId);
 
   if (!isAllowed) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -30,27 +31,25 @@ const InstructorPage = () => {
   }
 
   return (
-    <div className="max-w-15xl mx-auto px-6 py-8 space-y-12">
-      <section className="bg-white rounded-xl shadow-sm p-6">
-        <h1 className="text-3xl font-bold mb-6 text-gray-800">Instructor Dashboard</h1>
+    <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
+      <section>
+        <h1 className="text-2xl font-bold mb-4">Instructor Dashboard</h1>
         <CreateCourse />
       </section>
-      
-      <section className="bg-white rounded-xl shadow-sm p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold text-gray-800">SCORM Content Management</h2>
-        </div>
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Catalogs</h2>
+        <AddCatelog />
+      </section>
+      <section>
+        <h2 className="text-xl font-semibold mb-4">SCORM Content Management</h2>
         <ScormPage />
       </section>
-      
-      <section className="bg-white rounded-xl shadow-sm p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold text-gray-800">Calendar & Events</h2>
-        </div>
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Calendar & Events</h2>
         <AddEvent />
       </section>
     </div>
   );
 };
 
-export default InstructorPage;
+export default Instructorpage;
