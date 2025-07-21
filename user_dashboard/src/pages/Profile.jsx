@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Bell, Shield, Camera } from "lucide-react";
 import { getUserAvatarUrl } from "@/lib/avatar-utils";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { fetchUserProfile, updateUserProfile } from "@/services/userService";
 
 function Profile() {
   const [avatarUrl, setAvatarUrl] = useState(getUserAvatarUrl());
@@ -34,16 +35,19 @@ function Profile() {
   // Fetch user profile on mount
   useEffect(() => {
     async function loadProfile() {
-      console.log("Calling fetchUserProfile API...");
       try {
-        const { data } = await fetchUserProfile();
+        const data = await fetchUserProfile();
         form.reset({
-          fullName: `${data.first_name} ${data.last_name}`,
-          email: data.email,
-          // ...other fields if needed
+          fullName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+          email: data.email || '',
+          bio: data.bio || '',
+          title: data.title || '',
+          phone: data.phone || '',
+          location: data.location || '',
+          timezone: data.timezone || 'Asia/Kolkata',
         });
       } catch (err) {
-        toast.error("Failed to load profile");
+        console.log("Failed to load profile..", err);
       }
     }
     loadProfile();
@@ -55,7 +59,16 @@ function Profile() {
       // Split fullName into first and last name
       const [first_name, ...rest] = values.fullName.split(" ");
       const last_name = rest.join(" ");
-      await updateUserProfile({ first_name, last_name });
+      await updateUserProfile({
+        first_name,
+        last_name,
+        email: values.email,
+        bio: values.bio,
+        title: values.title,
+        phone: values.phone,
+        location: values.location,
+        timezone: values.timezone,
+      });
       toast.success("Profile updated successfully");
     } catch (err) {
       toast.error("Failed to update profile");
