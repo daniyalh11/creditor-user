@@ -24,6 +24,7 @@ import EssayTakePage from "@/pages/EssayTakePage";
 import EssayResultsPage from "@/pages/EssayResultsPage";
 import  Groups  from "@/pages/Groups";
 import Catalog from "@/pages/Catalog";
+import CatelogCourses from "@/pages/CatelogCourses";
 
 import Progress from "@/pages/Progress";
 import Messages from "@/pages/Messages";
@@ -67,6 +68,7 @@ import { CourseTimerProvider } from "@/components/courses/CourseTimerProvider";
 import ScormPage from "@/pages/ScormPage";
 import { allowedScormUserIds } from "@/data/allowedScormUsers";
 import { currentUserId } from "@/data/currentUser";
+import Instructorpage from "@/pages/Instructorpage";
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -118,6 +120,7 @@ function App() {
             <Route path="*" element={<NewsPage />} />
           </Route>
           <Route path="catalog" element={<Catalog />} />
+          <Route path="catalog/category/:categoryName" element={<CatelogCourses />} />
           <Route path="course-enrollment/:courseId" element={<CourseEnrollment />} />
           <Route path="payment-success/:courseId" element={<PaymentSuccess />} />
           <Route path="payment-failed/:courseId" element={<PaymentFailed />} />
@@ -135,6 +138,7 @@ function App() {
           <Route path="support/ticket" element={<SupportTicket />} />
           <Route path="support/tickets" element={<MyTickets />} />
           <Route path="scorm" element={<ProtectedScormRoute />} />
+          <Route path="instructor" element={<Instructorpage />} />
           <Route path="*" element={<NotFound />} />
           <Route path="/scorm/:courseId" element={<Scrompack />} />
 
