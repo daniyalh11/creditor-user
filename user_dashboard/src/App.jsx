@@ -71,6 +71,7 @@ import LandingPage from "@/pages/LandingPage";
 import AdminModal from "@/components/AdminModal";
 import Scrompack from "@/pages/Scrompack";
 import { CourseTimerProvider } from "@/components/courses/CourseTimerProvider";
+import Sov from "./coursesL/Sov";
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -85,6 +86,7 @@ function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/sov" element={<Sov />} />
         <Route path="/instructor" element={<Instructorpage />} />
         
         {/* Dashboard and protected routes */}

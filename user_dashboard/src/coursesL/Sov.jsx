@@ -1,5 +1,5 @@
 import React from 'react'
-import SOVhero from '../components/SOVhero'
+import SOVhero from '../components/SOVhero';
 import KeyLearning from '../components/KeyLearning';
 import CoursesSOV from '../components/coursesSOV';
 import GameBanner from '../components/GameBanner';
