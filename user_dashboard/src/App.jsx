@@ -72,6 +72,7 @@ import AdminModal from "@/components/AdminModal";
 import Scrompack from "@/pages/Scrompack";
 import { CourseTimerProvider } from "@/components/courses/CourseTimerProvider";
 import Sov from "./coursesL/Sov";
+import Sophomore from "./coursesL/Sophomore";
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -87,6 +88,7 @@ function App() {
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/sov" element={<Sov />} />
+        <Route path="/sophomore" element={<Sophomore />} />
         <Route path="/instructor" element={<Instructorpage />} />
         
         {/* Dashboard and protected routes */}
