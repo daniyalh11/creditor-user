@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, LogOut } from "lucide-react";
+import { User, LogOut, Book, Library, GraduationCap } from "lucide-react";
 import { getUserAvatarUrl } from "@/lib/avatar-utils";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -74,7 +74,7 @@ export function ProfileDropdown() {
         <DropdownMenuSeparator className="bg-primary/10" />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link to="/profile" className="w-full cursor-pointer transition-colors duration-300 hover:text-primary hover:bg-primary/5 group/menu rounded-md">
+            <Link to="/dashboard/profile" className="w-full cursor-pointer transition-colors duration-300 hover:text-primary hover:bg-primary/5 group/menu rounded-md">
               <User className="mr-2 h-4 w-4 transition-all duration-300 group-hover/menu:text-primary group-hover/menu:scale-110" />
               <span className="transition-all duration-200">Profile</span>
             </Link>

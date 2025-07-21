@@ -16,7 +16,10 @@ import {
   FileQuestion,
   Contact,
   ChevronDown,
-  Gamepad2
+  Gamepad2,
+  GraduationCap,
+  Library,
+  School
 } from "lucide-react";
 import { allowedScormUserIds } from "@/data/allowedScormUsers";
 import { currentUserId } from "@/data/currentUser";
@@ -265,8 +268,8 @@ export function Sidebar() {
             <SidebarItem
               icon={Home}
               label="Dashboard"
-              href="/"
-              active={isActive("/")}
+              href="/dashboard"
+              active={isActive("/dashboard")}
               collapsed={collapsed}
               onNavigate={handleNavigate}
             />
@@ -276,8 +279,8 @@ export function Sidebar() {
             <SidebarItem
               icon={Book}
               label="My Courses"
-              href="/courses"
-              active={isActive("/courses")}
+              href="/dashboard/courses"
+              active={isActive("/dashboard/courses")}
               collapsed={collapsed}
               onNavigate={handleNavigate}
             />
@@ -296,10 +299,10 @@ export function Sidebar() {
 
           <motion.div variants={itemVariants}>
             <SidebarItem
-              icon={BookText}
+              icon={Library}
               label="Course Catalog"
-              href="/catalog"
-              active={isActive("/catalog")}
+              href="/dashboard/catalog"
+              active={isActive("/dashboard/catalog")}
               collapsed={collapsed}
               onNavigate={handleNavigate}
             />
@@ -341,10 +344,10 @@ export function Sidebar() {
           {isScormAllowed && (
             <motion.div variants={itemVariants}>
               <SidebarItem
-                icon={BookOpen}
-                label="Instructor"
+                icon={GraduationCap}
+                label="Instructor Portal"
                 href="/instructor"
-                active={isActive("/scorm")}
+                active={isActive("/instructor")}
                 collapsed={collapsed}
                 onNavigate={handleNavigate}
               />
