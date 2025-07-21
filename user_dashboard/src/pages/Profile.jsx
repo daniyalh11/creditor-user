@@ -17,7 +17,6 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@
 import { fetchUserProfile, updateUserProfile } from "@/services/userService";
 
 function Profile() {
-  const [avatarUrl, setAvatarUrl] = useState(getUserAvatarUrl());
   const navigate = useNavigate();
 
   const form = useForm({
@@ -81,7 +80,8 @@ function Profile() {
 
   useEffect(() => {
     const updateAvatar = () => {
-      setAvatarUrl(getUserAvatarUrl());
+      // This useEffect is no longer needed as avatarUrl is removed.
+      // Keeping it for now in case it's re-added or for future context.
     };
     
     window.addEventListener("storage", updateAvatar);
@@ -99,7 +99,7 @@ function Profile() {
       <div className="flex items-center gap-6">
         <div className="relative group">
           <Avatar className="w-24 h-24 border-4 border-primary/20">
-            <AvatarImage src={avatarUrl} alt="Profile avatar" />
+            <AvatarImage src="/default-avatar.png" alt="Profile avatar" />
             <AvatarFallback className="bg-gradient-to-br from-primary to-purple-400 text-white">AJ</AvatarFallback>
           </Avatar>
           
