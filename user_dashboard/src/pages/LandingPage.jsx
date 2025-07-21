@@ -13,6 +13,8 @@ import MasterclassBanner from '../components/MasterclassBanner';
 import CoursesSection from '../components/CoursesSection';
 import HeroCarousel from '../components/HeroCarousel.jsx';
 import StatHighlights from '../components/stathighlight.jsx';
+import Navbar from '../components/navbar';
+import Footer from '../components/Footer';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ const LandingPage = () => {
   }, []);
   return (
     <>
+      <Navbar />
       <HeroCarousel />
       <StatHighlights />
       <AboutSection /> 
@@ -219,7 +222,7 @@ const LandingPage = () => {
 
           </div>
         </section>
-      
+      <Footer />
     </>
   );
 };

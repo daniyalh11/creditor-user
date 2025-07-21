@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Outlet } from "react-router-dom";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 // import ChatbotContainer from "@/components/layout/ChatbotContainer";
@@ -83,56 +83,58 @@ function App() {
     <ThemeProvider>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard/*" element={<DashboardLayout />} />
-        <Route path="/courses" element={<Courses />} />
-        <Route path="/courses/:courseId" element={<CourseView />} />
-        <Route path="/certificate/:courseId" element={<CertificatePage />} />
-        <Route path="/courses/modules" element={<ModulesList />} />
-        <Route path="/courses/module/:moduleId" element={<ModuleDetail />} />
-        <Route path="/courses/module/:moduleId/lessons" element={<ModuleLessonsView />} />
-        <Route path="/courses/module/:moduleId/assessments" element={<ModuleAssessmentsView />} />
-        <Route path="/courses/module/:moduleId/lesson/:lessonId" element={<LessonView />} />
-        <Route path="/courses/module/:moduleId/lesson/:lessonId" element={<LessonDetail />} />
-        <Route path="/courses/module/:moduleId/lesson/:lessonId/lesson/:lessonId" element={<LessonView />} />
-        <Route path="/quiz/:quizType" element={<QuizTypePage />} />
-        <Route path="/quiz-instruction/:quizId" element={<QuizInstructionPage />} />
-        <Route path="/quiz-take/:quizId" element={<QuizTakePage />} />
-        <Route path="/quiz-results/:quizId" element={<QuizResultsPage />} />
-        <Route path="/assignment-instruction/:assignmentId" element={<AssignmentInstructionPage />} />
-        <Route path="/assignment-take/:assignmentId" element={<AssignmentTakePage />} />
-        <Route path="/assignment-results/:assignmentId" element={<AssignmentResultsPage />} />
-        <Route path="/essay-instruction/:essayId" element={<EssayInstructionPage />} />
-        <Route path="/essay-take/:essayId" element={<EssayTakePage />} />
-        <Route path="/essay-results/:essayId" element={<EssayResultsPage />} />
-        <Route path="/demo-quiz/:assessmentTitle" element={<DemoQuizPage />} />
-        <Route path="/survey-instruction/:surveyId" element={<SurveyInstructionPage />} />
-        <Route path="/survey/:moduleId/:surveyId" element={<SurveyView />} />
-        <Route path="/debate-instruction/:debateId" element={<DebateInstructionPage />} />
-        <Route path="/debate-take/:debateId" element={<DebateTakePage />} />
-        <Route path="/assignment/:assignmentId/submit" element={<AssignmentSubmit />} />
-        <Route path="/assignment/:assignmentId/submissions" element={<AssignmentSubmissions />} />
-        <Route path="/debate/:debateId" element={<DebateView />} />
-        <Route path="/class-recordings" element={<ClassRecordings />} />
-        <Route path="/groups" element={<Groups />} />
-        <Route path="/groups/:groupId/*" element={<GroupLayout />} />
-        <Route path="/catalog" element={<Catalog />} />
-        <Route path="/catalog/category/:categoryName" element={<CatelogCourses />} />
-        <Route path="/course-enrollment/:courseId" element={<CourseEnrollment />} />
-        <Route path="/payment-success/:courseId" element={<PaymentSuccess />} />
-        <Route path="/payment-failed/:courseId" element={<PaymentFailed />} />
-        <Route path="/progress" element={<Progress />} />
-        <Route path="/messages" element={<Messages />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/avatar-picker" element={<AvatarPickerPage />} />
-        <Route path="/faqs" element={<FAQs />} />
-        <Route path="/announcements" element={<Announcements />} />
-        <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/todo" element={<TodoPage />} />
-        <Route path="/support" element={<Support />} />
-        <Route path="/guides" element={<Guides />} />
-        <Route path="/support/ticket" element={<SupportTicket />} />
-        <Route path="/support/tickets" element={<MyTickets />} />
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="courses" element={<Courses />} />
+          <Route path="courses/:courseId" element={<CourseView />} />
+          <Route path="certificate/:courseId" element={<CertificatePage />} />
+          <Route path="courses/modules" element={<ModulesList />} />
+          <Route path="courses/module/:moduleId" element={<ModuleDetail />} />
+          <Route path="courses/module/:moduleId/lessons" element={<ModuleLessonsView />} />
+          <Route path="courses/module/:moduleId/assessments" element={<ModuleAssessmentsView />} />
+          <Route path="courses/module/:moduleId/lesson/:lessonId" element={<LessonView />} />
+          <Route path="courses/module/:moduleId/lesson/:lessonId" element={<LessonDetail />} />
+          <Route path="courses/module/:moduleId/lesson/:lessonId/lesson/:lessonId" element={<LessonView />} />
+          <Route path="quiz/:quizType" element={<QuizTypePage />} />
+          <Route path="quiz-instruction/:quizId" element={<QuizInstructionPage />} />
+          <Route path="quiz-take/:quizId" element={<QuizTakePage />} />
+          <Route path="quiz-results/:quizId" element={<QuizResultsPage />} />
+          <Route path="assignment-instruction/:assignmentId" element={<AssignmentInstructionPage />} />
+          <Route path="assignment-take/:assignmentId" element={<AssignmentTakePage />} />
+          <Route path="assignment-results/:assignmentId" element={<AssignmentResultsPage />} />
+          <Route path="essay-instruction/:essayId" element={<EssayInstructionPage />} />
+          <Route path="essay-take/:essayId" element={<EssayTakePage />} />
+          <Route path="essay-results/:essayId" element={<EssayResultsPage />} />
+          <Route path="demo-quiz/:assessmentTitle" element={<DemoQuizPage />} />
+          <Route path="survey-instruction/:surveyId" element={<SurveyInstructionPage />} />
+          <Route path="survey/:moduleId/:surveyId" element={<SurveyView />} />
+          <Route path="debate-instruction/:debateId" element={<DebateInstructionPage />} />
+          <Route path="debate-take/:debateId" element={<DebateTakePage />} />
+          <Route path="assignment/:assignmentId/submit" element={<AssignmentSubmit />} />
+          <Route path="assignment/:assignmentId/submissions" element={<AssignmentSubmissions />} />
+          <Route path="debate/:debateId" element={<DebateView />} />
+          <Route path="class-recordings" element={<ClassRecordings />} />
+          <Route path="groups" element={<Groups />} />
+          <Route path="groups/:groupId/*" element={<GroupLayout />} />
+          <Route path="catalog" element={<Catalog />} />
+          <Route path="catalog/category/:categoryName" element={<CatelogCourses />} />
+          <Route path="course-enrollment/:courseId" element={<CourseEnrollment />} />
+          <Route path="payment-success/:courseId" element={<PaymentSuccess />} />
+          <Route path="payment-failed/:courseId" element={<PaymentFailed />} />
+          <Route path="progress" element={<Progress />} />
+          <Route path="messages" element={<Messages />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="privacy" element={<Privacy />} />
+          <Route path="avatar-picker" element={<AvatarPickerPage />} />
+          <Route path="faqs" element={<FAQs />} />
+          <Route path="announcements" element={<Announcements />} />
+          <Route path="calendar" element={<CalendarPage />} />
+          <Route path="todo" element={<TodoPage />} />
+          <Route path="support" element={<Support />} />
+          <Route path="guides" element={<Guides />} />
+          <Route path="support/ticket" element={<SupportTicket />} />
+          <Route path="support/tickets" element={<MyTickets />} />
+        </Route>
         <Route path="/scorm" element={<ProtectedScormRoute />} />
         <Route path="/instructor" element={<Instructorpage />} />
         <Route path="/scorm/:courseId" element={<Scrompack />} />

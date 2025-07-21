@@ -1,11 +1,19 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 // ✅ Admin Modal Component
 const AdminModal = ({ isOpen, onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const navigate = useNavigate();
   const toggleMode = () => setIsLogin(!isLogin);
 
   if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (onClose) onClose();
+    navigate("/dashboard");
+  };
 
   return (
     <div style={overlayStyle}>
@@ -17,7 +25,7 @@ const AdminModal = ({ isOpen, onClose }) => {
             {isLogin ? " Welcome " : " Create Account"}
           </h2>
 
-          <form style={formStyle}>
+          <form style={formStyle} onSubmit={handleSubmit}>
             {!isLogin && (
               <input type="text" placeholder=" Full Name" style={inputStyle} />
             )}
@@ -30,7 +38,7 @@ const AdminModal = ({ isOpen, onClose }) => {
           </form>
 
           <p style={toggleTextStyle}>
-            {isLogin ? "New here?" : "Already registered?"}{" "}
+            {isLogin ? "New here?" : "Already registered?"} {" "}
             <span style={toggleLinkStyle} onClick={toggleMode}>
               {isLogin ? "Register Now" : "Login"}
             </span>
