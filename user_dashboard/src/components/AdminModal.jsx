@@ -1,19 +1,91 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 // ✅ Admin Modal Component
 const AdminModal = ({ isOpen, onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
-  const navigate = useNavigate();
-  const toggleMode = () => setIsLogin(!isLogin);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("session_token"));
+  const API_BASE = import.meta.env.VITE_API_BASE_URL ;
+  
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    setError("");
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("session_token");
+    setIsLoggedIn(false);
+    onClose && onClose();
+    window.location.href = "/";
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    const url = isLogin
+      ? `${API_BASE}/api/auth/login`
+      : `${API_BASE}/api/auth/register`;
+    try {
+      if (isLogin) {
+        // Login logic
+        const response = await axios.post(url, {
+          email,
+          password,
+        });
+        if (response.data.token) {
+          localStorage.setItem("session_token", response.data.token);
+          setIsLoggedIn(true);
+          onClose && onClose();
+          window.location.href = "/dashboard";
+        } else {
+          setError("Login failed. No token received.");
+        }
+      } else {
+        // Signup logic
+        const response = await axios.post(url, {
+          fullName,
+          email,
+          password,
+        });
+        if (response.data.token) {
+          localStorage.setItem("session_token", response.data.token);
+          setIsLoggedIn(true);
+          onClose && onClose();
+          window.location.href = "/dashboard";
+        } else {
+          setError("Registration failed. No token received.");
+        }
+      }
+    } catch (err) {
+      setError(
+        err.response?.data?.message || (isLogin ? "Invalid email or password. Please try again." : "Registration failed. Please try again.")
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (onClose) onClose();
-    navigate("/dashboard");
-  };
+  if (isLoggedIn) {
+    return (
+      <div style={overlayStyle}>
+        <div style={modalContainerStyle}>
+          <div style={modalStyle}>
+            <button style={closeBtnStyle} onClick={onClose}>×</button>
+            <h2 style={headingStyle}>You are logged in!</h2>
+            <button style={submitBtnStyle} onClick={handleLogout}>Logout</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={overlayStyle}>
@@ -21,19 +93,42 @@ const AdminModal = ({ isOpen, onClose }) => {
         <div style={modalStyle}>
           <button style={closeBtnStyle} onClick={onClose}>×</button>
 
-          <h2 style={headingStyle}>
-            {isLogin ? " Welcome " : " Create Account"}
-          </h2>
+          <h2 style={headingStyle}>{isLogin ? "Welcome" : "Create Account"}</h2>
+
+          {error && (
+            <div style={{ color: "#b91c1c", marginBottom: 10, fontWeight: 500 }}>{error}</div>
+          )}
 
           <form style={formStyle} onSubmit={handleSubmit}>
             {!isLogin && (
-              <input type="text" placeholder=" Full Name" style={inputStyle} />
+              <input
+                type="text"
+                placeholder=" Full Name"
+                style={inputStyle}
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+                required
+              />
             )}
-            <input type="email" placeholder=" Email" style={inputStyle} />
-            <input type="password" placeholder=" Password" style={inputStyle} />
+            <input
+              type="email"
+              placeholder=" Email"
+              style={inputStyle}
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+            />
+            <input
+              type="password"
+              placeholder=" Password"
+              style={inputStyle}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+            />
 
-            <button type="submit" style={submitBtnStyle}>
-              {isLogin ? "Login →" : "Register →"}
+            <button type="submit" style={submitBtnStyle} disabled={loading}>
+              {loading ? (isLogin ? "Logging in..." : "Registering...") : (isLogin ? "Login →" : "Register →")}
             </button>
           </form>
 
@@ -70,78 +165,77 @@ const modalContainerStyle = {
 };
 
 const modalStyle = {
-  background: "rgba(255, 255, 255, 0.05)",
-  backdropFilter: "blur(30px)",
-  borderRadius: "20px",
-  padding: "50px 35px",
-  width: "95%",
-  maxWidth: "500px",
-  boxShadow: "0 25px 45px rgba(0,0,0,0.3)",
-  color: "#fff",
+  background: "#fff",
+  borderRadius: "16px",
+  padding: "32px 28px 24px 28px",
+  minWidth: 340,
+  maxWidth: 400,
+  boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
   position: "relative",
   fontFamily: "'Poppins', sans-serif",
-  border: "1px solid rgba(255,255,255,0.1)",
 };
 
 const closeBtnStyle = {
   position: "absolute",
-  top: "15px",
-  right: "20px",
-  fontSize: "26px",
-  color: "#fff",
+  top: 12,
+  right: 18,
   background: "none",
   border: "none",
+  fontSize: 28,
+  color: "#888",
   cursor: "pointer",
-  transition: "transform 0.2s ease",
 };
 
 const headingStyle = {
+  fontSize: "1.7rem",
+  fontWeight: 700,
+  marginBottom: 18,
   textAlign: "center",
-  fontSize: "24px",
-  marginBottom: "30px",
-  fontWeight: "700",
+  color: "#0D88C2",
 };
 
 const formStyle = {
   display: "flex",
   flexDirection: "column",
-  gap: "18px",
+  gap: 16,
+  marginBottom: 10,
 };
 
 const inputStyle = {
-  padding: "14px 16px",
-  borderRadius: "12px",
-  border: "none",
+  padding: "12px 16px",
+  borderRadius: 8,
+  border: "1px solid #d1d5db",
+  fontSize: "1rem",
+  marginBottom: 8,
   outline: "none",
-  background: "rgba(255,255,255,0.15)",
-  color: "#fff",
-  fontSize: "15px",
-  fontWeight: "400",
-  transition: "0.3s ease",
+  fontFamily: "inherit",
 };
 
 const submitBtnStyle = {
-  padding: "14px",
-  background: "linear-gradient(135deg, #0D88C2, #23A6D5)",
+  background: "#0D88C2",
   color: "#fff",
+  padding: "12px 0",
   border: "none",
-  borderRadius: "12px",
-  fontWeight: "600",
-  fontSize: "16px",
+  borderRadius: 8,
+  fontWeight: 600,
+  fontSize: "1.1rem",
   cursor: "pointer",
-  transition: "transform 0.2s ease",
+  marginTop: 8,
+  transition: "background 0.3s ease",
 };
 
 const toggleTextStyle = {
-  marginTop: "20px",
-  fontSize: "14px",
   textAlign: "center",
+  marginTop: 12,
+  color: "#333",
+  fontSize: "1rem",
 };
 
 const toggleLinkStyle = {
-  color: "#23A6D5",
+  color: "#0D88C2",
   cursor: "pointer",
-  fontWeight: "600",
+  fontWeight: 600,
+  marginLeft: 4,
   textDecoration: "underline",
 };
 
