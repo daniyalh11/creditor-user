@@ -25,6 +25,7 @@ const AddEvent = () => {
     zoomLink: "",
     courseId: ""
   });
+  const [editIndex, setEditIndex] = useState(null);
 
   // Generate calendar for selected month/year
   const firstDay = new Date(calendarYear, calendarMonth, 1);
@@ -60,6 +61,29 @@ const AddEvent = () => {
     }));
   };
 
+  const handleEdit = (index) => {
+    const event = events[index];
+    setSelectedDate(event.date);
+    setForm({
+      title: event.title,
+      description: event.description,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      timeZone: event.timeZone,
+      location: event.location,
+      isRecurring: event.isRecurring,
+      recurrence: event.recurrence || "none",
+      zoomLink: event.zoomLink || "",
+      courseId: event.courseId || dummyCourses[0]?.id || ""
+    });
+    setEditIndex(index);
+    setShowModal(true);
+  };
+
+  const handleDelete = (index) => {
+    setEvents(events.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const newEvent = {
@@ -73,7 +97,12 @@ const AddEvent = () => {
       date: selectedDate,
       courseId: form.courseId
     };
-    setEvents([...events, newEvent]);
+    if (editIndex !== null) {
+      setEvents(events.map((ev, i) => (i === editIndex ? newEvent : ev)));
+      setEditIndex(null);
+    } else {
+      setEvents([...events, newEvent]);
+    }
     setShowModal(false);
   };
 
@@ -203,11 +232,27 @@ const AddEvent = () => {
                     <h4 className="font-semibold text-gray-800">{event.title}</h4>
                     <p className="text-sm text-gray-600 mt-1">{event.description}</p>
                   </div>
-                  {event.courseId && (
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                      {dummyCourses.find(c => c.id === event.courseId)?.title || event.courseId}
-                    </span>
-                  )}
+                  <div className="flex flex-col items-end gap-2">
+                    {event.courseId && (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full mb-1">
+                        {dummyCourses.find(c => c.id === event.courseId)?.title || event.courseId}
+                      </span>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        className="text-blue-600 hover:underline text-xs"
+                        onClick={() => handleEdit(i)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="text-red-600 hover:underline text-xs"
+                        onClick={() => handleDelete(i)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-3 flex items-center text-sm text-gray-500 space-x-4">
                   <span>
