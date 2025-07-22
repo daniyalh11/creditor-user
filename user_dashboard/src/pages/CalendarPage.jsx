@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { getAllEvents } from "@/services/calendarService";
+import { getAllEvents, getAllUpcomingEvents } from "@/services/calendarService";
 
 // Utility functions for date handling
 const getTodayBounds = () => {
@@ -73,24 +73,40 @@ export function CalendarPage() {
     fetchEvents();
   }, []);
 
-  // Fetch upcoming week events
+  // Fetch upcoming events (all, including recurring occurrences)
   React.useEffect(() => {
     async function fetchUpcomingEvents() {
       try {
-        const { start, end } = getUpcomingWeekBounds();
-        const events = await getAllEvents({ 
-          startTimeAfter: start.toISOString(), 
-          startTimeBefore: end.toISOString() 
+        const events = await getAllUpcomingEvents();
+        const now = new Date();
+        const allUpcoming = [];
+        events.forEach(event => {
+          if (event.isRecurring && Array.isArray(event.occurrences)) {
+            event.occurrences.forEach(occ => {
+              const occDate = new Date(occ);
+              if (occDate > now) {
+                allUpcoming.push({
+                  ...event,
+                  date: occDate,
+                  time: occDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  isOccurrence: true
+                });
+              }
+            });
+          } else if (event.startTime) {
+            const eventDate = new Date(event.startTime);
+            if (eventDate > now) {
+              allUpcoming.push({
+                ...event,
+                date: eventDate,
+                time: eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isOccurrence: false
+              });
+            }
+          }
         });
-        
-        setUpcomingEvents(
-          events.map(event => ({
-            ...event,
-            date: event.startTime ? new Date(event.startTime) : null,
-            time: event.startTime ? new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-            status: 'upcoming'
-          }))
-        );
+        allUpcoming.sort((a, b) => a.date - b.date);
+        setUpcomingEvents(allUpcoming);
       } catch (err) {
         console.error('Error fetching upcoming events:', err);
       } finally {
@@ -238,53 +254,32 @@ export function CalendarPage() {
           <div>Loading upcoming events...</div>
         ) : upcomingEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {upcomingEvents
-              .filter(event => event.status === 'upcoming')
-              .sort((a, b) => (a.date && b.date ? a.date.getTime() - b.date.getTime() : 0))
-              .map((event) => (
-                <Card key={event.id} className="p-4 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium">{event.title}</h4>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(event.status)}>
-                        {event.status || 'upcoming'}
-                      </Badge>
-                      {event.meetingLink && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleJoinMeeting(event.meetingLink)}
-                          className="flex items-center gap-1 h-6 px-2 text-xs"
-                        >
-                          Join
-                          <ExternalLink className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
+            {upcomingEvents.map((event) => (
+              <Card key={event.id + (event.isOccurrence ? event.date.toISOString() : '')} className="p-4 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="font-medium">{event.title}</h4>
+                </div>
+                <div className="space-y-1 text-sm text-muted-foreground mb-2">
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon size={12} />
+                    <span>{event.date ? formatDateForDisplay(event.date) : ''}</span>
                   </div>
-                  
-                  <div className="space-y-1 text-sm text-muted-foreground mb-2">
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon size={12} />
-                      <span>{event.date ? formatDateForDisplay(event.date) : ''}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock size={12} />
-                      <span>{event.time}</span>
-                    </div>
-                    {event.location && (
-                      <div className="flex items-center gap-2">
-                        <MapPin size={12} />
-                        <span>{event.location}</span>
-                      </div>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <Clock size={12} />
+                    <span>{event.time}</span>
                   </div>
-                  
-                  {event.description && (
-                    <p className="text-xs text-muted-foreground">{event.description}</p>
+                  {event.location && (
+                    <div className="flex items-center gap-2">
+                      <MapPin size={12} />
+                      <span>{event.location}</span>
+                    </div>
                   )}
-                </Card>
-              ))}
+                </div>
+                {event.description && (
+                  <p className="text-xs text-muted-foreground">{event.description}</p>
+                )}
+              </Card>
+            ))}
           </div>
         ) : (
           <div className="text-center py-8 bg-card text-card-foreground rounded-lg">
