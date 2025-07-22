@@ -108,7 +108,14 @@ function App() {
         <Route path="/remedy" element={<Remedy/>} />
         <Route path="/pmp" element={<MerchantProcessing/>} />
         <Route path="/privatemerchant" element={<PrivateMerchant/>} />
-        <Route path="/instructor" element={<Instructorpage />} />
+        <Route
+          path="/instructor"
+          element={
+            <ProtectedRoute>
+              <Instructorpage />
+            </ProtectedRoute>
+          }
+        />
         
         {/* Protected dashboard route */}
         <Route
