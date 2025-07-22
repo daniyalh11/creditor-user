@@ -42,6 +42,8 @@ const AdminModal = ({ isOpen, onClose }) => {
         });
         if (response.data.token) {
           localStorage.setItem("session_token", response.data.token);
+          // Set the token as a cookie for the backend to read
+          document.cookie = `token=${response.data.token}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
           setIsLoggedIn(true);
           onClose && onClose();
           window.location.href = "/dashboard";
