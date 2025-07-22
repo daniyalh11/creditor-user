@@ -73,6 +73,14 @@ import Scrompack from "@/pages/Scrompack";
 import { CourseTimerProvider } from "@/components/courses/CourseTimerProvider";
 import Sov from "./coursesL/Sov";
 import Sophomore from "./coursesL/Sophomore";
+import OperatePrivate from './coursesL/OperatePrivate'; 
+import Senior from './coursesL/Senior';
+import Remedy from './coursesL/Remedy';
+import PrivateMerchant from './coursesL/PrivateMerchant' // adjust path if different
+import { MasterClass } from '@/pages/MasterClass';
+import LiveClass from './pages/LiveClass'; // adjust path if different
+import { WebsiteCreation } from './pages/WebsiteCreation';
+import MerchantProcessing from './pages/MerchantProcessing';
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -89,6 +97,14 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/sov" element={<Sov />} />
         <Route path="/sophomore" element={<Sophomore />} />
+        <Route path="/operateprivate" element={<OperatePrivate />} />
+        <Route path="/unlimitedcredit" element={<Senior/>} />
+        <Route path="/masterclass" element={<MasterClass />}/>
+        <Route path="/liveclass" element={<LiveClass />} />
+        <Route path="/website" element={<WebsiteCreation/>}/>
+        <Route path="/remedy" element={<Remedy/>} />
+        <Route path="/pmp" element={<MerchantProcessing/>} />
+        <Route path="/privatemerchant" element={<PrivateMerchant/>} />
         <Route path="/instructor" element={<Instructorpage />} />
         
         {/* Dashboard and protected routes */}
