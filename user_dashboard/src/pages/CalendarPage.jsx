@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { getAllEvents } from "@/services/calendarService";
+import { getTodayBounds, getUpcomingWeekBounds } from "@/lib/utils";
 
 const today = new Date();
 const tomorrow = new Date(today);
@@ -29,7 +30,8 @@ export function CalendarPage() {
       setLoading(true);
       setError(null);
       try {
-        const events = await getAllEvents();
+        const { start, end } = getTodayBounds();
+        const events = await getAllEvents({ startTimeAfter: start, startTimeBefore: end });
         console.log("Fetched events from backend:", events);
         setCalendarEvents(
           events.map(event => ({
