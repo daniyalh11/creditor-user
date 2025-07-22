@@ -4,7 +4,7 @@ const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1633356122544-f1343
 
 const PAGE_SIZE = 3;
 
-const BEARER_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImQ5MTFjYWQwLTkwY2MtNGJlZS05YzJiLTE5MDU3ZTA5YzhhYyIsImVtYWlsIjoibWF1c2FtQGNyZWRpdG9yYWNhZGVteS5jb20iLCJpYXQiOjE3NTMxNTYzNTgsImV4cCI6MTc1NTc0ODM1OH0.ZDCtW9yrVeHr-oaxSxPPrNfbrX8nCG87CqWmzq55Wfg";
+// const BEARER_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImQ5MTFjYWQwLTkwY2MtNGJlZS05YzJiLTE5MDU3ZTA5YzhhYyIsImVtYWlsIjoibWF1c2FtQGNyZWRpdG9yYWNhZGVteS5jb20iLCJpYXQiOjE3NTMxNTYzNTgsImV4cCI6MTc1NTc0ODM1OH0.ZDCtW9yrVeHr-oaxSxPPrNfbrX8nCG87CqWmzq55Wfg";
 
 const CreateCourse = ({ onCourseCreated }) => {
   const [courses, setCourses] = useState([]);
@@ -101,11 +101,11 @@ const CreateCourse = ({ onCourseCreated }) => {
       const res = await fetch("http://localhost:9000/api/course/createCourse", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${BEARER_TOKEN}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(payload),
       });
+      console.log(res);
       const data = await res.json();
       if (res.ok && data.success) {
         setSuccess(true);
@@ -228,7 +228,8 @@ const CreateCourse = ({ onCourseCreated }) => {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative"
+               style={{ maxHeight: '90vh', overflowY: 'auto' }}>
             <button
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
               onClick={() => setShowModal(false)}
