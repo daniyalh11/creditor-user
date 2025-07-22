@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import logo from '../assets/creditorlogo.png';
 import AdminModal from './AdminModal';
 import './navbar.css';
@@ -14,6 +14,8 @@ const Navbar = () => {
 
   const coursesTimeoutRef = useRef(null);
   const servicesTimeoutRef = useRef(null);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 5);
@@ -61,7 +63,10 @@ const Navbar = () => {
   const loginButton = (isMobileView = false) => (
     <a
       href="#"
-      onClick={openModal}
+      onClick={e => {
+        e.preventDefault();
+        navigate("/login");
+      }}
       className={`nav-login-btn${isMobileView ? ' mobile' : ''}`}
     >Login</a>
   );

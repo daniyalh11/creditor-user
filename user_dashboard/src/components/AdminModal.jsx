@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 // ✅ Admin Modal Component
 const AdminModal = ({ isOpen, onClose }) => {
+  // AUTH LOGIC COMMENTED OUT
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -73,6 +75,9 @@ const AdminModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  // The following block is now redundant as all auth logic is commented out.
+  // Keeping it for now in case the user wants to re-introduce auth UI later.
+  /*
   if (isLoggedIn) {
     return (
       <div style={overlayStyle}>
@@ -86,6 +91,7 @@ const AdminModal = ({ isOpen, onClose }) => {
       </div>
     );
   }
+  */
 
   return (
     <div style={overlayStyle}>
@@ -100,6 +106,8 @@ const AdminModal = ({ isOpen, onClose }) => {
           )}
 
           <form style={formStyle} onSubmit={handleSubmit}>
+            {/* In the form, comment out the fullName field and registration button */}
+            {/*
             {!isLogin && (
               <input
                 type="text"
@@ -110,6 +118,7 @@ const AdminModal = ({ isOpen, onClose }) => {
                 required
               />
             )}
+            */}
             <input
               type="email"
               placeholder=" Email"
@@ -132,12 +141,15 @@ const AdminModal = ({ isOpen, onClose }) => {
             </button>
           </form>
 
+          {/* Comment out the toggle link in the form */}
+          {/*
           <p style={toggleTextStyle}>
             {isLogin ? "New here?" : "Already registered?"} {" "}
             <span style={toggleLinkStyle} onClick={toggleMode}>
               {isLogin ? "Register Now" : "Login"}
             </span>
           </p>
+          */}
         </div>
       </div>
     </div>

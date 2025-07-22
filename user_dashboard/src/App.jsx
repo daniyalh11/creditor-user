@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, Route, Outlet } from "react-router-dom";
+import { Routes, Route, Outlet, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 // import ChatbotContainer from "@/components/layout/ChatbotContainer";
@@ -81,6 +81,8 @@ import { MasterClass } from '@/pages/MasterClass';
 import LiveClass from './pages/LiveClass'; // adjust path if different
 import { WebsiteCreation } from './pages/WebsiteCreation';
 import MerchantProcessing from './pages/MerchantProcessing';
+import ProtectedRoute from "./components/ProtectedRoute";
+import Login from "@/pages/Auth/Login";
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -94,6 +96,7 @@ function App() {
     <ThemeProvider>
       <Routes>
         {/* Public routes */}
+        <Route path="/login" element={<Login />} />
         <Route path="/" element={<LandingPage />} />
         <Route path="/sov" element={<Sov />} />
         <Route path="/sophomore" element={<Sophomore />} />
@@ -108,7 +111,14 @@ function App() {
         <Route path="/instructor" element={<Instructorpage />} />
         
         {/* Dashboard and protected routes */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route
+          path="/dashboard/*"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Dashboard />} />
           
           {/* Course related routes */}
