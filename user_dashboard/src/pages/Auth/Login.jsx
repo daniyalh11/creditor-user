@@ -6,32 +6,39 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gavel } from "lucide-react";
+import axios from "axios";
 
 export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://creditor-backend-gvtd.onrender.com";
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      // Simple validation
-      if (!email || !password) {
-        toast.error("Please enter both email and password");
-        setIsLoading(false);
-        return;
+
+    try {
+      const response = await axios.post(`http://localhost:9000/api/auth/login`, {
+        email,
+        password,
+      });
+
+      if (response.data.token) {
+        localStorage.setItem("session_token", response.data.token);
+        toast.success("Login successful!");
+        navigate("/dashboard");
+      } else {
+        toast.error("Invalid email or password");
       }
-      
-      // Mock successful login
-      localStorage.setItem("isLoggedIn", "true");
-      toast.success("Login successful!");
-      navigate("/");
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || "Invalid email or password"
+      );
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -82,10 +89,7 @@ export function Login() {
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Button variant="link" className="p-0 h-auto text-sm">Forgot password?</Button>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input 
                   id="password" 
                   type="password" 
@@ -103,10 +107,10 @@ export function Login() {
           </CardContent>
           <CardFooter>
             <p className="text-sm text-center w-full text-muted-foreground">
-              Don't have an account?{" "}
+              {/* Don't have an account?{" "}
               <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/signup")}>
                 Sign up
-              </Button>
+              </Button> */}
             </p>
           </CardFooter>
         </Card>

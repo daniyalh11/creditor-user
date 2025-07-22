@@ -57,8 +57,16 @@ export function CourseView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [filteredModules, setFilteredModules] = useState(courseModules);
-  // Use timer context
-  const { timeSpent, formatTime } = useCourseTimer();
+  
+  // Use timer context with default values
+  const timer = useCourseTimer();
+  const timeSpent = timer?.timeSpent || 0;
+  const formatTime = timer?.formatTime || ((secs) => {
+    const h = Math.floor(secs / 3600).toString().padStart(2, "0");
+    const m = Math.floor((secs % 3600) / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${h}:${m}:${s}`;
+  });
 
   useEffect(() => {
     // Simulate loading data
@@ -105,7 +113,7 @@ export function CourseView() {
             <>
               <div className="flex items-center gap-2 mb-6">
                 <Button variant="ghost" size="sm" asChild>
-                  <Link to="/courses">
+                  <Link to="/dashboard/courses">
                     ← Back to Courses
                   </Link>
                 </Button>
@@ -193,11 +201,10 @@ export function CourseView() {
                             className="w-full" 
                             disabled={module.status === "locked"}
                           >
-                            <Link to={`/courses/${courseId}/module/${module.id}/lessons`}>
-                              📄 View Lessons
+                            <Link to={`/dashboard/scorm/${courseId}/${module.id}`}>
+                              📄 Open Lesson
                             </Link>
                           </Button>
-
 
                           <Button 
                             asChild 
@@ -205,7 +212,7 @@ export function CourseView() {
                             className="w-full"
                             disabled={module.status === "locked"}
                           >
-                            <Link to={`/courses/${courseId}/module/${module.id}/assessments`}>
+                            <Link to={`/dashboard/courses/${courseId}/module/${module.id}/assessments`}>
                               📋 View Assessments
                             </Link>
                           </Button>

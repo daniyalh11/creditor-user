@@ -77,7 +77,7 @@ const CatelogCourses = () => {
       <main className="flex-1">
         <div className="container py-6 max-w-4xl">
           <div className="flex items-center gap-4 mb-6">
-            <Link to="/catalog" className="text-blue-600 hover:underline text-sm">&larr; Back to Catalog</Link>
+            <Link to="/dashboard/catalog" className="text-blue-600 hover:underline text-sm">&larr; Back to Catalog</Link>
             <h1 className="text-2xl font-bold">{decodedCategory} Courses</h1>
           </div>
           {filteredCourses.length === 0 ? (

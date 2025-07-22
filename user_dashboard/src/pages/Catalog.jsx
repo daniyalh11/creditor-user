@@ -152,7 +152,7 @@ export function CatalogPage() {
                 <p className="text-muted-foreground text-sm line-clamp-2">{course.description}</p>
 
                 <Button className="w-full mt-2" asChild>
-                  <Link to={`/catalog/category/${encodeURIComponent(course.category)}`}>
+                  <Link to={`/dashboard/catalog/category/${encodeURIComponent(course.category)}`}>
                     Explore
                   </Link>
                 </Button>

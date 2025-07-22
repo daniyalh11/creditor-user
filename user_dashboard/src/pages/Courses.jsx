@@ -298,7 +298,7 @@ export function Courses() {
                     </CardContent>
                     
                     <CardFooter className="pt-2 flex flex-col gap-2">
-                      <Link to={`/courses/${course.id}`} className="w-full">
+                      <Link to={`/dashboard/courses/${course.id}`} className="w-full">
                         <Button variant="default" className="w-full">
                           {course.progress > 0 ? "Continue Learning" : "Start Course"}
                         </Button>
