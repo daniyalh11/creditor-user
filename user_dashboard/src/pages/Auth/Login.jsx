@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gavel } from "lucide-react";
 import axios from "axios";
+import Cookies from "js-cookie";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -20,13 +21,14 @@ export function Login() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`http://localhost:9000/api/auth/login`, {
+      const response = await axios.post(`${API_BASE}/api/auth/login`, {
         email,
         password,
       });
 
       if (response.data.token) {
-        localStorage.setItem("session_token", response.data.token);
+        // localStorage.setItem("session_token", response.data.token);
+        Cookies.set("session_token", response.data.token, { expires: 7 }); // Store token in cookies for 7 days
         toast.success("Login successful!");
         navigate("/dashboard");
       } else {

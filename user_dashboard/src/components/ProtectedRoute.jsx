@@ -1,9 +1,11 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
+import Cookies from "js-cookie";
 
 const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = !!localStorage.getItem("session_token");
-  if (!isAuthenticated) {
+  // Only allow access if token exists in localStorage or cookies
+  const token = Cookies.get("session_token");
+  if (!token) {
     return <Navigate to="/login" replace />;
   }
   return children;

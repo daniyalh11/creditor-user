@@ -112,10 +112,11 @@ export function Sidebar() {
   const navigate = useNavigate();
 
   const isActive = (path) => {
-    if (path === "/") {
-      return location.pathname === path;
+    if (path === "/dashboard") {
+      // Only active on the dashboard root, not on subpages
+      return location.pathname === "/dashboard";
     }
-    return location.pathname.startsWith(path);
+    return location.pathname === path;
   };
 
   const handleNavigate = () => {

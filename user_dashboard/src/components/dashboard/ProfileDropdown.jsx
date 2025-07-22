@@ -14,6 +14,7 @@ import { User, LogOut, Book, Library, GraduationCap } from "lucide-react";
 import { getUserAvatarUrl } from "@/lib/avatar-utils";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
 
 export function ProfileDropdown() {
   const [userAvatar, setUserAvatar] = useState(getUserAvatarUrl());
@@ -39,9 +40,9 @@ export function ProfileDropdown() {
   }, []);
 
   const handleLogout = () => {
-    // For demo purposes, just log a message and redirect to home
-    console.log("User logged out");
-    navigate("/");
+    localStorage.removeItem("session_token");
+    Cookies.remove("session_token");
+    window.location.href = "/"; // Redirect to landing page
   };
   
   return (

@@ -1,6 +1,7 @@
 // Service to fetch calendar events from backend
-export async function getAllEvents() {
-  const response = await fetch('/api/calendar/events', {
+export async function getAllEvents(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const response = await fetch(`/calendar/events${query ? `?${query}` : ''}`, {
     credentials: 'include', // send cookies if needed for auth
   });
   if (!response.ok) {
