@@ -25,12 +25,12 @@ export function DashboardLayout() {
   return (
     <div className="flex min-h-screen w-full bg-gradient-to-br from-gray-50 to-white">
       {/* Sidebar - fixed on the left */}
-      <div className="sticky top-0 h-screen overflow-y-auto">
+      <div className="fixed top-0 left-0 h-screen z-30">
         <Sidebar />
       </div>
       
       {/* Main content area */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen" style={{ marginLeft: '17rem' }}>
         {/* Header - sticky at the top */}
         <header className="sticky top-0 z-10 bg-white border-b border-gray-200 h-16">
           <DashboardHeader />

@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import ProgressStats from "@/components/dashboard/ProgressStats";
 import CourseCard from "@/components/dashboard/CourseCard";
 import { Button } from "@/components/ui/button";
-import { BookOpen, ChevronRight, GraduationCap, Target, Clock, ChevronLeft } from "lucide-react";
+import { BookOpen, ChevronRight, GraduationCap, Target, Clock, ChevronLeft, CheckCircle, Search, MonitorPlay, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 import DashboardCarousel from "@/components/dashboard/DashboardCarousel";
 import DashboardCalendar from "@/components/dashboard/DashboardCalendar";
@@ -279,6 +279,70 @@ export function Dashboard() {
             </div>
             <DashboardCarousel />
           </div>
+
+          {/* How It Works Section */}
+          <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-200 p-8 mb-8">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold text-gray-800 mb-3">How It Works</h2>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                Start your legal education journey in just three simple steps. Our platform makes learning law accessible and effective.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Step 1 */}
+              <div className="group relative bg-gradient-to-br from-blue-50 to-white p-6 rounded-xl border border-blue-100 hover:shadow-lg transition-all duration-300">
+                <div className="absolute -top-5 left-6 w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg">
+                  <span className="font-bold">1</span>
+                </div>
+                <div className="flex flex-col items-center text-center pt-6">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-all">
+                    <Search className="text-blue-600" size={28} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">Choose a Course</h3>
+                  <p className="text-gray-600">
+                    Browse our extensive catalog of legal courses and select the one that matches your career goals.
+                  </p>
+                </div>
+              </div>
+              
+              {/* Step 2 */}
+              <div className="group relative bg-gradient-to-br from-purple-50 to-white p-6 rounded-xl border border-purple-100 hover:shadow-lg transition-all duration-300">
+                <div className="absolute -top-5 left-6 w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white shadow-lg">
+                  <span className="font-bold">2</span>
+                </div>
+                <div className="flex flex-col items-center text-center pt-6">
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-200 transition-all">
+                    <MonitorPlay className="text-purple-600" size={28} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">Learn Anytime</h3>
+                  <p className="text-gray-600">
+                    Access high-quality video lectures, case studies, and interactive materials at your own pace.
+                  </p>
+                </div>
+              </div>
+              
+              {/* Step 3 - Updated version without certification mention */}
+              <div className="group relative bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 hover:shadow-lg transition-all duration-300">
+                <div className="absolute -top-5 left-6 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg">
+                  <span className="font-bold">3</span>
+                </div>
+                <div className="flex flex-col items-center text-center pt-6">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-200 transition-all">
+                    <CheckCircle className="text-green-600" size={28} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">Master the Material</h3>
+                  <p className="text-gray-600">
+                    Complete lessons, apply your knowledge with practical exercises, and track your progress.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="text-center mt-10">
+            </div>
+          </div>
+
           {/* Live Classes Section */}
           <div className="mb-8">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
