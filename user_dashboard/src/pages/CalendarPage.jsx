@@ -7,45 +7,97 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { getAllEvents } from "@/services/calendarService";
-import { getTodayBounds, getUpcomingWeekBounds } from "@/lib/utils";
 
-const today = new Date();
-const tomorrow = new Date(today);
-tomorrow.setDate(tomorrow.getDate() + 1);
+// Utility functions for date handling
+const getTodayBounds = () => {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+};
 
-const nextWeek = new Date(today);
-nextWeek.setDate(nextWeek.getDate() + 7);
+const getUpcomingWeekBounds = () => {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setDate(end.getDate() + 7);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+};
 
-const threedays = new Date(today);
-threedays.setDate(threedays.getDate() + 3);
+const formatDateForDisplay = (date) => {
+  return date?.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+};
 
 export function CalendarPage() {
   const [selectedDate, setSelectedDate] = React.useState(new Date());
   const [calendarEvents, setCalendarEvents] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
+  const [upcomingEvents, setUpcomingEvents] = React.useState([]);
+  const [loading, setLoading] = React.useState({
+    today: true,
+    upcoming: true
+  });
   const [error, setError] = React.useState(null);
 
+  // Fetch today's events
   React.useEffect(() => {
     async function fetchEvents() {
-      setLoading(true);
       setError(null);
       try {
         const { start, end } = getTodayBounds();
-        const events = await getAllEvents({ startTimeAfter: start, startTimeBefore: end });
-        console.log("Fetched events from backend:", events);
+        const events = await getAllEvents({ 
+          startTimeAfter: start.toISOString(), 
+          startTimeBefore: end.toISOString() 
+        });
+        
         setCalendarEvents(
           events.map(event => ({
             ...event,
-            date: event.date ? new Date(event.date) : null,
+            date: event.startTime ? new Date(event.startTime) : null,
+            time: event.startTime ? new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
           }))
         );
       } catch (err) {
-        setError('Failed to load events');
+        setError('Failed to load today\'s events');
+        console.error('Error fetching today\'s events:', err);
       } finally {
-        setLoading(false);
+        setLoading(prev => ({ ...prev, today: false }));
       }
     }
     fetchEvents();
+  }, []);
+
+  // Fetch upcoming week events
+  React.useEffect(() => {
+    async function fetchUpcomingEvents() {
+      try {
+        const { start, end } = getUpcomingWeekBounds();
+        const events = await getAllEvents({ 
+          startTimeAfter: start.toISOString(), 
+          startTimeBefore: end.toISOString() 
+        });
+        
+        setUpcomingEvents(
+          events.map(event => ({
+            ...event,
+            date: event.startTime ? new Date(event.startTime) : null,
+            time: event.startTime ? new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+            status: 'upcoming'
+          }))
+        );
+      } catch (err) {
+        console.error('Error fetching upcoming events:', err);
+      } finally {
+        setLoading(prev => ({ ...prev, upcoming: false }));
+      }
+    }
+    fetchUpcomingEvents();
   }, []);
 
   const getStatusColor = (status) => {
@@ -68,7 +120,7 @@ export function CalendarPage() {
   }, [selectedDate, calendarEvents]);
 
   const handleJoinMeeting = (link) => {
-    window.open(link, '_blank');
+    if (link) window.open(link, '_blank');
   };
 
   return (
@@ -110,15 +162,19 @@ export function CalendarPage() {
         <div className="lg:col-span-2">
           <div className="space-y-6">
             <h3 className="text-xl font-semibold">
-              {selectedDateEvents.length > 0 
-                ? `Events for ${selectedDate?.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}` 
-                : `No events for ${selectedDate?.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`}
+              {loading.today ? (
+                'Loading events...'
+              ) : selectedDateEvents.length > 0 ? (
+                `Events for ${formatDateForDisplay(selectedDate)}`
+              ) : (
+                `No events for ${formatDateForDisplay(selectedDate)}`
+              )}
             </h3>
             
-            {loading ? (
-              <div>Loading events...</div>
-            ) : error ? (
+            {error ? (
               <div className="text-red-500">{error}</div>
+            ) : loading.today ? (
+              <div>Loading events...</div>
             ) : selectedDateEvents.length > 0 ? (
               <div className="space-y-4">
                 {selectedDateEvents.map((event) => (
@@ -127,9 +183,8 @@ export function CalendarPage() {
                       <h4 className="font-semibold text-lg">{event.title}</h4>
                       <div className="flex items-center gap-2">
                         <Badge className={getStatusColor(event.status)}>
-                          {event.status}
+                          {event.status || 'upcoming'}
                         </Badge>
-                        {/*
                         {event.meetingLink && (
                           <Button
                             size="sm"
@@ -141,7 +196,6 @@ export function CalendarPage() {
                             <ExternalLink className="h-3 w-3" />
                           </Button>
                         )}
-                        */}
                       </div>
                     </div>
                     
@@ -180,57 +234,63 @@ export function CalendarPage() {
       {/* All Upcoming Events */}
       <div className="mt-12">
         <h3 className="text-xl font-semibold mb-6">All Upcoming Events</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {calendarEvents
-            .filter(event => event.status === 'upcoming')
-            .sort((a, b) => (a.date && b.date ? a.date.getTime() - b.date.getTime() : 0))
-            .map((event) => (
-              <Card key={event.id} className="p-4 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-medium">{event.title}</h4>
-                  <div className="flex items-center gap-2">
-                    <Badge className={getStatusColor(event.status)}>
-                      {event.status}
-                    </Badge>
-                    {/*
-                    {event.meetingLink && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleJoinMeeting(event.meetingLink)}
-                        className="flex items-center gap-1 h-6 px-2 text-xs"
-                      >
-                        Join
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    )}
-                    */}
-                  </div>
-                </div>
-                
-                <div className="space-y-1 text-sm text-muted-foreground mb-2">
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon size={12} />
-                    <span>{event.date.toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock size={12} />
-                    <span>{event.time}</span>
-                  </div>
-                  {event.location && (
+        {loading.upcoming ? (
+          <div>Loading upcoming events...</div>
+        ) : upcomingEvents.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {upcomingEvents
+              .filter(event => event.status === 'upcoming')
+              .sort((a, b) => (a.date && b.date ? a.date.getTime() - b.date.getTime() : 0))
+              .map((event) => (
+                <Card key={event.id} className="p-4 hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-medium">{event.title}</h4>
                     <div className="flex items-center gap-2">
-                      <MapPin size={12} />
-                      <span>{event.location}</span>
+                      <Badge className={getStatusColor(event.status)}>
+                        {event.status || 'upcoming'}
+                      </Badge>
+                      {event.meetingLink && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleJoinMeeting(event.meetingLink)}
+                          className="flex items-center gap-1 h-6 px-2 text-xs"
+                        >
+                          Join
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
+                  </div>
+                  
+                  <div className="space-y-1 text-sm text-muted-foreground mb-2">
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon size={12} />
+                      <span>{event.date ? formatDateForDisplay(event.date) : ''}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock size={12} />
+                      <span>{event.time}</span>
+                    </div>
+                    {event.location && (
+                      <div className="flex items-center gap-2">
+                        <MapPin size={12} />
+                        <span>{event.location}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {event.description && (
+                    <p className="text-xs text-muted-foreground">{event.description}</p>
                   )}
-                </div>
-                
-                {event.description && (
-                  <p className="text-xs text-muted-foreground">{event.description}</p>
-                )}
-              </Card>
-            ))}
-        </div>
+                </Card>
+              ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 bg-card text-card-foreground rounded-lg">
+            <p className="text-muted-foreground">No upcoming events found</p>
+          </div>
+        )}
       </div>
     </div>
   );

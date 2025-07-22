@@ -128,7 +128,7 @@ export function DashboardCalendar() {
             </motion.div>
           </Button>
           <Button variant="ghost" size="sm" className="text-xs h-6 px-2 transition-colors duration-300 hover:text-primary" asChild>
-            <Link to="/calendar">View all</Link>
+            <Link to="/dashboard/calendar">View all</Link>
           </Button>
         </div>
       </div>
