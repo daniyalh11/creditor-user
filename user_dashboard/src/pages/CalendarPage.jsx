@@ -126,7 +126,7 @@ export function CalendarPage() {
   return (
     <div className="container max-w-6xl py-8 px-4 md:px-0">
       <div className="flex items-center justify-between mb-6">
-        <Link to="/">
+        <Link to="/dashboard">
           <Button variant="ghost" size="sm" className="gap-1">
             <ChevronLeft size={16} />
             <span>Back to Dashboard</span>
