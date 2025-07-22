@@ -93,88 +93,58 @@ export function LiveClasses() {
         </CardContent>
       </Card>
 
-      {/* Tab Navigation */}
-      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-        <button
-          onClick={() => setActiveTab('upcoming')}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
-            activeTab === 'upcoming'
-              ? 'bg-white text-blue-600 shadow-sm'
-              : 'text-gray-600 hover:text-gray-800'
-          }`}
-        >
-          <Calendar className="w-4 h-4 inline mr-2" />
-          Upcoming Classes
-        </button>
-        <button
-          onClick={() => setActiveTab('recordings')}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
-            activeTab === 'recordings'
-              ? 'bg-white text-blue-600 shadow-sm'
-              : 'text-gray-600 hover:text-gray-800'
-          }`}
-        >
-          <Play className="w-4 h-4 inline mr-2" />
-          Class Recordings
-        </button>
-      </div>
-
-      {/* Content based on active tab */}
-      {activeTab === 'upcoming' ? (
-        <UpcomingLiveClasses />
-      ) : (
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Play className="h-5 w-5 text-primary" />
-                Class Recordings
-              </CardTitle>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleViewAllRecordings}
-                className="flex items-center gap-1"
+      {/* Only show Class Recordings section */}
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Play className="h-5 w-5 text-primary" />
+              Class Recordings
+            </CardTitle>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleViewAllRecordings}
+              className="flex items-center gap-1"
+            >
+              <ExternalLink className="h-4 w-4" />
+              View All
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {recordedSessions.map((session) => (
+              <div 
+                key={session.id}
+                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-all cursor-pointer group"
+                onClick={() => handleVideoClick(session.driveLink)}
               >
-                <ExternalLink className="h-4 w-4" />
-                View All
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recordedSessions.map((session) => (
-                <div 
-                  key={session.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-all cursor-pointer group"
-                  onClick={() => handleVideoClick(session.driveLink)}
-                >
-                  <div className="relative w-16 h-12 rounded overflow-hidden flex-shrink-0">
-                    <img 
-                      src={session.thumbnail} 
-                      alt={session.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/50 transition-colors">
-                      <ExternalLink className="h-4 w-4 text-white group-hover:scale-110 transition-transform" />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                      {session.title}
-                    </h4>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                      <span>{new Date(session.date).toLocaleDateString()}</span>
-                      <span>•</span>
-                      <span>{session.duration}</span>
-                    </div>
+                <div className="relative w-16 h-12 rounded overflow-hidden flex-shrink-0">
+                  <img 
+                    src={session.thumbnail} 
+                    alt={session.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/50 transition-colors">
+                    <ExternalLink className="h-4 w-4 text-white group-hover:scale-110 transition-transform" />
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                    {session.title}
+                  </h4>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                    <span>{new Date(session.date).toLocaleDateString()}</span>
+                    <span>•</span>
+                    <span>{session.duration}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Modals */}
       <AttendanceViewerModal
