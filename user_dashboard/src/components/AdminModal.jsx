@@ -11,7 +11,7 @@ const AdminModal = ({ isOpen, onClose }) => {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("session_token"));
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("token"));
   const API_BASE = import.meta.env.VITE_API_BASE_URL ;
   
   const toggleMode = () => {
@@ -20,7 +20,7 @@ const AdminModal = ({ isOpen, onClose }) => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("session_token");
+    localStorage.removeItem("token");
     setIsLoggedIn(false);
     onClose && onClose();
     window.location.href = "/";
@@ -41,7 +41,7 @@ const AdminModal = ({ isOpen, onClose }) => {
           password,
         });
         if (response.data.token) {
-          localStorage.setItem("session_token", response.data.token);
+          localStorage.setItem("token", response.data.token);
           setIsLoggedIn(true);
           onClose && onClose();
           window.location.href = "/dashboard";
@@ -56,7 +56,7 @@ const AdminModal = ({ isOpen, onClose }) => {
           password,
         });
         if (response.data.token) {
-          localStorage.setItem("session_token", response.data.token);
+          localStorage.setItem("", response.data.token);
           setIsLoggedIn(true);
           onClose && onClose();
           window.location.href = "/dashboard";
