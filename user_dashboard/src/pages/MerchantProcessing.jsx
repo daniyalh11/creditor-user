@@ -8,6 +8,8 @@ import PMP3 from '../assets/PMP3.jpg';
 import PMP4 from '../assets/PMP4.jpg';
 import PMP5 from '../assets/PMP5.jpg';
 import OurPlatform from '../components/PMPOffers';
+import Navbar from '../components/navbar.jsx';
+import Footer from '../components/Footer.jsx';
 
 const MerchantProcessing = () => {
   useEffect(() => {
@@ -22,6 +24,7 @@ const MerchantProcessing = () => {
 
   return (
     <div style={{ fontFamily: 'Segoe UI, sans-serif', background: '#eef5ff', overflowX: 'hidden' }}>
+      <Navbar />
   {/* Banner */}
   <motion.div
     initial={{ opacity: 0, y: -40 }}
@@ -314,7 +317,7 @@ const MerchantProcessing = () => {
         </div>
         </div>
         <OurPlatform/>
-
+        <Footer />
     </div>
   );
 };

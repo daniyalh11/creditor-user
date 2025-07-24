@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import masterclassMembership from '../assets/masteclassmembership.png';
 
+
 const MasterHero = () => {
   const handleSignUp = () => {
     window.open('https://www.creditoracademy.com/page/show/153616?portal_id=14800', '_blank');

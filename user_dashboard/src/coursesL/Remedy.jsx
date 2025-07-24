@@ -6,6 +6,8 @@ import RemedyOfferSection from '../components/RemedyOfferSection';
 import GameBanner from '../components/GameBanner';
 import RemedyMaster from '../components/RemedyMaster';
 import RemedyResult from '../components/RemedyResult';
+import Navbar from '../components/navbar.jsx';
+import Footer from '../components/Footer.jsx';
 
 const Remedy = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -75,6 +77,7 @@ const Remedy = () => {
 
   return (
     <>
+      <Navbar />
       {/* Banner Image */}
       <motion.section
         initial={{ opacity: 0, y: 60 }}
@@ -214,6 +217,7 @@ const Remedy = () => {
       >
       <RemedyResult />
       </motion.div>
+      <Footer />
     </>
   );
 };

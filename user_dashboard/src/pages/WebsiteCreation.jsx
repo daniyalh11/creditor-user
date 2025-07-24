@@ -15,14 +15,18 @@ import CustomWebsite from '../assets/CustomWebsite.jpg'
 import WebsiteUpperSection from '../components/websiteUpperSection';
 import WebsiteTable from '../components/WebsiteTable';
 import WebsiteEndSection from '../components/WebsiteEndSection';
+import Navbar from '../components/navbar.jsx';
+import Footer from '../components/Footer.jsx';
 
 
 export const WebsiteCreation = () => {
   return (
     <div>
+        <Navbar />
         <WebsiteUpperSection/>
         <WebsiteTable/>
         <WebsiteEndSection/>
+        <Footer />
     </div>
   )
 }
