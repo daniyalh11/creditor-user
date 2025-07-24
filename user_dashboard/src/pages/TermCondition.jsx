@@ -1,7 +1,11 @@
 import React from 'react';
+import Navbar from '../components/navbar';
+import Footer from '../components/Footer';
 
 const TermsAndConditions = () => {
   return (
+    <>
+      <Navbar />
     <div style={{
       padding: "60px 20px",
       maxWidth: "960px",
@@ -90,6 +94,8 @@ const TermsAndConditions = () => {
         Email: <a href="mailto:Counselor@creditoracademy.com" style={{ color: "#0077cc" }}>Counselor@creditoracademy.com</a>
       </Section>
     </div>
+    <Footer />
+    </>
   );
 };
 

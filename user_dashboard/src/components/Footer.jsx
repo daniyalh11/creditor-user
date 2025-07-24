@@ -1,7 +1,7 @@
 import React from 'react';
-import PrivacyPolicy from '../components/PrivacyPolicy';
+import PrivacyPolicy from '../pages/PrivacyPolicy';
 import { Link } from 'react-router-dom';
-import TermCondition from '../components/TermCondition';
+import TermCondition from '../pages/TermCondition';
 
 const Footer = () => {
   return (
@@ -21,14 +21,14 @@ const Footer = () => {
             Legal & Policies
             <span id="underline1" style={{ display: 'block', width: 60, height: 4, background: '#fff', position: 'absolute', bottom: -5, left: 30, transition: 'width 0.3s ease-in-out' }}></span>
           </h3>
-          <p> <Link to="/privacypolicy" style={{ color: '#fff', textDecoration: 'none' }}>
+          <p> <Link to="/privacy" style={{ color: '#fff', textDecoration: 'none' }} onClick={() => window.scrollTo(0,0)}>
     Privacy Policies
   </Link></p>
-          <p> <Link to="/termcondition" style={{ color: '#fff', textDecoration: 'none' }}>
+          <p> <Link to="/termcondition" style={{ color: '#fff', textDecoration: 'none' }} onClick={() => window.scrollTo(0,0)}>
     Terms and Condition
   </Link></p>
-          <p><a href="https://www.creditoracademy.com/page/show/152418?portal_id=14800" style={{ color: '#fff', textDecoration: 'none' }}>Return and Refunds</a></p>
-          <p><a href="https://www.creditoracademy.com/page/show/152426?portal_id=14800" style={{ color: '#fff', textDecoration: 'none' }}>Membership Terms and Conditions</a></p>
+          <p><Link to="/ReturnRefund" style={{ color: '#fff', textDecoration: 'none' }} onClick={() => window.scrollTo(0,0)}>Return and Refunds</Link></p>
+          <p><Link to="/MembershipTnC" style={{ color: '#fff', textDecoration: 'none' }} onClick={() => window.scrollTo(0,0)}>Membership Terms and Conditions</Link></p>
         </div>
 
         {/* Column 2: Contact Us */}

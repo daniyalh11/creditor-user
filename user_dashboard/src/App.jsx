@@ -83,6 +83,11 @@ import { WebsiteCreation } from './pages/WebsiteCreation';
 import MerchantProcessing from './pages/MerchantProcessing';
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "@/pages/Auth/Login";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsAndConditions from "@/pages/TermCondition";
+import ReturnRefund from "@/pages/ReturnRefund";
+import MembershipTnC from "@/pages/MembershipTnC";  
+import ContactSection from "@/components/ContactSection"; 
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -117,6 +122,12 @@ function App() {
           }
         />
         
+        {/* Public routes (outside ProtectedRoute) */}
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/termcondition" element={<TermsAndConditions />} />
+        <Route path="/ReturnRefund" element={<ReturnRefund />} />
+        <Route path="/MembershipTnC" element={<MembershipTnC />} />               
+        <Route path="/contact" element={<ContactSection />} />
         {/* Protected dashboard route */}
         <Route
           path="/dashboard/*"
@@ -219,6 +230,8 @@ function App() {
           <Route path="faqs" element={<FAQs />} />
           <Route path="privacy" element={<Privacy />} />
           <Route path="guides" element={<Guides />} />
+          <Route path="privacy" element={<PrivacyPolicy />} />
+          <Route path="termcondition" element={<TermsAndConditions />} />
           
           {/* Support routes */}
           <Route path="support">
