@@ -101,11 +101,20 @@ export function DashboardHeader() {
     <header className="sticky top-0 z-30 w-full bg-white border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/95">
       <div className="container h-16 flex items-center justify-between px-6">
         {/* Logo/Brand */}
-        <Link to="/" className="flex items-center">
+        <button
+          className="flex items-center focus:outline-none"
+          onClick={() => {
+            if (window.location.pathname === '/dashboard') {
+              window.location.reload();
+            } else {
+              window.location.href = '/dashboard';
+            }
+          }}
+        >
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Athena LMS
           </h1>
-        </Link>
+        </button>
         
         {/* Center - Enhanced Search Bar */}
         <div className="flex-1 max-w-md mx-8 relative">

@@ -126,7 +126,11 @@ export function Sidebar() {
   };
 
   const handleLogoClick = () => {
-    navigate('/');
+    if (window.location.pathname === '/dashboard') {
+      window.location.reload();
+    } else {
+      navigate('/dashboard');
+    }
     if (collapsed) {
       setCollapsed(false);
     }
