@@ -70,6 +70,7 @@ function Profile() {
         timezone: values.timezone,
       });
       toast.success("Profile updated successfully");
+      window.location.reload(); // Reload page to reflect changes immediately
     } catch (err) {
       toast.error("Failed to update profile");
     }

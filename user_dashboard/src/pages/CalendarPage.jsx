@@ -37,55 +37,27 @@ const formatDateForDisplay = (date) => {
 
 export function CalendarPage() {
   const [selectedDate, setSelectedDate] = React.useState(new Date());
-  const [calendarEvents, setCalendarEvents] = React.useState([]);
-  const [upcomingEvents, setUpcomingEvents] = React.useState([]);
+  const [allEvents, setAllEvents] = React.useState([]); // unified event list (expanded)
   const [loading, setLoading] = React.useState({
-    today: true,
-    upcoming: true
+    all: true
   });
   const [error, setError] = React.useState(null);
 
-  // Fetch today's events
+  // Fetch all upcoming events (with occurrences) once
   React.useEffect(() => {
-    async function fetchEvents() {
+    async function fetchAllUpcomingEvents() {
       setError(null);
-      try {
-        const { start, end } = getTodayBounds();
-        const events = await getAllEvents({ 
-          startTimeAfter: start.toISOString(), 
-          startTimeBefore: end.toISOString() 
-        });
-        
-        setCalendarEvents(
-          events.map(event => ({
-            ...event,
-            date: event.startTime ? new Date(event.startTime) : null,
-            time: event.startTime ? new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
-          }))
-        );
-      } catch (err) {
-        setError('Failed to load today\'s events');
-        console.error('Error fetching today\'s events:', err);
-      } finally {
-        setLoading(prev => ({ ...prev, today: false }));
-      }
-    }
-    fetchEvents();
-  }, []);
-
-  // Fetch upcoming events (all, including recurring occurrences)
-  React.useEffect(() => {
-    async function fetchUpcomingEvents() {
+      setLoading({ all: true });
       try {
         const events = await getAllUpcomingEvents();
         const now = new Date();
-        const allUpcoming = [];
+        const expanded = [];
         events.forEach(event => {
           if (event.isRecurring && Array.isArray(event.occurrences)) {
             event.occurrences.forEach(occ => {
               const occDate = new Date(occ);
-              if (occDate > now) {
-                allUpcoming.push({
+              if (occDate >= now) {
+                expanded.push({
                   ...event,
                   date: occDate,
                   time: occDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -95,8 +67,8 @@ export function CalendarPage() {
             });
           } else if (event.startTime) {
             const eventDate = new Date(event.startTime);
-            if (eventDate > now) {
-              allUpcoming.push({
+            if (eventDate >= now) {
+              expanded.push({
                 ...event,
                 date: eventDate,
                 time: eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -105,16 +77,28 @@ export function CalendarPage() {
             }
           }
         });
-        allUpcoming.sort((a, b) => a.date - b.date);
-        setUpcomingEvents(allUpcoming);
+        expanded.sort((a, b) => a.date - b.date);
+        setAllEvents(expanded);
       } catch (err) {
-        console.error('Error fetching upcoming events:', err);
+        setError('Failed to load events');
+        setAllEvents([]);
       } finally {
-        setLoading(prev => ({ ...prev, upcoming: false }));
+        setLoading({ all: false });
       }
     }
-    fetchUpcomingEvents();
+    fetchAllUpcomingEvents();
   }, []);
+
+  // Filter events for the selected date
+  const selectedDateEvents = React.useMemo(() => {
+    if (!selectedDate) return [];
+    return allEvents.filter(event =>
+      event.date &&
+      event.date.getDate() === selectedDate.getDate() &&
+      event.date.getMonth() === selectedDate.getMonth() &&
+      event.date.getFullYear() === selectedDate.getFullYear()
+    );
+  }, [selectedDate, allEvents]);
 
   const getStatusColor = (status) => {
     switch(status) {
@@ -124,16 +108,6 @@ export function CalendarPage() {
       default: return 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800/30 dark:text-gray-400';
     }
   };
-
-  const selectedDateEvents = React.useMemo(() => {
-    if (!selectedDate) return [];
-    return calendarEvents.filter(event =>
-      event.date &&
-      event.date.getDate() === selectedDate.getDate() &&
-      event.date.getMonth() === selectedDate.getMonth() &&
-      event.date.getFullYear() === selectedDate.getFullYear()
-    );
-  }, [selectedDate, calendarEvents]);
 
   const handleJoinMeeting = (link) => {
     if (link) window.open(link, '_blank');
@@ -178,7 +152,7 @@ export function CalendarPage() {
         <div className="lg:col-span-2">
           <div className="space-y-6">
             <h3 className="text-xl font-semibold">
-              {loading.today ? (
+              {loading.all ? (
                 'Loading events...'
               ) : selectedDateEvents.length > 0 ? (
                 `Events for ${formatDateForDisplay(selectedDate)}`
@@ -189,12 +163,12 @@ export function CalendarPage() {
             
             {error ? (
               <div className="text-red-500">{error}</div>
-            ) : loading.today ? (
+            ) : loading.all ? (
               <div>Loading events...</div>
             ) : selectedDateEvents.length > 0 ? (
               <div className="space-y-4">
                 {selectedDateEvents.map((event) => (
-                  <Card key={event.id} className="p-4 hover:shadow-md transition-shadow">
+                  <Card key={event.id + (event.isOccurrence ? event.date.toISOString() : '')} className="p-4 hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-3">
                       <h4 className="font-semibold text-lg">{event.title}</h4>
                       <div className="flex items-center gap-2">
@@ -250,11 +224,11 @@ export function CalendarPage() {
       {/* All Upcoming Events */}
       <div className="mt-12">
         <h3 className="text-xl font-semibold mb-6">All Upcoming Events</h3>
-        {loading.upcoming ? (
+        {loading.all ? (
           <div>Loading upcoming events...</div>
-        ) : upcomingEvents.length > 0 ? (
+        ) : allEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {upcomingEvents.map((event) => (
+            {allEvents.map((event) => (
               <Card key={event.id + (event.isOccurrence ? event.date.toISOString() : '')} className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-2">
                   <h4 className="font-medium">{event.title}</h4>
