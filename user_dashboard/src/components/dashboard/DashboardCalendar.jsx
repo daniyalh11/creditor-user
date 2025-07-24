@@ -173,7 +173,7 @@ export function DashboardCalendar() {
                 head_cell: "text-muted-foreground rounded-md w-full font-normal text-[0.7rem] px-1",
                 row: "flex w-full mt-2",
                 cell: "h-7 w-full text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                day: "h-7 w-full p-0 text-xs aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground pointer-events-auto transition-all duration-200 hover:scale-110",
+                day: "h-7 w-full p-0 text-xs aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground pointer-events-auto transition-all duration-200 hover:scale-110 flex flex-col items-center justify-center",
                 day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground hover:scale-100",
                 day_today: "bg-accent text-accent-foreground ring-1 ring-primary",
                 day_outside: "text-muted-foreground opacity-50",
@@ -181,6 +181,20 @@ export function DashboardCalendar() {
                 nav_button: "h-6 w-6 bg-transparent p-0 opacity-70 hover:opacity-100 hover:bg-accent flex items-center justify-center transition-all duration-200 hover:text-primary",
                 nav_button_previous: "ml-1",
                 nav_button_next: "mr-1",
+              }}
+              renderDay={(day) => {
+                const hasEvent = allEvents.some(event =>
+                  event.date &&
+                  event.date.getDate() === day.getDate() &&
+                  event.date.getMonth() === day.getMonth() &&
+                  event.date.getFullYear() === day.getFullYear()
+                );
+                return (
+                  <div className="flex flex-col items-center justify-center w-full h-full">
+                    <span>{day.getDate()}</span>
+                    {hasEvent && <span className="w-1.5 h-1.5 mt-0.5 rounded-full bg-blue-500 inline-block"></span>}
+                  </div>
+                );
               }}
             />
           </motion.div>
