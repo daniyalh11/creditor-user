@@ -141,7 +141,9 @@ export function CalendarPage() {
             <Calendar
               mode="single"
               selected={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={date => {
+                if (date) setSelectedDate(date); // Only update if date is not undefined
+              }}
               className="w-full border rounded-md"
               showOutsideDays={true}
             />
