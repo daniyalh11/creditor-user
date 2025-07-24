@@ -159,7 +159,7 @@ export function DashboardCalendar() {
             <Calendar
               mode="single"
               selected={date}
-              onSelect={setDate}
+              onSelect={d => { if (d) setDate(d); }}
               className="w-full border rounded-md pointer-events-auto transition-all duration-300 hover:border-primary/30"
               showOutsideDays={true}
               classNames={{
