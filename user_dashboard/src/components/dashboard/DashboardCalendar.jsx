@@ -8,46 +8,14 @@ import { Link } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { motion } from "framer-motion";
-
-const today = new Date();
-const tomorrow = new Date(today);
-tomorrow.setDate(tomorrow.getDate() + 1);
-
-const nextWeek = new Date(today);
-nextWeek.setDate(nextWeek.getDate() + 7);
-
-const threedays = new Date(today);
-threedays.setDate(threedays.getDate() + 3);
-
-const calendarEvents = [
-  {
-    id: 1,
-    title: "Mock Trial Competition",
-    date: tomorrow,
-    status: 'upcoming'
-  },
-  {
-    id: 2,
-    title: "Legal Research Workshop",
-    date: today,
-    status: 'ongoing'
-  },
-  {
-    id: 3,
-    title: "Bar Exam Study Group",
-    date: nextWeek,
-    status: 'upcoming'
-  },
-  {
-    id: 4,
-    title: "Contract Law Webinar",
-    date: threedays,
-    status: 'upcoming'
-  }
-];
+import { getAllUpcomingEvents } from "@/services/calendarService";
 
 export function DashboardCalendar() {
+  const today = new Date();
   const [date, setDate] = React.useState(today);
+  const [allEvents, setAllEvents] = React.useState([]); // store all expanded events/occurrences
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState(null);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   
   React.useEffect(() => {
@@ -66,16 +34,62 @@ export function DashboardCalendar() {
       window.removeEventListener('resize', checkMobile);
     };
   }, []);
-  
+
+  // Fetch all upcoming events (with occurrences) once
+  React.useEffect(() => {
+    async function fetchAllUpcoming() {
+      setLoading(true);
+      setError(null);
+      try {
+        const events = await getAllUpcomingEvents();
+        const now = new Date();
+        const expanded = [];
+        events.forEach(event => {
+          if (event.isRecurring && Array.isArray(event.occurrences)) {
+            event.occurrences.forEach(occ => {
+              const occDate = new Date(occ);
+              if (occDate >= now) {
+                expanded.push({
+                  ...event,
+                  date: occDate,
+                  time: occDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  isOccurrence: true
+                });
+              }
+            });
+          } else if (event.startTime) {
+            const eventDate = new Date(event.startTime);
+            if (eventDate >= now) {
+              expanded.push({
+                ...event,
+                date: eventDate,
+                time: eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isOccurrence: false
+              });
+            }
+          }
+        });
+        setAllEvents(expanded);
+      } catch (err) {
+        setError('Failed to load events');
+        setAllEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAllUpcoming();
+  }, []);
+
+  // Filter events for the selected date
   const selectedDateEvents = React.useMemo(() => {
     if (!date) return [];
-    
-    return calendarEvents.filter(event => 
+    return allEvents.filter(event =>
+      event.date &&
       event.date.getDate() === date.getDate() &&
       event.date.getMonth() === date.getMonth() &&
       event.date.getFullYear() === date.getFullYear()
     );
-  }, [date]);
+  }, [date, allEvents]);
   
   const getStatusColor = (status) => {
     switch(status) {
@@ -175,15 +189,22 @@ export function DashboardCalendar() {
       
       <div className="px-3 py-2">
         <div className="text-sm font-medium group-hover:text-primary transition-colors duration-300">
-          {selectedDateEvents.length > 0 
-            ? `Events for ${date?.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}` 
+          {loading ? (
+            'Loading events...'
+          ) : error ? (
+            <span className="text-red-500">{error}</span>
+          ) : selectedDateEvents.length > 0
+            ? `Events for ${date?.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
             : `No events for ${date?.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`}
         </div>
       </div>
-      
       <ScrollArea className="h-[120px] px-3 pb-3">
         <div className="space-y-2 pr-3">
-          {selectedDateEvents.map((event, index) => (
+          {loading ? (
+            <div className="text-xs text-muted-foreground">Loading events...</div>
+          ) : error ? (
+            <div className="text-xs text-red-500">{error}</div>
+          ) : selectedDateEvents.map((event, index) => (
             <motion.div 
               key={event.id} 
               custom={index}
@@ -195,7 +216,7 @@ export function DashboardCalendar() {
             >
               <span className="text-xs line-clamp-1 group-hover/event:text-primary transition-colors duration-300">{event.title}</span>
               <Badge className={`${getStatusColor(event.status)} text-xs py-0 px-2 transition-all duration-300 group-hover/event:scale-105`}>
-                {event.status}
+                {event.status || 'upcoming'}
               </Badge>
             </motion.div>
           ))}
