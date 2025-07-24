@@ -19,9 +19,6 @@ const CreateCourse = ({ onCourseCreated }) => {
     course_status: "DRAFT",
     estimated_duration: "",
     max_students: 0,
-    course_level: "BEGINNER",
-    courseType: "SEQUENTIAL",
-    lockModules: "LOCKED",
     price: "",
     requireFinalQuiz: true,
     thumbnail: ""
@@ -86,9 +83,9 @@ const CreateCourse = ({ onCourseCreated }) => {
       course_status: form.course_status,
       estimated_duration: form.estimated_duration,
       max_students: form.max_students ? Number(form.max_students) : undefined,
-      course_level: form.course_level,
-      courseType: form.courseType,
-      lockModules: form.lockModules,
+      course_level: "BEGINNER",
+      courseType: "OPEN",
+      lockModules: "UNLOCKED",
       price: form.price,
       requireFinalQuiz: form.requireFinalQuiz,
       // created_at, updated_at, createdBy, updatedBy will be set by backend
@@ -103,10 +100,12 @@ const CreateCourse = ({ onCourseCreated }) => {
         headers: {
           "Content-Type": "application/json"
         },
+        credentials: "include", // <-- This line is required!
         body: JSON.stringify(payload),
       });
-      console.log(res);
+    
       const data = await res.json();
+      console.log(data);
       if (res.ok && data.success) {
         setSuccess(true);
         setApiResponse({ type: "success", message: data.message, course: data.data });
@@ -123,9 +122,6 @@ const CreateCourse = ({ onCourseCreated }) => {
           course_status: "DRAFT",
           estimated_duration: "",
           max_students: 0,
-          course_level: "BEGINNER",
-          courseType: "SEQUENTIAL",
-          lockModules: "LOCKED",
           price: "",
           requireFinalQuiz: true,
           thumbnail: ""
@@ -314,43 +310,19 @@ const CreateCourse = ({ onCourseCreated }) => {
                     min="0"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Course Level</label>
-                  <select
-                    name="course_level"
-                    value={form.course_level}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="BEGINNER">Beginner</option>
-                    <option value="INTERMEDIATE">Intermediate</option>
-                    <option value="ADVANCE">Advance</option>
-                  </select>
-                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Course Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Course Status</label>
                   <select
-                    name="courseType"
-                    value={form.courseType}
+                    name="course_status"
+                    value={form.course_status}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="SEQUENTIAL">Sequential</option>
-                    <option value="OPEN">Open</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lock Modules</label>
-                  <select
-                    name="lockModules"
-                    value={form.lockModules}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="LOCKED">Locked</option>
-                    <option value="UNLOCKED">Unlocked</option>
+                    <option value="DRAFT">Draft</option>
+                    <option value="PUBLISHED">Published</option>
+                    <option value="ARCHIVED">Archived</option>
                   </select>
                 </div>
               </div>
