@@ -1,8 +1,8 @@
 // Service for user profile API calls
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/api';
 
 export async function fetchUserProfile() {
-  const response = await fetch(`${API_BASE_URL}/user/profile`, {
+  const response = await fetch(`${API_BASE_URL}/user/getUserProfile`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -13,11 +13,12 @@ export async function fetchUserProfile() {
   if (!response.ok) {
     throw new Error('Failed to fetch user profile');
   }
-  return await response.json();
+  const result = await response.json();
+  return result.data; // Return only the user object
 }
 
 export async function updateUserProfile(profileData) {
-  const response = await fetch(`${API_BASE_URL}/user/profile`, {
+  const response = await fetch(`${API_BASE_URL}/user/updateUserProfile`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
