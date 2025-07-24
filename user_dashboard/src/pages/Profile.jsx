@@ -18,6 +18,7 @@ import { fetchUserProfile, updateUserProfile } from "@/services/userService";
 
 function Profile() {
   const navigate = useNavigate();
+  const [userRole, setUserRole] = useState("");
 
   const form = useForm({
     defaultValues: {
@@ -37,6 +38,17 @@ function Profile() {
       try {
         const data = await fetchUserProfile();
         console.log('User profile data:', data); // Debug log
+        setUserRole(
+          Array.isArray(data.user_roles) && data.user_roles.length > 0
+            ? data.user_roles.map(r => r.role).join(', ')
+            : 'User'
+        );
+        // Store the first role in localStorage for sidebar access
+        if (Array.isArray(data.user_roles) && data.user_roles.length > 0) {
+          localStorage.setItem('userRole', data.user_roles[0].role);
+        } else {
+          localStorage.setItem('userRole', 'user');
+        }
         form.reset({
           fullName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
           email: data.email || 'Not Provided',
@@ -116,9 +128,16 @@ function Profile() {
           </Button> */}
         </div>
 
-        <div>
-          <h1 className="text-2xl font-semibold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">Profile Settings</h1>
-          <p className="text-muted-foreground">Manage your account settings and preferences</p>
+        <div className="flex flex-col gap-1 sm:gap-2">
+          <div className="flex flex-row items-center gap-2 sm:gap-4">
+            <h1 className="text-2xl font-semibold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">Profile Settings</h1>
+            {userRole && (
+              <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20 capitalize">
+                {userRole}
+              </span>
+            )}
+          </div>
+          <p className="text-muted-foreground mt-2">Manage your account settings and preferences</p>
         </div>
       </div>
 
@@ -142,6 +161,7 @@ function Profile() {
           <Card className="w-full transition-all duration-300 hover:shadow-md">
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
+              {/* Removed user role display from here */}
             </CardHeader>
             <CardContent>
               <Form {...form}>
