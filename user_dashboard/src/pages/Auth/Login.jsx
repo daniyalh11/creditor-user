@@ -27,8 +27,8 @@ export function Login() {
       });
 
       if (response.data.token) {
-        // localStorage.setItem("session_token", response.data.token);
-        Cookies.set("session_token", response.data.token, { expires: 7 }); // Store token in cookies for 7 days
+        // localStorage.setItem("token", response.data.token);
+        Cookies.set("token", response.data.token, { expires: 7 }); // Store token in cookies for 7 days
         toast.success("Login successful!");
         navigate("/dashboard");
       } else {

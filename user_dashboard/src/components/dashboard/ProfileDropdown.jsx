@@ -40,8 +40,8 @@ export function ProfileDropdown() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("session_token");
-    Cookies.remove("session_token");
+    localStorage.removeItem("token");
+    Cookies.remove("token");
     window.location.href = "/"; // Redirect to landing page
   };
   
