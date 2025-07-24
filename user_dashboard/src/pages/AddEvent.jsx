@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { currentUserId } from "@/data/currentUser";
 
 const DEFAULT_TIMEZONE = "EST";
 const dummyCourses = [
@@ -26,6 +27,27 @@ const AddEvent = () => {
     courseId: ""
   });
   const [editIndex, setEditIndex] = useState(null);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch("http://localhost:9000/calendar/events", {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+          },
+          credentials: "include"
+        });
+        const data = await res.json();
+        if (data && data.data) {
+          setEvents(data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch events", err);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   // Generate calendar for selected month/year
   const firstDay = new Date(calendarYear, calendarMonth, 1);
@@ -84,7 +106,7 @@ const AddEvent = () => {
     setEvents(events.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newEvent = {
       ...form,
@@ -97,11 +119,63 @@ const AddEvent = () => {
       date: selectedDate,
       courseId: form.courseId
     };
+
+    // Prepare payload for backend
+    const selectedCourse = dummyCourses.find(c => c.id === form.courseId);
+    const toIsoUtc = (dateString) => {
+      if (!dateString) return "";
+      if (dateString.endsWith('Z')) return dateString;
+      if (dateString.length === 19) return dateString + 'Z';
+      if (dateString.length === 16) return dateString + ':00Z';
+      return new Date(dateString).toISOString();
+    };
+
+    const payload = {
+      title: form.title,
+      description: form.description,
+      startTime: toIsoUtc(form.startTime),
+      endTime: toIsoUtc(form.endTime),
+      timeZone: form.timeZone,
+      location: form.location || (form.zoomLink ? form.zoomLink : ""),
+      isRecurring: form.recurrence !== "none",
+      calendarType: "GROUP",
+      visibility: "PRIVATE",
+      courseName: selectedCourse ? selectedCourse.title : ""
+    };
+
+    console.log("Payload being sent:", payload);
+
     if (editIndex !== null) {
       setEvents(events.map((ev, i) => (i === editIndex ? newEvent : ev)));
       setEditIndex(null);
     } else {
-      setEvents([...events, newEvent]);
+      // Send to backend only on add
+      try {
+        await fetch("http://localhost:9000/calendar/events", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+          },
+          body: JSON.stringify(payload),
+          credentials: "include"
+        });
+        // Refetch events after adding
+        const res = await fetch("http://localhost:9000/calendar/events", {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+          },
+          credentials: "include"
+        });
+        const data = await res.json();
+        if (data && data.data) {
+          setEvents(data.data);
+        }
+      } catch (err) {
+        // Optionally handle error
+        console.error("Failed to add event to backend", err);
+      }
     }
     setShowModal(false);
   };
