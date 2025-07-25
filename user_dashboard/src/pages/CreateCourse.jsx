@@ -11,7 +11,6 @@ const CreateCourse = ({ onCourseCreated }) => {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
     title: "",
-    description: "",
     category: "",
     estimated_duration: "",
     price: "",
@@ -53,7 +52,7 @@ const CreateCourse = ({ onCourseCreated }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.title || !form.description || !form.category || !form.estimated_duration || !form.price) {
+    if (!form.title || !form.category || !form.estimated_duration || !form.price) {
       setFormError("All fields except thumbnail are required.");
       setSuccess(false);
       return;
@@ -64,7 +63,7 @@ const CreateCourse = ({ onCourseCreated }) => {
     const newCourse = {
       id: `course-${courses.length + 1}`,
       title: form.title,
-      description: form.description,
+      description: "",
       category: form.category,
       estimated_duration: form.estimated_duration,
       price: form.price,
@@ -88,7 +87,6 @@ const CreateCourse = ({ onCourseCreated }) => {
     }
     setForm({
       title: "",
-      description: "",
       category: "",
       estimated_duration: "",
       price: "",
@@ -201,18 +199,6 @@ const CreateCourse = ({ onCourseCreated }) => {
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter course title"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description*</label>
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter course description"
-                  rows={3}
                   required
                 />
               </div>

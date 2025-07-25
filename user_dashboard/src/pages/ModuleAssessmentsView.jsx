@@ -189,7 +189,7 @@ const assessmentSections = [
 ];
 
 function ModuleAssessmentsView() {
-  const { moduleId } = useParams();
+  const { moduleId, courseId } = useParams();
   const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("");
   const [selectedQuizType, setSelectedQuizType] = useState("general");
@@ -228,12 +228,12 @@ function ModuleAssessmentsView() {
           {/* Header */}
           <div className="flex items-center gap-2 mb-6">
             <Button variant="ghost" size="sm" asChild>
-              <Link to={`/courses/react-2023`}>
+              <Link to={`/dashboard/courses/${courseId}`}>
                 <ChevronLeft size={16} />
-                Back to module
+                Back to Course
               </Link>
             </Button>
-            <Badge>Assessments</Badge>
+            <Badge>Module Assessments</Badge>
           </div>
 
           {/* Lesson Info */}

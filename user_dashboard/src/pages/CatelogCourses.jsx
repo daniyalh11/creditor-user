@@ -1,9 +1,8 @@
 import React from "react";
 import { useParams, Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Clock } from "lucide-react";
+import { BookOpen, Clock, ArrowLeft } from "lucide-react";
 
-// Dummy course data (should be shared or imported from a data file in a real app)
 const courses = [
   {
     id: "1",
@@ -73,33 +72,98 @@ const CatelogCourses = () => {
   const filteredCourses = courses.filter(c => c.category === decodedCategory);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <main className="flex-1">
-        <div className="container py-6 max-w-4xl">
-          <div className="flex items-center gap-4 mb-6">
-            <Link to="/catalog" className="text-blue-600 hover:underline text-sm">&larr; Back to Catalog</Link>
-            <h1 className="text-2xl font-bold">{decodedCategory} Courses</h1>
+        <div className="container py-8 max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Enhanced Header Section */}
+          <div className="mb-8">
+            <div className="flex flex-col">
+              <div className="flex flex-col">
+                <Link 
+                  to="/dashboard/catalog" 
+                  className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors mb-4"
+                >
+                  <ArrowLeft size={16} className="shrink-0" />
+                  Back to Catalog
+                </Link>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{decodedCategory}</h1>
+                    <p className="mt-2 text-gray-600">
+                      {filteredCourses.length === 0 
+                        ? "No courses available in this category" 
+                        : `${filteredCourses.length} ${filteredCourses.length === 1 ? 'course' : 'courses'} available`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="px-3 py-1 text-sm">
+                      {filteredCourses.length} {filteredCourses.length === 1 ? 'Course' : 'Courses'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Enhanced Courses Grid */}
           {filteredCourses.length === 0 ? (
-            <div className="text-center text-gray-500 py-12">No courses found in this category.</div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+              <div className="mx-auto max-w-md">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">No courses found</h3>
+                <p className="mt-2 text-gray-600">We couldn't find any courses matching this category.</p>
+                <div className="mt-6">
+                  <Link
+                    to="/dashboard/catalog"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Browse all categories
+                  </Link>
+                </div>
+              </div>
+            </div>
           ) : (
-            <div className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredCourses.map(course => (
-                <div key={course.id} className="flex flex-col md:flex-row gap-6 border rounded-lg p-4 bg-white shadow-sm">
-                  <img
-                    src={course.image}
-                    alt={course.title}
-                    className="w-full md:w-56 h-40 object-cover rounded-md border"
-                  />
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <h2 className="text-xl font-semibold mb-1">{course.title}</h2>
-                      <p className="text-gray-600 mb-2 text-sm">{course.description}</p>
-                      <div className="flex flex-wrap gap-3 text-xs text-gray-500 mb-2">
-                        <span><Clock size={12} className="inline mr-1" />{course.duration}</span>
-                        <span><BookOpen size={12} className="inline mr-1" />{course.lessons} lessons</span>
-                        <Badge variant="outline">{course.level}</Badge>
-                        <span>Instructor: {course.instructor}</span>
+                <div 
+                  key={course.id} 
+                  className="group flex flex-col border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden h-full"
+                >
+                  <div className="relative h-48 overflow-hidden">
+                    <img
+                      src={course.image}
+                      alt={course.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute bottom-3 left-3 flex gap-2">
+                      <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-gray-800 shadow-sm">
+                        {course.level}
+                      </Badge>
+                      <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-gray-800 shadow-sm">
+                        ${course.price.toFixed(2)}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="p-5 flex flex-col flex-1">
+                    <div className="flex-1">
+                      <h2 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{course.title}</h2>
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-3">{course.description}</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                        <span className="flex items-center gap-1.5">
+                          <Clock size={14} className="text-gray-400 shrink-0" />
+                          {course.duration}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <BookOpen size={14} className="text-gray-400 shrink-0" />
+                          {course.lessons} lessons
+                        </span>
+                      </div>
+                      <div className="mt-3 text-sm text-gray-700">
+                        <span className="font-medium">Instructor:</span> {course.instructor}
                       </div>
                     </div>
                   </div>

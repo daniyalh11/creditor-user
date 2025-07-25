@@ -298,20 +298,20 @@ export function Courses() {
                     </CardContent>
                     
                     <CardFooter className="pt-2 flex flex-col gap-2">
-                      <Link to={`/courses/${course.id}`} className="w-full">
+                      <Link to={`/dashboard/courses/${course.id}`} className="w-full">
                         <Button variant="default" className="w-full">
                           {course.progress > 0 ? "Continue Learning" : "Start Course"}
                         </Button>
                       </Link>
                       
-                      {course.progress === 100 && (
+                      {/* {course.progress === 100 && (
                         <Link to={`/certificate/${course.id}`} className="w-full">
                           <Button variant="outline" className="w-full">
                             <Award size={16} className="mr-2" />
                             View Certificate
                           </Button>
                         </Link>
-                      )}
+                      )} */}
                     </CardFooter>
                   </Card>
                 </div>
