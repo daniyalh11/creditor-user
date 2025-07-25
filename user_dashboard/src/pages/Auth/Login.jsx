@@ -17,14 +17,14 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://creditor-backend.onrender.com/";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://sharebackend-9g3y.onrender.com/";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE}/api/auth/login`, {
+      const response = await axios.post(`${API_BASE}api/auth/login`, {
         email,
         password,
       });
