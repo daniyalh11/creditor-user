@@ -304,14 +304,14 @@ export function Courses() {
                         </Button>
                       </Link>
                       
-                      {course.progress === 100 && (
+                      {/* {course.progress === 100 && (
                         <Link to={`/certificate/${course.id}`} className="w-full">
                           <Button variant="outline" className="w-full">
                             <Award size={16} className="mr-2" />
                             View Certificate
                           </Button>
                         </Link>
-                      )}
+                      )} */}
                     </CardFooter>
                   </Card>
                 </div>
