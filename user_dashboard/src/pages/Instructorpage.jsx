@@ -6,6 +6,7 @@ import AddCatelog from "./AddCatelog";
 import { allowedInstructorUserIds } from "@/data/allowedInstructorUsers";
 import { currentUserId } from "@/data/currentUser";
 import Sidebar from "@/components/layout/Sidebar";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
 
 const Instructorpage = () => {
   const isAllowed = allowedInstructorUserIds.includes(currentUserId);
@@ -32,27 +33,34 @@ const Instructorpage = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-8 space-y-10">
-        <section>
-          <h1 className="text-2xl font-bold mb-4">Instructor Dashboard</h1>
-          <CreateCourse />
-        </section>
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Catalogs</h2>
-          <AddCatelog />
-        </section>
-        <section>
-          <h2 className="text-xl font-semibold mb-4">SCORM Content Management</h2>
-          <ScormPage />
-        </section>
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Calendar & Events</h2>
-          <AddEvent />
-        </section>
-      </main>
-    </div>
+    <>
+      <div className="flex min-h-screen bg-gray-50">
+        <div className="fixed top-0 left-0 h-screen  w-[17rem]">
+          <Sidebar />
+        </div>
+        <div className="flex-1 ml-[17rem]">
+          <DashboardHeader />
+          <main className="max-w-4xl mx-auto px-4 py-8 space-y-10 pt-16">
+            <section>
+              <h1 className="text-2xl font-bold mb-4">Instructor Dashboard</h1>
+              <CreateCourse />
+            </section>
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Catalogs</h2>
+              <AddCatelog />
+            </section>
+            <section>
+              <h2 className="text-xl font-semibold mb-4">SCORM Content Management</h2>
+              <ScormPage />
+            </section>
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Calendar & Events</h2>
+              <AddEvent />
+            </section>
+          </main>
+        </div>
+      </div>
+    </>
   );
 };
 
