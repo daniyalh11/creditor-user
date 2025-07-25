@@ -5,9 +5,11 @@ import AddEvent from "./AddEvent";
 import AddCatelog from "./AddCatelog";
 import { allowedInstructorUserIds } from "@/data/allowedInstructorUsers";
 import { currentUserId } from "@/data/currentUser";
+import { useNavigate } from "react-router-dom";
 
 const Instructorpage = () => {
   const isAllowed = allowedInstructorUserIds.includes(currentUserId);
+  const navigate = useNavigate();
 
   if (!isAllowed) {
     return (
@@ -32,6 +34,14 @@ const Instructorpage = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
+      <div className="flex justify-end mb-4">
+        <button
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium shadow"
+          onClick={() => navigate('/instructor/add-users')}
+        >
+          Add Users
+        </button>
+      </div>
       <section>
         <h1 className="text-2xl font-bold mb-4">Instructor Dashboard</h1>
         <CreateCourse />
