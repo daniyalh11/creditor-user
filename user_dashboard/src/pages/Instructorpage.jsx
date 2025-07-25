@@ -7,6 +7,7 @@ import { allowedInstructorUserIds } from "@/data/allowedInstructorUsers";
 import { currentUserId } from "@/data/currentUser";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import { useNavigate } from "react-router-dom";
 
 const Instructorpage = () => {
   const isAllowed = allowedInstructorUserIds.includes(currentUserId);
