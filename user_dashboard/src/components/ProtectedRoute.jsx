@@ -4,7 +4,7 @@ import Cookies from "js-cookie";
 
 const ProtectedRoute = ({ children }) => {
   // Only allow access if token exists in localStorage or cookies
-  const token = Cookies.get("session_token");
+  const token = Cookies.get("token");
   if (!token) {
     return <Navigate to="/login" replace />;
   }

@@ -1,7 +1,11 @@
 import React from "react";
+import Navbar from '../components/navbar';
+import Footer from '../components/Footer';
 
 const PrivacyPolicy = () => {
   return (
+    <>
+      <Navbar />
     <div
       className="privacy-container"
       style={{
@@ -90,6 +94,8 @@ const PrivacyPolicy = () => {
         Email: <a href="mailto:counselor@creditoracademy.com" style={{ color: "#0ea5e9", textDecoration: "underline" }}>counselor@creditoracademy.com</a>
       </Section>
     </div>
+    <Footer />
+    </>
   );
 };
 

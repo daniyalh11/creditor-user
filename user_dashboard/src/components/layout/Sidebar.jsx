@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -110,6 +110,14 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    // Try to get user role from localStorage (set after login/profile fetch)
+    // You may want to sync this with your auth/user context for production
+    const storedRole = localStorage.getItem("userRole");
+    setUserRole(storedRole || "");
+  }, []);
 
   const isActive = (path) => {
     if (path === "/dashboard") {
@@ -126,7 +134,11 @@ export function Sidebar() {
   };
 
   const handleLogoClick = () => {
-    navigate('/');
+    if (window.location.pathname === '/dashboard') {
+      window.location.reload();
+    } else {
+      navigate('/dashboard');
+    }
     if (collapsed) {
       setCollapsed(false);
     }
@@ -342,7 +354,8 @@ export function Sidebar() {
             />
           </motion.div> */}
 
-          {isScormAllowed && (
+          {/* Instructor Portal - only for admin or instructor */}
+          {(userRole === "admin" || userRole === "instructor") && (
             <motion.div variants={itemVariants}>
               <SidebarItem
                 icon={GraduationCap}

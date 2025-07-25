@@ -5,11 +5,13 @@ import USP from '../components/Senior_CourseUSP'
 import GameBanner from '../components/GameBanner';
 import Snapshot from '../components/Senior_Snapshot';
 import Testimonial from '../components/Senior_Testimonial';
+import Footer from '../components/Footer.jsx';
+import Navbar from '../components/navbar.jsx';
 
 const Senior = () => {
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", background: 'linear-gradient(to bottom, #eef5ff, #ffffff)' }}>
-      
+      <Navbar />
       {/* Banner Section */}
       <div style={{ position: 'relative', width: '100%', paddingTop: '35%' }}>
         <img
@@ -217,6 +219,7 @@ const Senior = () => {
       <GameBanner/>
       <Snapshot/>
       <Testimonial/>
+      <Footer />
     </div>
   );
 };

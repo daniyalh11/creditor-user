@@ -1,5 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import Navbar from '../components/navbar';
+import Footer from '../components/Footer';
 
 const sectionStyle = {
   padding: '60px 5%',
@@ -214,6 +216,8 @@ const MembershipTnC = () => {
   ];
 
   return (
+    <>
+      <Navbar />
     <section style={sectionStyle}>
       <div style={containerStyle}>
         <motion.h1 style={heading} initial="hidden" whileInView="visible" variants={fadeIn} viewport={{ once: false }} transition={{ duration: 0.5 }}>
@@ -229,6 +233,8 @@ const MembershipTnC = () => {
         {sections.map((s, i) => animatedSection(s.title, s.content, i))}
       </div>
     </section>
+    <Footer />
+    </>
   );
 };
 

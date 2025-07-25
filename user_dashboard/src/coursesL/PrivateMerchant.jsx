@@ -8,10 +8,13 @@ import WhatYouWillLearn from '../components/WhatYouWillRun';
 import CourseUnlocks from '../components/CourseUnlocks';
 import GameBanner from '../components/GameBanner';
 import PaymentCTA from '../components/PaymentCTApm';
+import Footer from '../components/Footer.jsx';
+import Navbar from '../components/navbar.jsx';
 
 const PrivateMerchant = () => {
   return (
     <div>
+      <Navbar />
       <PrivateMerchantBanner />
       <PrivateMerchantSection />
       <ComparisonSectionPM />
@@ -21,6 +24,7 @@ const PrivateMerchant = () => {
       <WhatYouWillLearn />
       <CourseUnlocks />
       <PaymentCTA/>
+      <Footer />
     </div>
   );
 };

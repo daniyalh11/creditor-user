@@ -1,5 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import Navbar from '../components/navbar';
+import Footer from '../components/Footer';
 
 const sectionStyle = {
   padding: '60px 5%',
@@ -53,6 +55,8 @@ const containerStyle = {
 
 const ReturnRefund = () => {
   return (
+    <>
+      <Navbar />
     <div style={sectionStyle}>
       <motion.h1 
         style={headingStyle}
@@ -126,6 +130,8 @@ const ReturnRefund = () => {
         </p>
       </motion.div>
     </div>
+    <Footer />
+    </>
   );
 };
 

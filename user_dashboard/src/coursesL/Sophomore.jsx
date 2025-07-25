@@ -7,9 +7,12 @@ import GameBanner from '../components/GameBanner.jsx';
 import VideoSophomore from '../components/VideoSophomore.jsx';
 import OutcomeSophomore from '../components/OutcomeSophomore.jsx';
 import TestimonialSophomore from '../components/TestimonialSophomore.jsx';
+import Footer from '../components/Footer.jsx';
+import Navbar from '../components/navbar.jsx';
 const Sophomore = () => {
   return (
     <div>
+      <Navbar />
       <BannerSophomore />
       <HeroSophomore />
       <LearnSophomore />
@@ -18,7 +21,7 @@ const Sophomore = () => {
     <VideoSophomore />
         <OutcomeSophomore />
         <TestimonialSophomore />
-        
+        <Footer />
     </div>
   );
 };

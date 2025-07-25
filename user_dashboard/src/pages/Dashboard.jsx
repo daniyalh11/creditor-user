@@ -177,7 +177,7 @@ export function Dashboard() {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold text-gray-800">My Courses</h2>
                   <Button variant="outline" asChild className="border-blue-200 text-blue-600 hover:bg-blue-50">
-                    <Link to="/courses" className="flex items-center gap-2">
+                    <Link to="/dashboard/courses" className="flex items-center gap-2">
                       View all courses
                       <ChevronRight size={16} />
                     </Link>
@@ -371,7 +371,7 @@ export function Dashboard() {
                 <h3 className="font-bold text-lg mb-2 text-gray-800">Explore More Courses</h3>
                 <p className="text-gray-600 text-sm mb-6">Discover courses tailored to your legal education goals and career aspirations.</p>
                 <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg">
-                  <Link to="/catalog">
+                  <Link to="/dashboard/catalog">
                     Browse Catalog
                   </Link>
                 </Button>
