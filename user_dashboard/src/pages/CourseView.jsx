@@ -206,7 +206,7 @@ export function CourseView() {
                             </Link>
                           </Button>
 
-                          <Button 
+                          {/* <Button 
                             asChild 
                             variant="outline" 
                             className="w-full"
@@ -215,7 +215,7 @@ export function CourseView() {
                             <Link to={`/dashboard/courses/${courseId}/module/${module.id}/assessments`}>
                               📋 View Assessments
                             </Link>
-                          </Button>
+                          </Button> */}
                         </CardFooter>
                       </Card>
                     </div>

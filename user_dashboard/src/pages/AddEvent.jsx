@@ -15,6 +15,7 @@ const AddEvent = () => {
   const [showModal, setShowModal] = useState(false);
   const [events, setEvents] = useState([]);
   const [form, setForm] = useState({
+    id: "", // <-- add this
     title: "",
     description: "",
     startTime: "",
@@ -27,6 +28,7 @@ const AddEvent = () => {
     courseId: ""
   });
   const [editIndex, setEditIndex] = useState(null);
+  const [showPastDateModal, setShowPastDateModal] = useState(false);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -59,8 +61,19 @@ const AddEvent = () => {
   for (let d = 1; d <= daysInMonth; d++) calendarDays.push(new Date(calendarYear, calendarMonth, d));
 
   const handleDateClick = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const clicked = new Date(date);
+    clicked.setHours(0, 0, 0, 0);
+
+    if (clicked < today) {
+      setShowPastDateModal(true);
+      return;
+    }
+
     setSelectedDate(date);
     setForm({
+      id: "", // <-- clear the id for new event
       title: "",
       description: "",
       startTime: date ? date.toISOString().slice(0, 16) : "",
@@ -87,6 +100,7 @@ const AddEvent = () => {
     const event = events[index];
     setSelectedDate(event.date);
     setForm({
+      id: event.id, // <-- add this
       title: event.title,
       description: event.description,
       startTime: event.startTime,
@@ -102,8 +116,40 @@ const AddEvent = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (index) => {
+  const handleDelete = async (index) => {
+    const event = events[index];
+    if (!event.id) {
+      // If no id, just remove from local state
     setEvents(events.filter((_, i) => i !== index));
+      return;
+    }
+    try {
+      await fetch(`http://localhost:9000/calendar/events/${event.id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+        },
+        credentials: "include"
+      });
+      // Refetch events after deletion
+      const res = await fetch("http://localhost:9000/calendar/events", {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+        },
+        credentials: "include"
+      });
+      const data = await res.json();
+      // Normalize course_id to courseId for all events
+      const normalizedEvents = data.data.map(ev => ({
+        ...ev,
+        courseId: ev.courseId || ev.course_id
+      }));
+      setEvents(normalizedEvents);
+    } catch (err) {
+      console.error("Failed to delete event", err);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -146,12 +192,38 @@ const AddEvent = () => {
     console.log("Payload being sent:", payload);
 
     if (editIndex !== null) {
-      setEvents(events.map((ev, i) => (i === editIndex ? newEvent : ev)));
+      // Update event in backend
+      try {
+        await fetch(`http://localhost:9000/calendar/events/${form.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+          },
+          body: JSON.stringify(payload),
+          credentials: "include"
+        });
+        // Refetch events after updating
+        const res = await fetch("http://localhost:9000/calendar/events", {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+          },
+          credentials: "include"
+        });
+        const data = await res.json();
+        console.log("Fetched events after update:", data); // <-- Add this
+        if (data && data.data) {
+          setEvents(data.data);
+        }
+      } catch (err) {
+        console.error("Failed to update event", err);
+      }
       setEditIndex(null);
     } else {
       // Send to backend only on add
       try {
-        await fetch("http://localhost:9000/calendar/events", {
+        const postRes = await fetch("http://localhost:9000/calendar/events", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -160,6 +232,8 @@ const AddEvent = () => {
           body: JSON.stringify(payload),
           credentials: "include"
         });
+        const postData = await postRes.json();
+        console.log("POST response:", postData); // <-- Add this
         // Refetch events after adding
         const res = await fetch("http://localhost:9000/calendar/events", {
           headers: {
@@ -169,8 +243,14 @@ const AddEvent = () => {
           credentials: "include"
         });
         const data = await res.json();
+        console.log("Fetched events after add:", data); // <-- Add this
         if (data && data.data) {
-          setEvents(data.data);
+          // Normalize course_id to courseId for all events
+          const normalizedEvents = data.data.map(ev => ({
+            ...ev,
+            courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
+          }));
+          setEvents(normalizedEvents);
         }
       } catch (err) {
         // Optionally handle error
@@ -300,7 +380,7 @@ const AddEvent = () => {
         ) : (
           <ul className="space-y-3">
             {events.map((event, i) => (
-              <li key={i} className="border rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors">
+              <li key={event.id || i} className="border rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors">
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="font-semibold text-gray-800">{event.title}</h4>
@@ -504,6 +584,40 @@ const AddEvent = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Past Date Warning Modal */}
+      {showPastDateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative">
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+              onClick={() => setShowPastDateModal(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <div className="text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-900 mt-3">Cannot Schedule Event</h3>
+              <div className="mt-2 text-sm text-gray-500">
+                <p>You can't add an event on a past date.</p>
+                <p>Please select today's date or a future date.</p>
+              </div>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  onClick={() => setShowPastDateModal(false)}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
