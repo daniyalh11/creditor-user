@@ -236,7 +236,7 @@ function App() {
           <Route path="scorm" element={<ProtectedScormRoute />} />
           <Route path="instructor" element={<Instructorpage />} />
           <Route path="*" element={<NotFound />} />
-          <Route path="/scorm/:courseId" element={<Scrompack />} />
+          <Route path="scorm/:courseId" element={<Scrompack />} />
 
         </Route>
 
