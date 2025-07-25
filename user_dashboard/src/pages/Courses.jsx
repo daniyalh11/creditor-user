@@ -6,79 +6,18 @@ import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
 import { BookOpen, Clock, Filter, Search, Award } from "lucide-react";
 import { Input } from "../components/ui/input";
-
-const courses = [
-  {
-    id: "react-2023",
-    title: "Complete React Developer in 2023",
-    description: "Learn React from scratch with hooks, Redux, and more",
-    category: "Web Development",
-    progress: 100,
-    instructor: "John Smith",
-    duration: "25 hours",
-    image: "https://images.unsplash.com/photo-1633356122102-3fe601e05bd2?q=80&w=1000",
-    completionDate: "15 Aug 2023"
-  },
-  {
-    id: "node-backend",
-    title: "Node.js Backend Development",
-    description: "Build scalable backend applications with Node.js and Express",
-    category: "Backend",
-    progress: 28,
-    instructor: "Sarah Johnson",
-    duration: "18 hours",
-    image: "https://images.unsplash.com/photo-1627398242454-45a1465c2479?q=80&w=1000"
-  },
-  {
-    id: "python-data",
-    title: "Python for Data Science",
-    description: "Master data analysis and visualization with Python",
-    category: "Data Science",
-    progress: 100,
-    instructor: "Michael Chen",
-    duration: "22 hours",
-    image: "https://images.unsplash.com/photo-1526379879527-8559ecfcaec0?q=80&w=1000",
-    completionDate: "22 Jul 2023"
-  },
-  {
-    id: "ui-design",
-    title: "UI/UX Design Fundamentals",
-    description: "Learn the principles of effective user interface design",
-    category: "Design",
-    progress: 0,
-    instructor: "Emma Wilson",
-    duration: "15 hours",
-    image: "https://images.unsplash.com/photo-1545235617-9465d2a55698?q=80&w=1000"
-  },
-  {
-    id: "mobile-flutter",
-    title: "Flutter Mobile App Development",
-    description: "Build cross-platform mobile apps with Flutter and Dart",
-    category: "Mobile Development",
-    progress: 0,
-    instructor: "David Kim",
-    duration: "20 hours",
-    image: "https://images.unsplash.com/photo-1575089976121-8ed7b2a54265?q=80&w=1000"
-  },
-  {
-    id: "aws-cloud",
-    title: "AWS Cloud Practitioner",
-    description: "Get started with Amazon Web Services cloud computing",
-    category: "Cloud Computing",
-    progress: 0,
-    instructor: "Lisa Brown",
-    duration: "16 hours",
-    image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1000"
-  }
-];
+import { fetchUserCourses } from '../services/courseService';
 
 export function Courses() {
+  const [courses, setCourses] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredCourses, setFilteredCourses] = useState(courses);
+  const [filteredCourses, setFilteredCourses] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [progressFilter, setProgressFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const location = useLocation();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   // Helper to format seconds as HH:MM:SS
   function formatTime(secs) {
@@ -119,6 +58,22 @@ export function Courses() {
       }, 100 * index);
     });
   }, [filteredCourses]);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchUserCourses();
+        setCourses(data);
+        setFilteredCourses(data);
+      } catch (err) {
+        setError("Failed to fetch courses");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCourses();
+  }, []);
 
   useEffect(() => {
     let results = courses;
@@ -246,7 +201,15 @@ export function Courses() {
           )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCourses.length > 0 ? (
+            {loading ? (
+              <div className="col-span-full text-center py-12">
+                <p>Loading courses...</p>
+              </div>
+            ) : error ? (
+              <div className="col-span-full text-center py-12 text-red-500">
+                {error}
+              </div>
+            ) : filteredCourses.length > 0 ? (
               filteredCourses.map((course) => (
                 <div key={course.id} className="course-card opacity-0 transition-all duration-500 ease-in-out">
                   <Card className="overflow-hidden hover:shadow-md transition-shadow">

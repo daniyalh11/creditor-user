@@ -15,15 +15,29 @@ import { getUserAvatarUrl } from "@/lib/avatar-utils";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
+import { fetchUserProfile } from "@/services/userService";
 
 export function ProfileDropdown() {
   const [userAvatar, setUserAvatar] = useState(getUserAvatarUrl());
+  const [user, setUser] = useState({ fullName: '', email: '' });
   const navigate = useNavigate();
   
   useEffect(() => {
     // Load avatar from localStorage if available
     setUserAvatar(getUserAvatarUrl());
-    
+    // Fetch user profile
+    async function loadProfile() {
+      try {
+        const data = await fetchUserProfile();
+        setUser({
+          fullName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+          email: data.email || '',
+        });
+      } catch (err) {
+        setUser({ fullName: '', email: '' });
+      }
+    }
+    loadProfile();
     // Set up event listener for avatar changes
     const handleAvatarChange = () => {
       setUserAvatar(getUserAvatarUrl());
@@ -65,8 +79,8 @@ export function ProfileDropdown() {
             <div className="absolute inset-0 bg-primary/0 rounded-full transition-colors duration-300 group-hover/avatar:bg-primary/10 animate-pulse-subtle"></div>
           </div>
           <div className="hidden md:block text-left group/text">
-            <p className="text-sm font-semibold group-hover/text:text-primary transition-colors duration-300">Alex Johnson</p>
-            <p className="text-xs text-muted-foreground group-hover/text:text-primary/70 transition-colors duration-300">alex@example.com</p>
+            <p className="text-sm font-semibold group-hover/text:text-primary transition-colors duration-300">{user.fullName ? user.fullName : 'Unknown'}</p>
+            <p className="text-xs text-muted-foreground group-hover/text:text-primary/70 transition-colors duration-300">{user.email ? user.email : 'Unknown'}</p>
           </div>
         </motion.button>
       </DropdownMenuTrigger>

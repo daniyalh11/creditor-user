@@ -36,9 +36,10 @@ function Profile() {
     async function loadProfile() {
       try {
         const data = await fetchUserProfile();
+        console.log('User profile data:', data); // Debug log
         form.reset({
           fullName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
-          email: data.email || '',
+          email: data.email || 'Not Provided',
           bio: data.bio || '',
           title: data.title || '',
           phone: data.phone || '',
@@ -61,7 +62,7 @@ function Profile() {
       await updateUserProfile({
         first_name,
         last_name,
-        email: values.email,
+        // email is not sent for update
         bio: values.bio,
         title: values.title,
         phone: values.phone,
@@ -69,6 +70,7 @@ function Profile() {
         timezone: values.timezone,
       });
       toast.success("Profile updated successfully");
+      window.location.reload(); // Reload page to reflect changes immediately
     } catch (err) {
       toast.error("Failed to update profile");
     }
@@ -158,7 +160,6 @@ function Profile() {
                         </FormItem>
                       )}
                     />
-                    
                     <FormField
                       control={form.control}
                       name="email"
