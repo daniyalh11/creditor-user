@@ -17,14 +17,14 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://creditor-backend-gvtd.onrender.com";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://sharebackend-9g3y.onrender.com/";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE}/api/auth/login`, {
+      const response = await axios.post(`${API_BASE}api/auth/login`, {
         email,
         password,
       });
@@ -58,15 +58,15 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'rgb(240, 242, 255)' }}>
       <div className="w-full max-w-5xl grid md:grid-cols-2 gap-8 items-center">
         <div className="hidden md:flex flex-col items-center justify-center p-8">
           <div className="mb-6 text-center">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <Gavel className="h-12 w-12 text-primary" />
-              <h1 className="text-4xl font-bold text-primary">Creditor Academy</h1>
+              <Gavel className="h-12 w-12" style={{ color: 'rgb(37, 41, 102)' }} />
+              <h1 className="text-4xl font-bold" style={{ color: 'rgb(37, 41, 102)' }}>Creditor Academy</h1>
             </div>
-            <p className="text-xl text-muted-foreground">Your premier platform for legal education</p>
+            <p className="text-xl" style={{ color: 'rgba(37, 41, 102, 0.8)' }}>Your premier platform for legal education</p>
           </div>
           <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl">
             <img 
@@ -84,16 +84,16 @@ export function Login() {
         <Card className="w-full max-w-md shadow-xl border-0">
           <CardHeader className="space-y-1">
             <div className="flex items-center gap-2 md:hidden mb-2">
-              <Gavel className="h-8 w-8 text-primary" />
-              <h2 className="text-2xl font-bold text-primary">Creditor Academy</h2>
+              <Gavel className="h-8 w-8" style={{ color: 'rgb(37, 41, 102)' }} />
+              <h2 className="text-2xl font-bold" style={{ color: 'rgb(37, 41, 102)' }}>Creditor Academy</h2>
             </div>
-            <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-            <CardDescription>Enter your credentials to access your account</CardDescription>
+            <CardTitle className="text-2xl font-bold" style={{ color: 'rgb(37, 41, 102)' }}>Welcome back</CardTitle>
+            <CardDescription style={{ color: 'rgba(37, 41, 102, 0.8)' }}>Enter your credentials to access your account</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" style={{ color: 'rgb(37, 41, 102)' }}>Email</Label>
                 <Input 
                   id="email" 
                   type="email" 
@@ -102,10 +102,11 @@ export function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
                   required
+                  style={{ borderColor: 'rgba(37, 41, 102, 0.3)' }}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" style={{ color: 'rgb(37, 41, 102)' }}>Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -115,24 +116,35 @@ export function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}
                     required
+                    style={{ borderColor: 'rgba(37, 41, 102, 0.3)' }}
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-700 focus:outline-none"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 focus:outline-none"
                     tabIndex={-1}
                     onClick={() => setShowPassword((v) => !v)}
+                    style={{ color: 'rgba(37, 41, 102, 0.6)' }}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading}
+                style={{ 
+                  backgroundColor: 'rgb(37, 41, 102)',
+                  color: 'white',
+                  hoverBackgroundColor: 'rgb(27, 31, 82)'
+                }}
+              >
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
           </CardContent>
           <CardFooter>
-            <p className="text-sm text-center w-full text-muted-foreground">
+            <p className="text-sm text-center w-full" style={{ color: 'rgba(37, 41, 102, 0.7)' }}>
               {/* Don't have an account?{" "}
               <Button variant="link" className="p-0 h-auto" onClick={() => navigate("/signup")}>
                 Sign up
