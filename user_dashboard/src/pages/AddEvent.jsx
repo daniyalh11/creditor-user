@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { currentUserId } from "@/data/currentUser";
+import { getCalendarApiBase } from "@/services/calendarService";
 
 const DEFAULT_TIMEZONE = "EST";
 const dummyCourses = [
@@ -33,7 +34,7 @@ const AddEvent = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const res = await fetch("http://localhost:9000/calendar/events", {
+        const res = await fetch(`${getCalendarApiBase()}/calendar/events`, {
           headers: {
             "Content-Type": "application/json",
             "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
@@ -124,7 +125,7 @@ const AddEvent = () => {
       return;
     }
     try {
-      await fetch(`http://localhost:9000/calendar/events/${event.id}`, {
+      await fetch(`${getCalendarApiBase()}/calendar/events/${event.id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -133,7 +134,7 @@ const AddEvent = () => {
         credentials: "include"
       });
       // Refetch events after deletion
-      const res = await fetch("http://localhost:9000/calendar/events", {
+      const res = await fetch(`${getCalendarApiBase()}/calendar/events`, {
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
@@ -194,7 +195,7 @@ const AddEvent = () => {
     if (editIndex !== null) {
       // Update event in backend
       try {
-        await fetch(`http://localhost:9000/calendar/events/${form.id}`, {
+        await fetch(`${getCalendarApiBase()}/calendar/events/${form.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -204,7 +205,7 @@ const AddEvent = () => {
           credentials: "include"
         });
         // Refetch events after updating
-        const res = await fetch("http://localhost:9000/calendar/events", {
+        const res = await fetch(`${getCalendarApiBase()}/calendar/events`, {
           headers: {
             "Content-Type": "application/json",
             "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
@@ -223,7 +224,7 @@ const AddEvent = () => {
     } else {
       // Send to backend only on add
       try {
-        const postRes = await fetch("http://localhost:9000/calendar/events", {
+        const postRes = await fetch(`${getCalendarApiBase()}/calendar/events`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -235,7 +236,7 @@ const AddEvent = () => {
         const postData = await postRes.json();
         console.log("POST response:", postData); // <-- Add this
         // Refetch events after adding
-        const res = await fetch("http://localhost:9000/calendar/events", {
+        const res = await fetch(`${getCalendarApiBase()}/calendar/events`, {
           headers: {
             "Content-Type": "application/json",
             "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
@@ -319,9 +320,12 @@ const AddEvent = () => {
             onChange={handleYearChange} 
             className="px-3 py-1 border rounded-lg bg-white text-sm"
           >
-            {Array.from({length: 10}, (_, i) => calendarYear - 5 + i).map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
+            {(() => {
+              const thisYear = new Date().getFullYear();
+              return Array.from({ length: 10 }, (_, i) => thisYear + i).map(y => (
+                <option key={y} value={y}>{y}</option>
+              ));
+            })()}
           </select>
         </div>
         

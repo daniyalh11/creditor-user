@@ -47,14 +47,12 @@ const Instructorpage = () => {
       <div className="fixed top-0 left-0 h-screen w-[17rem] bg-white border-r border-gray-200 z-20 shadow-sm">
         <Sidebar />
       </div>
-      
       {/* Main content area */}
       <div className="flex-1 ml-[17rem]">
         {/* Sticky header with subtle shadow */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
           <DashboardHeader />
         </div>
-        
         {/* Main content with improved spacing and visual hierarchy */}
         <main className="max-w-6xl mx-auto px-6 py-8 space-y-12 pt-8">
           {/* Dashboard header section */}
@@ -62,7 +60,6 @@ const Instructorpage = () => {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Instructor Dashboard</h1>
             <p className="text-gray-600">Manage your courses, content, and events</p>
           </section>
-          
           {/* Course creation section */}
           <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
@@ -77,7 +74,6 @@ const Instructorpage = () => {
               <CreateCourse />
             </div>
           </section>
-          
           {/* Catalog management section */}
           <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
@@ -92,30 +88,28 @@ const Instructorpage = () => {
               <AddCatelog />
             </div>
           </section>
-          
           {/* SCORM content section */}
           <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                 <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
-                SCORM Content Management
+                SCORM Content
               </h2>
             </div>
             <div className="p-6">
               <ScormPage />
             </div>
           </section>
-          
-          {/* Calendar section */}
+          {/* Event management section */}
           <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
-                Calendar & Events
+                Event Management
               </h2>
             </div>
             <div className="p-6">

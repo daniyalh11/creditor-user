@@ -1,3 +1,15 @@
+// Centralized calendar API URL logic
+
+const LOCAL_API = import.meta.env.VITE_BACKEND_API_LOCAL || 'http://localhost:9000';
+const RENDER_API = import.meta.env.VITE_BACKEND_API_RENDER || 'https://sharebackend-9g3y.onrender.com';
+
+// Choose which to use (default to render if deployed, local if dev)
+export const getCalendarApiBase = () => {
+  return RENDER_API;
+};
+
+// Example usage: fetch(`${getCalendarApiBase()}/calendar/events`)
+
 export async function getAllEvents(params = {}) {
   const query = new URLSearchParams(params).toString();
   const headers = {
