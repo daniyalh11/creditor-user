@@ -88,6 +88,7 @@ import TermsAndConditions from "@/pages/TermCondition";
 import ReturnRefund from "@/pages/ReturnRefund";
 import MembershipTnC from "@/pages/MembershipTnC";  
 import ContactSection from "@/components/ContactSection"; 
+import AddUsersPage from "./pages/AddUsersPage";
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -230,21 +231,13 @@ function App() {
           <Route path="faqs" element={<FAQs />} />
           <Route path="privacy" element={<Privacy />} />
           <Route path="guides" element={<Guides />} />
-          <Route path="privacy" element={<PrivacyPolicy />} />
-          <Route path="termcondition" element={<TermsAndConditions />} />
-          
-          {/* Support routes */}
-          <Route path="support">
-            <Route index element={<Support />} />
-            <Route path="ticket" element={<SupportTicket />} />
-            <Route path="tickets" element={<MyTickets />} />
-          </Route>
+          <Route path="support/ticket" element={<SupportTicket />} />
+          <Route path="support/tickets" element={<MyTickets />} />
+          <Route path="scorm" element={<ProtectedScormRoute />} />
+          <Route path="instructor" element={<Instructorpage />} />
+          <Route path="*" element={<NotFound />} />
+          <Route path="scorm/:courseId" element={<Scrompack />} />
 
-          {/* SCORM routes - inside dashboard to keep sidebar */}
-          <Route path="scorm">
-            <Route index element={<ProtectedScormRoute />} />
-            <Route path=":courseId/:moduleId" element={<Scrompack />} />
-          </Route>
         </Route>
 
         {/* Standalone routes */}

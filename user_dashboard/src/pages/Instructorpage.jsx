@@ -10,6 +10,7 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 
 const Instructorpage = () => {
   const isAllowed = allowedInstructorUserIds.includes(currentUserId);
+  const navigate = useNavigate();
 
   if (!isAllowed) {
     return (
