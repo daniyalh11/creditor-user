@@ -30,10 +30,6 @@ export function Login() {
       });
 
       if (response.data.token) {
-<<<<<<< HEAD
-        // localStorage.setItem("session_token", response.data.token);
-        Cookies.set("token", response.data.token, { expires: 7 }); // Store token in cookies for 7 days
-=======
         // localStorage.setItem("token", response.data.token);
         Cookies.set("token", response.data.token, { expires: 7 }); // Store token in cookies for 7 days
         // Fetch user profile and set userRole in localStorage
@@ -47,7 +43,6 @@ export function Login() {
         } catch (profileErr) {
           localStorage.setItem('userRole', 'user');
         }
->>>>>>> f73e245f3a153824321ca09db0eed2d934afe8a9
         toast.success("Login successful!");
         navigate("/dashboard");
       } else {
