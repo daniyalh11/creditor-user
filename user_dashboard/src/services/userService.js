@@ -31,4 +31,4 @@ export async function updateUserProfile(profileData) {
     throw new Error('Failed to update user profile');
   }
   return await response.json();
-} 
+}
