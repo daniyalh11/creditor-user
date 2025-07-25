@@ -69,6 +69,7 @@ import ScormPage from "@/pages/ScormPage";
 import { allowedScormUserIds } from "@/data/allowedScormUsers";
 import { currentUserId } from "@/data/currentUser";
 import Instructorpage from "@/pages/Instructorpage";
+import AddUsersPage from "./pages/AddUsersPage";
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -141,6 +142,7 @@ function App() {
           <Route path="instructor" element={<Instructorpage />} />
           <Route path="*" element={<NotFound />} />
           <Route path="/scorm/:courseId" element={<Scrompack />} />
+          <Route path="/add-users" element={<AddUsersPage />} />
 
         </Route>
         <Route path="/speechify-reader" element={<SpeechifyReaderView />} />
