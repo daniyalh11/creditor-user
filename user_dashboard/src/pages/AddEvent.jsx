@@ -139,18 +139,7 @@ const AddEvent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newEvent = {
-      ...form,
-      startTime: form.startTime,
-      endTime: form.endTime,
-      timeZone: form.timeZone,
-      location: form.location || (form.zoomLink ? form.zoomLink : ""),
-      isRecurring: form.recurrence !== "none",
-      recurrence: form.recurrence !== "none" ? form.recurrence : undefined,
-      date: selectedDate,
-      courseId: form.courseId
-    };
-
+    
     // Prepare payload for backend
     const selectedCourse = dummyCourses.find(c => c.id === form.courseId);
     const toIsoUtc = (dateString) => {
@@ -222,6 +211,7 @@ const AddEvent = () => {
         console.error("Failed to add event to backend", err);
       }
     }
+    
     setShowModal(false);
   };
 
