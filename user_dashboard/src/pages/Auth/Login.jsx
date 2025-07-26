@@ -17,7 +17,7 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const API_BASE = import.meta.env.VITE_API_URL || "https://sharebackend-9g3y.onrender.com/";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:9000/";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
