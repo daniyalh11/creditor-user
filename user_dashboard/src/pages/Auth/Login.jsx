@@ -31,11 +31,14 @@ export function Login() {
         withCredentials: true
       });
 
+      console.log('Login response from backend:', response.data);
+
       if (response.data.token) {
         Cookies.set("token", response.data.token, { expires: 7 }); // Store token in cookies for 7 days
         // Fetch user profile and set userRole in localStorage
         try {
           const profile = await fetchUserProfile();
+          console.log('Fetched user profile after login:', profile);
           if (Array.isArray(profile.user_roles) && profile.user_roles.length > 0) {
             localStorage.setItem('userRole', profile.user_roles[0].role);
           } else {

@@ -64,17 +64,6 @@ const Instructorpage = () => {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Instructor Dashboard</h1>
             <p className="text-gray-600">Manage your courses, content, and events</p>
           </section>
-          {/* Add Users card below dashboard card */}
-          <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-between mb-4">
-            <div className="text-lg text-gray-800 font-medium">Want to add users to your platform?</div>
-            <button
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium shadow"
-              onClick={() => setShowAddUsersForm((v) => !v)}
-            >
-              Add Users
-            </button>
-          </section>
-          {showAddUsersForm && <AddUsersForm />}
           {/* Course creation section */}
           <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
