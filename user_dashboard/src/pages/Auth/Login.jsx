@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Gavel } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
-import { fetchUserProfile } from "@/services/userService";
+import { fetchUserProfile, setUserRole } from "@/services/userService";
 import { Eye, EyeOff } from "lucide-react";
 
 export function Login() {
@@ -24,37 +24,58 @@ export function Login() {
     setIsLoading(true);
 
     try {
+      console.log("Attempting login with:", { email, API_BASE });
       const response = await axios.post(`${API_BASE}/api/auth/login`, {
         email,
         password,
+      }, {
+        withCredentials: true
       });
 
       console.log('Login response from backend:', response.data);
 
-      if (response.data.token) {
-        // localStorage.setItem("token", response.data.token);
-        Cookies.set("token", response.data.token, { expires: 7 }); // Store token in cookies for 7 days
+      if (response.data.success && response.data.token) {
+        // Store token in cookies for 7 days
+        Cookies.set("token", response.data.token, { 
+          expires: 7,
+          secure: true,
+          sameSite: 'strict'
+        });
+        
+        // Set default role first
+        setUserRole('user');
+        
         // Fetch user profile and set userRole in localStorage
         try {
           const profile = await fetchUserProfile();
           console.log('Fetched user profile after login:', profile);
-          if (Array.isArray(profile.user_roles) && profile.user_roles.length > 0) {
-            localStorage.setItem('userRole', profile.user_roles[0].role);
-          } else {
-            localStorage.setItem('userRole', 'user');
+          if (profile && Array.isArray(profile.user_roles) && profile.user_roles.length > 0) {
+            setUserRole(profile.user_roles[0].role);
+            console.log('Set user role to:', profile.user_roles[0].role);
           }
         } catch (profileErr) {
-          localStorage.setItem('userRole', 'user');
+          console.warn("Could not fetch user profile:", profileErr);
+          // Keep default 'user' role
         }
+        
         toast.success("Login successful!");
         navigate("/dashboard");
       } else {
-        toast.error("Invalid email or password");
+        toast.error(response.data.message || "Login failed");
       }
     } catch (err) {
-      toast.error(
-        err.response?.data?.message || "Invalid email or password"
-      );
+      console.error("Login error:", err);
+      if (err.response) {
+        const errorMessage = err.response.data?.message || "Login failed";
+        toast.error(errorMessage);
+        console.error("Server error details:", err.response.data);
+      } else if (err.request) {
+        toast.error("Network error. Please check your connection.");
+        console.error("Network error details:", err.request);
+      } else {
+        toast.error("An unexpected error occurred.");
+        console.error("Other error details:", err.message);
+      }
     } finally {
       setIsLoading(false);
     }

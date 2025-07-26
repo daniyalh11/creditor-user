@@ -1,5 +1,30 @@
 // Service for user profile API calls
 
+// Utility function to get user role
+export function getUserRole() {
+  return localStorage.getItem('userRole') || 'user';
+}
+
+// Utility function to set user role
+export function setUserRole(role) {
+  localStorage.setItem('userRole', role);
+  // Dispatch custom event to notify other components
+  window.dispatchEvent(new Event('userRoleChanged'));
+}
+
+// Utility function to check if user is instructor or admin
+export function isInstructorOrAdmin() {
+  const role = getUserRole();
+  return role === 'instructor' || role === 'admin';
+}
+
+// Utility function to clear user data on logout
+export function clearUserData() {
+  localStorage.removeItem('userRole');
+  // Dispatch custom event to notify other components
+  window.dispatchEvent(new Event('userRoleChanged'));
+}
+
 export async function fetchUserProfile() {
   try {
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/user/getUserProfile`, {

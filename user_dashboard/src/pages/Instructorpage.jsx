@@ -10,9 +10,12 @@ import { allowedInstructorUserIds } from "@/data/allowedInstructorUsers";
 import { currentUserId } from "@/data/currentUser";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import { useAuth } from "@/contexts/AuthContext";
 
 const InstructorPage = () => {
-  const isAllowed = allowedInstructorUserIds.includes(currentUserId);
+  // Use role-based access
+  const { userRole, isInstructorOrAdmin } = useAuth();
+  const isAllowed = isInstructorOrAdmin();
   const [showAddUsersForm, setShowAddUsersForm] = useState(false);
   const navigate = useNavigate();
 
