@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { currentUserId } from "@/data/currentUser";
 
 const DEFAULT_TIMEZONE = "EST";
 const dummyCourses = [
@@ -153,18 +152,7 @@ const AddEvent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newEvent = {
-      ...form,
-      startTime: form.startTime,
-      endTime: form.endTime,
-      timeZone: form.timeZone,
-      location: form.location || (form.zoomLink ? form.zoomLink : ""),
-      isRecurring: form.recurrence !== "none",
-      recurrence: form.recurrence !== "none" ? form.recurrence : undefined,
-      date: selectedDate,
-      courseId: form.courseId
-    };
-
+    
     // Prepare payload for backend
     const selectedCourse = dummyCourses.find(c => c.id === form.courseId);
     const toIsoUtc = (dateString) => {
@@ -190,39 +178,24 @@ const AddEvent = () => {
 
     console.log("Payload being sent:", payload);
 
-    if (editIndex !== null) {
-      setEvents(events.map((ev, i) => (i === editIndex ? newEvent : ev)));
-      setEditIndex(null);
-    } else {
-      // Send to backend only on add
-      try {
-        await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload),
-          credentials: "include"
-        });
-        // Refetch events after adding
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
-          headers: {
-            "Content-Type": "application/json"
-          },
-          credentials: "include"
-        });
-        const data = await res.json();
-        if (data && data.data) {
-          setEvents(data.data);
+    try {
+      if (editIndex !== null) {
+        // Update existing event
+        const event = events[editIndex];
+        if (event.id) {
+          await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${event.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload),
+            credentials: "include"
+          });
         }
-      } catch (err) {
-        console.error("Failed to update event", err);
-      }
-      setEditIndex(null);
-    } else {
-      // Send to backend only on add
-      try {
-        await fetch("http://localhost:9000/calendar/events", {
+        setEditIndex(null);
+      } else {
+        // Create new event
+        const postRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -231,29 +204,30 @@ const AddEvent = () => {
           credentials: "include"
         });
         const postData = await postRes.json();
-        console.log("POST response:", postData); // <-- Add this
-        // Refetch events after adding
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
-          headers: {
-            "Content-Type": "application/json"
-          },
-          credentials: "include"
-        });
-        const data = await res.json();
-        console.log("Fetched events after add:", data); // <-- Add this
-        if (data && data.data) {
-          // Normalize course_id to courseId for all events
-          const normalizedEvents = data.data.map(ev => ({
-            ...ev,
-            courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
-          }));
-          setEvents(normalizedEvents);
-        }
-      } catch (err) {
-        // Optionally handle error
-        console.error("Failed to add event to backend", err);
+        console.log("POST response:", postData);
       }
+      
+      // Refetch events after adding/updating
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include"
+      });
+      const data = await res.json();
+      console.log("Fetched events after add/update:", data);
+      if (data && data.data) {
+        // Normalize course_id to courseId for all events
+        const normalizedEvents = data.data.map(ev => ({
+          ...ev,
+          courseId: ev.courseId || ev.course_id
+        }));
+        setEvents(normalizedEvents);
+      }
+    } catch (err) {
+      console.error("Failed to save event", err);
     }
+    
     setShowModal(false);
   };
 
