@@ -96,12 +96,12 @@ const CreateCourse = ({ onCourseCreated }) => {
     // If you want to support file upload, use FormData and adjust backend accordingly
 
     try {
-      const res = await fetch("http://localhost:9000/api/course/createCourse", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/createCourse`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        credentials: "include", // <-- This line is required!
+        credentials: "include",
         body: JSON.stringify(payload),
       });
     
@@ -159,7 +159,7 @@ const CreateCourse = ({ onCourseCreated }) => {
       delete payload.id; // id is in the URL, not in the body
       // Remove any fields not needed by backend (like created_at, updated_at, etc.)
       ["created_at", "updated_at", "createdBy", "updatedBy", "deleted_at", "thumbnail"].forEach(f => delete payload[f]);
-      const res = await fetch(`http://localhost:9000/api/course/editCourse/${editCourseData.id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/editCourse/${editCourseData.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

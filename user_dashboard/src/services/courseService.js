@@ -1,9 +1,8 @@
 export async function fetchAllCourses() {
-    const response = await fetch('http://localhost:9000/api/course/getAllCourses', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/getAllCourses`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        // Add Authorization header if required
       },
       credentials: 'include', // Ensure cookies are sent
     });
@@ -15,7 +14,7 @@ export async function fetchAllCourses() {
   }
 
 export async function fetchUserCourses() {
-  const response = await fetch('http://localhost:9000/api/course/getCourses', {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/getCourses`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -27,4 +26,19 @@ export async function fetchUserCourses() {
   }
   const data = await response.json();
   return data.data;
+}
+
+export async function fetchCourseModules(courseId) {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/${courseId}/modules/getAllModules`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch course modules');
+  }
+  const data = await response.json();
+  return data.data || data; // Handle different response structures
 }

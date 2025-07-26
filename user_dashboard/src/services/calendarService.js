@@ -1,11 +1,7 @@
 export async function getAllEvents(params = {}) {
   const query = new URLSearchParams(params).toString();
-  const headers = {
-    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImQ5MTFjYWQwLTkwY2MtNGJlZS05YzJiLTE5MDU3ZTA5YzhhYyIsImVtYWlsIjoibWF1c2FtQGNyZWRpdG9yYWNhZGVteS5jb20iLCJpYXQiOjE3NTMxODYwNzIsImV4cCI6MTc1NTc3ODA3Mn0.T-FZyXTCSUltgGyET0A1GNBseBQgAjXCZNesIIBOgH8'
-  };
-  const response = await fetch(`/calendar/events${query ? `?${query}` : ''}`, {
-    credentials: 'include',
-    headers,
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events${query ? `?${query}` : ''}`, {
+    credentials: 'include', // send cookies if needed for auth
   });
 
   if (!response.ok) {

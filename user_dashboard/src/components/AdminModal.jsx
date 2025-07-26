@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
 
 // ✅ Admin Modal Component
 const AdminModal = ({ isOpen, onClose }) => {
@@ -12,7 +13,7 @@ const AdminModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("token"));
-  const API_BASE = import.meta.env.VITE_API_BASE_URL ;
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
   
   const toggleMode = () => {
     setIsLogin(!isLogin);
@@ -30,39 +31,19 @@ const AdminModal = ({ isOpen, onClose }) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const url = isLogin
-      ? `${API_BASE}/api/auth/login`
-      : `${API_BASE}/api/auth/register`;
+    const credentials = isLogin ? { email, password } : { fullName, email, password };
+    const url = isLogin ? `${API_BASE}/api/auth/login` : `${API_BASE}/api/auth/register`;
     try {
-      if (isLogin) {
-        // Login logic
-        const response = await axios.post(url, {
-          email,
-          password,
-        });
-        if (response.data.token) {
-          localStorage.setItem("token", response.data.token);
-          setIsLoggedIn(true);
-          onClose && onClose();
-          window.location.href = "/dashboard";
-        } else {
-          setError("Login failed. No token received.");
-        }
+      const response = await axios.post(url, credentials, {
+        withCredentials: true,
+      });
+      if (response.data.token) {
+        Cookies.set("token", response.data.token, { expires: 7 });
+        setIsLoggedIn(true);
+        onClose && onClose();
+        window.location.href = "/dashboard";
       } else {
-        // Signup logic
-        const response = await axios.post(url, {
-          fullName,
-          email,
-          password,
-        });
-        if (response.data.token) {
-          localStorage.setItem("", response.data.token);
-          setIsLoggedIn(true);
-          onClose && onClose();
-          window.location.href = "/dashboard";
-        } else {
-          setError("Registration failed. No token received.");
-        }
+        setError("Login failed. No token received.");
       }
     } catch (err) {
       setError(
