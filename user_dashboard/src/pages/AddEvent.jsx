@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { currentUserId } from "@/data/currentUser";
 
 const DEFAULT_TIMEZONE = "EST";
 const dummyCourses = [
@@ -15,7 +14,7 @@ const AddEvent = () => {
   const [showModal, setShowModal] = useState(false);
   const [events, setEvents] = useState([]);
   const [form, setForm] = useState({
-    id: "", // <-- add this
+    id: "",
     title: "",
     description: "",
     startTime: "",
@@ -33,16 +32,20 @@ const AddEvent = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const res = await fetch("http://localhost:9000/calendar/events", {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+            "Content-Type": "application/json"
           },
           credentials: "include"
         });
         const data = await res.json();
         if (data && data.data) {
-          setEvents(data.data);
+          // Normalize course_id to courseId for all events
+          const normalizedEvents = data.data.map(ev => ({
+            ...ev,
+            courseId: ev.courseId || ev.course_id
+          }));
+          setEvents(normalizedEvents);
         }
       } catch (err) {
         console.error("Failed to fetch events", err);
@@ -73,7 +76,7 @@ const AddEvent = () => {
 
     setSelectedDate(date);
     setForm({
-      id: "", // <-- clear the id for new event
+      id: "",
       title: "",
       description: "",
       startTime: date ? date.toISOString().slice(0, 16) : "",
@@ -100,7 +103,7 @@ const AddEvent = () => {
     const event = events[index];
     setSelectedDate(event.date);
     setForm({
-      id: event.id, // <-- add this
+      id: event.id,
       title: event.title,
       description: event.description,
       startTime: event.startTime,
@@ -120,33 +123,33 @@ const AddEvent = () => {
     const event = events[index];
     if (!event.id) {
       // If no id, just remove from local state
-    setEvents(events.filter((_, i) => i !== index));
+      setEvents(events.filter((_, i) => i !== index));
       return;
     }
     try {
-      await fetch(`http://localhost:9000/calendar/events/${event.id}`, {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${event.id}`, {
         method: "DELETE",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+          "Content-Type": "application/json"
         },
         credentials: "include"
       });
       // Refetch events after deletion
-      const res = await fetch("http://localhost:9000/calendar/events", {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+          "Content-Type": "application/json"
         },
         credentials: "include"
       });
       const data = await res.json();
-      // Normalize course_id to courseId for all events
-      const normalizedEvents = data.data.map(ev => ({
-        ...ev,
-        courseId: ev.courseId || ev.course_id
-      }));
-      setEvents(normalizedEvents);
+      if (data && data.data) {
+        // Normalize course_id to courseId for all events
+        const normalizedEvents = data.data.map(ev => ({
+          ...ev,
+          courseId: ev.courseId || ev.course_id
+        }));
+        setEvents(normalizedEvents);
+      }
     } catch (err) {
       console.error("Failed to delete event", err);
     }
@@ -154,18 +157,7 @@ const AddEvent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newEvent = {
-      ...form,
-      startTime: form.startTime,
-      endTime: form.endTime,
-      timeZone: form.timeZone,
-      location: form.location || (form.zoomLink ? form.zoomLink : ""),
-      isRecurring: form.recurrence !== "none",
-      recurrence: form.recurrence !== "none" ? form.recurrence : undefined,
-      date: selectedDate,
-      courseId: form.courseId
-    };
-
+    
     // Prepare payload for backend
     const selectedCourse = dummyCourses.find(c => c.id === form.courseId);
     const toIsoUtc = (dateString) => {
@@ -191,72 +183,56 @@ const AddEvent = () => {
 
     console.log("Payload being sent:", payload);
 
-    if (editIndex !== null) {
-      // Update event in backend
-      try {
-        await fetch(`http://localhost:9000/calendar/events/${form.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
-          },
-          body: JSON.stringify(payload),
-          credentials: "include"
-        });
-        // Refetch events after updating
-        const res = await fetch("http://localhost:9000/calendar/events", {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
-          },
-          credentials: "include"
-        });
-        const data = await res.json();
-        console.log("Fetched events after update:", data); // <-- Add this
-        if (data && data.data) {
-          setEvents(data.data);
+    try {
+      if (editIndex !== null) {
+        // Update existing event
+        const event = events[editIndex];
+        if (event.id) {
+          await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${event.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload),
+            credentials: "include"
+          });
         }
-      } catch (err) {
-        console.error("Failed to update event", err);
-      }
-      setEditIndex(null);
-    } else {
-      // Send to backend only on add
-      try {
-        const postRes = await fetch("http://localhost:9000/calendar/events", {
+        setEditIndex(null);
+      } else {
+        // Create new event
+        const postRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+            "Content-Type": "application/json"
           },
           body: JSON.stringify(payload),
           credentials: "include"
         });
         const postData = await postRes.json();
-        console.log("POST response:", postData); // <-- Add this
-        // Refetch events after adding
-        const res = await fetch("http://localhost:9000/calendar/events", {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
-          },
-          credentials: "include"
-        });
-        const data = await res.json();
-        console.log("Fetched events after add:", data); // <-- Add this
-        if (data && data.data) {
-          // Normalize course_id to courseId for all events
-          const normalizedEvents = data.data.map(ev => ({
-            ...ev,
-            courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
-          }));
-          setEvents(normalizedEvents);
-        }
-      } catch (err) {
-        // Optionally handle error
-        console.error("Failed to add event to backend", err);
+        console.log("POST response:", postData);
       }
+      
+      // Refetch events after adding/updating
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include"
+      });
+      const data = await res.json();
+      console.log("Fetched events after add/update:", data);
+      if (data && data.data) {
+        // Normalize course_id to courseId for all events
+        const normalizedEvents = data.data.map(ev => ({
+          ...ev,
+          courseId: ev.courseId || ev.course_id
+        }));
+        setEvents(normalizedEvents);
+      }
+    } catch (err) {
+      console.error("Failed to save event", err);
     }
+    
     setShowModal(false);
   };
 
