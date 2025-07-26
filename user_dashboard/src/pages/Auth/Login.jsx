@@ -24,7 +24,7 @@ export function Login() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE}api/auth/login`, {
+      const response = await axios.post(`${API_BASE}/api/auth/login`, {
         email,
         password,
       });
