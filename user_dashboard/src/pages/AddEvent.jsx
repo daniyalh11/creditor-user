@@ -1,4 +1,7 @@
+
 import React, { useState, useEffect } from "react";
+import { currentUserId } from "@/data/currentUser";
+import { getAllEvents } from "@/services/calendarService";
 
 const DEFAULT_TIMEZONE = "EST";
 const dummyCourses = [
@@ -32,21 +35,8 @@ const AddEvent = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
-          headers: {
-            "Content-Type": "application/json"
-          },
-          credentials: "include"
-        });
-        const data = await res.json();
-        if (data && data.data) {
-          // Normalize course_id to courseId for all events
-          const normalizedEvents = data.data.map(ev => ({
-            ...ev,
-            courseId: ev.courseId || ev.course_id
-          }));
-          setEvents(normalizedEvents);
-        }
+        const data = await getAllEvents();
+        setEvents(data);
       } catch (err) {
         console.error("Failed to fetch events", err);
       }
@@ -130,26 +120,18 @@ const AddEvent = () => {
       await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${event.id}`, {
         method: "DELETE",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         credentials: "include"
       });
       // Refetch events after deletion
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "include"
-      });
-      const data = await res.json();
-      if (data && data.data) {
-        // Normalize course_id to courseId for all events
-        const normalizedEvents = data.data.map(ev => ({
-          ...ev,
-          courseId: ev.courseId || ev.course_id
-        }));
-        setEvents(normalizedEvents);
-      }
+      const data = await getAllEvents();
+      // Normalize course_id to courseId for all events
+      const normalizedEvents = data.map(ev => ({
+        ...ev,
+        courseId: ev.courseId || ev.course_id
+      }));
+      setEvents(normalizedEvents);
     } catch (err) {
       console.error("Failed to delete event", err);
     }
@@ -183,54 +165,51 @@ const AddEvent = () => {
 
     console.log("Payload being sent:", payload);
 
-    try {
-      if (editIndex !== null) {
-        // Update existing event
-        const event = events[editIndex];
-        if (event.id) {
-          await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${event.id}`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload),
-            credentials: "include"
-          });
-        }
-        setEditIndex(null);
-      } else {
-        // Create new event
+    if (editIndex !== null) {
+      // Update event in backend
+      try {
+        await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${form.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          credentials: "include"
+        });
+        // Refetch events after updating
+        const data = await getAllEvents();
+        console.log("Fetched events after update:", data);
+        setEvents(data);
+      } catch (err) {
+        console.error("Failed to update event", err);
+      }
+      setEditIndex(null);
+    } else {
+      // Send to backend only on add
+      try {
         const postRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),
           credentials: "include"
         });
         const postData = await postRes.json();
         console.log("POST response:", postData);
-      }
-      
-      // Refetch events after adding/updating
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "include"
-      });
-      const data = await res.json();
-      console.log("Fetched events after add/update:", data);
-      if (data && data.data) {
+        // Refetch events after adding
+        const data = await getAllEvents();
+        console.log("Fetched events after add:", data);
         // Normalize course_id to courseId for all events
-        const normalizedEvents = data.data.map(ev => ({
+        const normalizedEvents = data.map(ev => ({
           ...ev,
-          courseId: ev.courseId || ev.course_id
+          courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
         }));
         setEvents(normalizedEvents);
+      } catch (err) {
+        // Optionally handle error
+        console.error("Failed to add event to backend", err);
       }
-    } catch (err) {
-      console.error("Failed to save event", err);
     }
     
     setShowModal(false);
@@ -295,9 +274,12 @@ const AddEvent = () => {
             onChange={handleYearChange} 
             className="px-3 py-1 border rounded-lg bg-white text-sm"
           >
-            {Array.from({length: 10}, (_, i) => calendarYear - 5 + i).map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
+            {(() => {
+              const thisYear = new Date().getFullYear();
+              return Array.from({ length: 10 }, (_, i) => thisYear + i).map(y => (
+                <option key={y} value={y}>{y}</option>
+              ));
+            })()}
           </select>
         </div>
         

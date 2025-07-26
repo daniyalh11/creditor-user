@@ -29,29 +29,16 @@ export async function fetchUserProfile() {
 }
 
 export async function updateUserProfile(profileData) {
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/user/updateUserProfile`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify(profileData),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      return result;
-    } else {
-      throw new Error(result.message || 'Failed to update user profile');
-    }
-  } catch (error) {
-    console.error('Error in updateUserProfile:', error);
-    throw error;
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/user/updateUserProfile`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(profileData),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update user profile');
   }
-} 
+  return await response.json();
+}
