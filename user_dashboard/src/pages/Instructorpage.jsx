@@ -1,18 +1,19 @@
-import React from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CreateCourse from "./CreateCourse";
 import ScormPage from "./ScormPage";
 import AddEvent from "./AddEvent";
 import AddCatelog from "./AddCatelog";
 import AddUsersForm from "./AddUsersPage";
+
 import { allowedInstructorUserIds } from "@/data/allowedInstructorUsers";
 import { currentUserId } from "@/data/currentUser";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import { useNavigate } from "react-router-dom";
 
-const Instructorpage = () => {
+const InstructorPage = () => {
   const isAllowed = allowedInstructorUserIds.includes(currentUserId);
-  const [showAddUsersForm, setShowAddUsersForm] = React.useState(false);
+  const [showAddUsersForm, setShowAddUsersForm] = useState(false);
   const navigate = useNavigate();
 
   if (!isAllowed) {
@@ -21,9 +22,13 @@ const Instructorpage = () => {
         <div className="max-w-2xl w-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="bg-yellow-50 border-l-8 border-yellow-400 p-6">
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 mt-0.5">
-                <svg className="h-6 w-6 text-yellow-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              <div className="mt-0.5 text-yellow-500">
+                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </div>
               <div>
@@ -47,26 +52,27 @@ const Instructorpage = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar with subtle shadow and z-index */}
+      {/* Sidebar */}
       <div className="fixed top-0 left-0 h-screen w-[17rem] bg-white border-r border-gray-200 z-20 shadow-sm">
         <Sidebar />
       </div>
-      {/* Main content area */}
+
+      {/* Main content */}
       <div className="flex-1 ml-[17rem]">
-        {/* Sticky header with subtle shadow */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
           <DashboardHeader />
         </div>
-        {/* Main content with improved spacing and visual hierarchy */}
+
         <main className="max-w-6xl mx-auto px-6 py-8 space-y-12 pt-4">
-          {/* Dashboard header section */}
+          {/* Dashboard Title */}
           <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Instructor Dashboard</h1>
             <p className="text-gray-600">Manage your courses, content, and events</p>
           </section>
-          {/* Course creation section */}
-          <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+
+          {/* Course Creation */}
+          <section className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                 <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -78,9 +84,25 @@ const Instructorpage = () => {
               <CreateCourse />
             </div>
           </section>
-          {/* Catalog management section */}
-          <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+
+          {/* User Management */}
+          <section className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+                User Management
+              </h2>
+            </div>
+            <div className="p-6">
+              <AddUsersForm />
+            </div>
+          </section>
+
+          {/* Course Catalog */}
+          <section className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                 <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -92,9 +114,10 @@ const Instructorpage = () => {
               <AddCatelog />
             </div>
           </section>
-          {/* SCORM content section */}
-          <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+
+          {/* SCORM Content */}
+          <section className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                 <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -106,9 +129,10 @@ const Instructorpage = () => {
               <ScormPage />
             </div>
           </section>
-          {/* Event management section */}
-          <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+
+          {/* Event Management */}
+          <section className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                 <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -126,4 +150,4 @@ const Instructorpage = () => {
   );
 };
 
-export default Instructorpage;
+export default InstructorPage;

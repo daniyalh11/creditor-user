@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from "react";
 import { currentUserId } from "@/data/currentUser";
-import { getCalendarApiBase } from "@/services/calendarService";
+import { getAllEvents } from "@/services/calendarService";
 
 const DEFAULT_TIMEZONE = "EST";
 const dummyCourses = [
@@ -34,16 +35,8 @@ const AddEvent = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const res = await fetch(`${getCalendarApiBase()}/calendar/events`, {
-          headers: {
-            "Content-Type": "application/json"
-          },
-          credentials: "include"
-        });
-        const data = await res.json();
-        if (data && data.data) {
-          setEvents(data.data);
-        }
+        const data = await getAllEvents();
+        setEvents(data);
       } catch (err) {
         console.error("Failed to fetch events", err);
       }
@@ -120,29 +113,21 @@ const AddEvent = () => {
     const event = events[index];
     if (!event.id) {
       // If no id, just remove from local state
-    setEvents(events.filter((_, i) => i !== index));
+      setEvents(events.filter((_, i) => i !== index));
       return;
     }
     try {
-      await fetch(`${getCalendarApiBase()}/calendar/events/${event.id}`, {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${event.id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
         },
         credentials: "include"
       });
       // Refetch events after deletion
-      const res = await fetch(`${getCalendarApiBase()}/calendar/events`, {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
-        },
-        credentials: "include"
-      });
-      const data = await res.json();
+      const data = await getAllEvents();
       // Normalize course_id to courseId for all events
-      const normalizedEvents = data.data.map(ev => ({
+      const normalizedEvents = data.map(ev => ({
         ...ev,
         courseId: ev.courseId || ev.course_id
       }));
@@ -183,28 +168,18 @@ const AddEvent = () => {
     if (editIndex !== null) {
       // Update event in backend
       try {
-        await fetch(`${getCalendarApiBase()}/calendar/events/${form.id}`, {
+        await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${form.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
           },
           body: JSON.stringify(payload),
           credentials: "include"
         });
         // Refetch events after updating
-        const res = await fetch(`${getCalendarApiBase()}/calendar/events`, {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
-          },
-          credentials: "include"
-        });
-        const data = await res.json();
-        console.log("Fetched events after update:", data); // <-- Add this
-        if (data && data.data) {
-          setEvents(data.data);
-        }
+        const data = await getAllEvents();
+        console.log("Fetched events after update:", data);
+        setEvents(data);
       } catch (err) {
         console.error("Failed to update event", err);
       }
@@ -212,34 +187,25 @@ const AddEvent = () => {
     } else {
       // Send to backend only on add
       try {
-        const postRes = await fetch(`${getCalendarApiBase()}/calendar/events`, {
+        const postRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),
           credentials: "include"
         });
         const postData = await postRes.json();
-        console.log("POST response:", postData); // <-- Add this
+        console.log("POST response:", postData);
         // Refetch events after adding
-        const res = await fetch(`${getCalendarApiBase()}/calendar/events`, {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
-          },
-          credentials: "include"
-        });
-        const data = await res.json();
-        console.log("Fetched events after add:", data); // <-- Add this
-        if (data && data.data) {
-          // Normalize course_id to courseId for all events
-          const normalizedEvents = data.data.map(ev => ({
-            ...ev,
-            courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
-          }));
-          setEvents(normalizedEvents);
-        }
+        const data = await getAllEvents();
+        console.log("Fetched events after add:", data);
+        // Normalize course_id to courseId for all events
+        const normalizedEvents = data.map(ev => ({
+          ...ev,
+          courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
+        }));
+        setEvents(normalizedEvents);
       } catch (err) {
         // Optionally handle error
         console.error("Failed to add event to backend", err);

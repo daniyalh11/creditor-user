@@ -11,6 +11,8 @@ const AddUsersForm = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [addedUsers, setAddedUsers] = useState([]);
+  const [showUserList, setShowUserList] = useState(false);
 
   const handleNumUsersChange = (e) => {
     const value = parseInt(e.target.value, 10);
@@ -82,12 +84,63 @@ const AddUsersForm = () => {
       setTimeout(() => {
         setLoading(false);
         setSuccess(true);
+        // Store the successfully added users
+        setAddedUsers(prev => [...prev, ...users]);
+        // Clear the form
+        setUsers([{ email: "", firstName: "", lastName: "", password: "" }]);
+        setNumUsers(1);
       }, 1000);
     } catch (err) {
       setLoading(false);
       setError("Failed to add users. Please try again.");
     }
   };
+
+  const resetForm = () => {
+    setSuccess(false);
+    setError("");
+    setUsers([{ email: "", firstName: "", lastName: "", password: "" }]);
+    setNumUsers(1);
+  };
+
+  if (success) {
+    return (
+      <div className="bg-white rounded-xl shadow-md overflow-hidden p-8 mb-8">
+        <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 text-green-700">
+          <p className="font-medium">Users added successfully! You can now add more users or view the list of added users.</p>
+        </div>
+        
+        <div className="flex gap-4 mb-6">
+          <button
+            onClick={resetForm}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium"
+          >
+            Add More Users
+          </button>
+          <button
+            onClick={() => setShowUserList(!showUserList)}
+            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors font-medium"
+          >
+            {showUserList ? 'Hide User List' : 'View Added Users'}
+          </button>
+        </div>
+
+        {showUserList && addedUsers.length > 0 && (
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Successfully Added Users ({addedUsers.length})</h3>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {addedUsers.map((user, index) => (
+                <div key={index} className="bg-white p-3 rounded border">
+                  <div className="font-medium text-gray-800">{user.firstName} {user.lastName}</div>
+                  <div className="text-sm text-gray-600">{user.email}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden p-8 mb-8">
@@ -181,11 +234,6 @@ const AddUsersForm = () => {
           {error && (
             <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
               <p>{error}</p>
-            </div>
-          )}
-          {success && (
-            <div className="mb-4 p-4 bg-green-50 border-l-4 border-green-500 text-green-700">
-              <p>Users added successfully! You can now add more users or return to the portal.</p>
             </div>
           )}
           <button
