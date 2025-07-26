@@ -8,7 +8,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:9000";
 const AddUsersForm = () => {
   const [numUsers, setNumUsers] = useState(1);
   const [users, setUsers] = useState([
-    { email: "", firstName: "", lastName: "", password: "" },
+    { email: "", first_name: "", last_name: "", password: "" },
   ]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -24,7 +24,7 @@ const AddUsersForm = () => {
       const newUsers = [...prev];
       if (value > prev.length) {
         for (let i = prev.length; i < value; i++) {
-          newUsers.push({ email: "", firstName: "", lastName: "", password: "" });
+          newUsers.push({ email: "", first_name: "", last_name: "", password: "" });
         }
       } else {
         newUsers.length = value;
@@ -57,10 +57,10 @@ const AddUsersForm = () => {
       const headerMap = header.map(h => h && h.toString().toLowerCase().trim());
       const emailIdx = headerMap.indexOf("email");
       const passwordIdx = headerMap.indexOf("password");
-      const firstNameIdx = headerMap.indexOf("firstname");
-      const lastNameIdx = headerMap.indexOf("lastname");
+      const firstNameIdx = headerMap.indexOf("first_name");
+      const lastNameIdx = headerMap.indexOf("last_name");
       if (emailIdx === -1 || passwordIdx === -1 || firstNameIdx === -1 || lastNameIdx === -1) {
-        setError("Excel file must have columns: email, password, firstName, lastName");
+        setError("Excel file must have columns: email, password, first_name, last_name");
         return;
       }
       const parsedUsers = rows
@@ -68,8 +68,8 @@ const AddUsersForm = () => {
         .map(row => ({
           email: row[emailIdx],
           password: row[passwordIdx],
-          firstName: row[firstNameIdx],
-          lastName: row[lastNameIdx],
+          first_name: row[firstNameIdx],
+          last_name: row[lastNameIdx],
         }));
       setUsers(parsedUsers);
       setNumUsers(parsedUsers.length);
@@ -93,7 +93,7 @@ const AddUsersForm = () => {
         const formData = new FormData();
         formData.append('file', excelFile);
         response = await axios.post(
-          `${API_BASE}/admin/create-users`,
+          `${API_BASE}/api/auth/admin/create-users`,
           formData,
           {
             headers: {
@@ -104,15 +104,9 @@ const AddUsersForm = () => {
         );
       } else {
         // Manual entry: send as JSON array
-        // Map frontend keys to backend expected keys
-        const payload = users.map(u => ({
-          email: u.email,
-          password: u.password,
-          first_name: u.firstName,
-          last_name: u.lastName,
-        }));
+        const payload = users;
         response = await axios.post(
-          `${API_BASE}/admin/create-users`,
+          `${API_BASE}/api/auth/admin/create-users`,
           payload,
           {
             headers: {
@@ -126,7 +120,7 @@ const AddUsersForm = () => {
       if (response.data && response.data.success) {
         setSuccess(true);
         setAddedUsers(prev => [...prev, ...users]);
-        setUsers([{ email: "", firstName: "", lastName: "", password: "" }]);
+        setUsers([{ email: "", first_name: "", last_name: "", password: "" }]);
         setNumUsers(1);
         setExcelFile(null);
       } else {
@@ -142,7 +136,7 @@ const AddUsersForm = () => {
   const resetForm = () => {
     setSuccess(false);
     setError("");
-    setUsers([{ email: "", firstName: "", lastName: "", password: "" }]);
+    setUsers([{ email: "", first_name: "", last_name: "", password: "" }]);
     setNumUsers(1);
     setExcelFile(null);
   };
@@ -175,7 +169,7 @@ const AddUsersForm = () => {
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {addedUsers.map((user, index) => (
                 <div key={index} className="bg-white p-3 rounded border">
-                  <div className="font-medium text-gray-800">{user.firstName} {user.lastName}</div>
+                  <div className="font-medium text-gray-800">{user.first_name} {user.last_name}</div>
                   <div className="text-sm text-gray-600">{user.email}</div>
                 </div>
               ))}
@@ -207,7 +201,7 @@ const AddUsersForm = () => {
         </div>
         {numUsers > EXCEL_UPLOAD_LIMIT && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded mb-4">
-            <p className="text-yellow-800 mb-2 font-medium">For bulk upload, you can use an Excel file (.xlsx) with columns: <b>email, password, firstName, lastName</b>.</p>
+            <p className="text-yellow-800 mb-2 font-medium">For bulk upload, you can use an Excel file (.xlsx) with columns: <b>email, password, first_name, last_name</b>.</p>
             <input
               type="file"
               accept=".xlsx, .xls"
@@ -254,8 +248,8 @@ const AddUsersForm = () => {
                     type="text"
                     placeholder="John"
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    value={user.firstName}
-                    onChange={(e) => handleUserChange(idx, "firstName", e.target.value)}
+                    value={user.first_name}
+                    onChange={(e) => handleUserChange(idx, "first_name", e.target.value)}
                     required
                   />
                 </div>
@@ -265,8 +259,8 @@ const AddUsersForm = () => {
                     type="text"
                     placeholder="Doe"
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    value={user.lastName}
-                    onChange={(e) => handleUserChange(idx, "lastName", e.target.value)}
+                    value={user.last_name}
+                    onChange={(e) => handleUserChange(idx, "last_name", e.target.value)}
                     required
                   />
                 </div>
