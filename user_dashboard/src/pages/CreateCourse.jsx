@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { fetchAllCourses } from "../services/courseService";
+import { fetchAllCourses, fetchCourseModules } from "../services/courseService";
 
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=1000";
 
@@ -34,6 +34,8 @@ const CreateCourse = ({ onCourseCreated }) => {
   const editFormRef = useRef(null);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState("");
+  const [expandedCourseId, setExpandedCourseId] = useState(null);
+  const [courseModules, setCourseModules] = useState({});
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -49,6 +51,32 @@ const CreateCourse = ({ onCourseCreated }) => {
     };
     fetchCourses();
   }, []);
+
+  const handleViewModules = async (courseId) => {
+    if (expandedCourseId === courseId) {
+      setExpandedCourseId(null);
+      return;
+    }
+
+    setExpandedCourseId(courseId);
+    
+    // Fetch modules if not already loaded
+    if (!courseModules[courseId]) {
+      try {
+        const modules = await fetchCourseModules(courseId);
+        setCourseModules(prev => ({
+          ...prev,
+          [courseId]: modules
+        }));
+      } catch (err) {
+        console.error('Error fetching modules:', err);
+        setCourseModules(prev => ({
+          ...prev,
+          [courseId]: []
+        }));
+      }
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value, files, type, checked } = e.target;
@@ -189,90 +217,182 @@ const CreateCourse = ({ onCourseCreated }) => {
   const hasPrev = page > 0;
   const hasNext = (page + 1) * PAGE_SIZE < filteredCourses.length;
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading courses...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Error loading courses</h3>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-        <h2 className="text-xl font-semibold">Courses</h2>
-        <div className="flex-1 max-w-md">
-          <input
-            type="text"
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(0); }}
-            placeholder="Search courses..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Course Management</h2>
+          <p className="text-gray-600 mt-1">Create and manage your courses</p>
         </div>
         <button
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 whitespace-nowrap"
           onClick={() => setShowModal(true)}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           Create Course
         </button>
       </div>
 
-      {apiResponse && (
-        <div className={`mb-4 p-3 rounded ${apiResponse.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-          {apiResponse.message}
+      {/* Search */}
+      <div className="flex gap-4">
+        <input
+          type="text"
+          placeholder="Search courses..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+
+      {/* Success/Error Messages */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.293 7.293a1 1 0 011.414 0L9 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800">Course created successfully!</p>
+            </div>
+          </div>
         </div>
       )}
 
-      {loading ? (
-        <div className="text-center text-gray-500 py-8">Loading courses...</div>
-      ) : error ? (
-        <div className="text-center text-red-600 py-8">{error}</div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            {paginatedCourses.map((course) => (
-              <div key={course.id} className="flex flex-col border rounded-xl overflow-hidden bg-gradient-to-br from-blue-50 to-white shadow-lg hover:shadow-2xl transition-shadow duration-300">
-                <img
-                  src={course.thumbnail ? course.thumbnail : PLACEHOLDER_IMAGE}
-                  alt={course.title}
-                  className="h-48 w-full object-cover"
-                  style={{ borderBottom: '1px solid #e5e7eb' }}
-                />
-                <div className="p-6 flex-1 flex flex-col">
-                  <h3 className="font-bold text-lg mb-2 text-gray-800 truncate">{course.title}</h3>
-                  <p className="text-gray-600 text-sm line-clamp-3 mb-4">{course.description}</p>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">{course.course_status}</span>
-                    <span className="inline-block bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">${course.price}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs text-gray-500 mt-auto">
+      {apiResponse && (
+        <div className={`border rounded-lg p-4 ${apiResponse.type === "success" ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
+          <p className={`text-sm ${apiResponse.type === "success" ? "text-green-800" : "text-red-800"}`}>
+            {apiResponse.message}
+          </p>
+        </div>
+      )}
+
+      {/* Courses Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {paginatedCourses.map((course) => (
+          <div key={course.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{course.title}</h3>
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{course.description}</p>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
                     <span>Duration: {course.estimated_duration}</span>
-                    <span>Level: {course.course_level}</span>
+                    <span>Price: ${course.price}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      course.course_status === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
+                      course.course_status === 'DRAFT' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {course.course_status}
+                    </span>
                   </div>
+                </div>
+                <div className="flex gap-2">
                   <button
-                    className="mt-4 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                    onClick={() => handleViewModules(course.id)}
+                    className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                  >
+                    {expandedCourseId === course.id ? 'Hide' : 'View'} Modules
+                  </button>
+                  <button
                     onClick={() => handleEditClick(course)}
+                    className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                   >
                     Edit
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
-          {filteredCourses.length > PAGE_SIZE && (
-            <div className="flex justify-center gap-4">
-              <button
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                onClick={() => setPage(page - 1)}
-                disabled={!hasPrev}
-              >
-                Previous
-              </button>
-              <button
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                onClick={() => setPage(page + 1)}
-                disabled={!hasNext}
-              >
-                Next
-              </button>
+
+              {/* Modules Section */}
+              {expandedCourseId === course.id && (
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Course Modules</h4>
+                  {courseModules[course.id] ? (
+                    courseModules[course.id].length > 0 ? (
+                      <div className="space-y-2">
+                        {courseModules[course.id].map((module) => (
+                          <div key={module.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                            <div>
+                              <h5 className="font-medium text-gray-900">{module.title}</h5>
+                              {module.description && (
+                                <p className="text-sm text-gray-600 mt-1">{module.description}</p>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500">ID: {module.id}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No modules found for this course</p>
+                    )
+                  ) : (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-sm text-gray-500">Loading modules...</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </>
+          </div>
+        ))}
+      </div>
+
+      {/* Pagination */}
+      {filteredCourses.length > PAGE_SIZE && (
+        <div className="flex justify-center gap-2">
+          <button
+            onClick={() => setPage(page - 1)}
+            disabled={!hasPrev}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <span className="px-3 py-2 text-sm text-gray-700">
+            Page {page + 1} of {Math.ceil(filteredCourses.length / PAGE_SIZE)}
+          </span>
+          <button
+            onClick={() => setPage(page + 1)}
+            disabled={!hasNext}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
       )}
 
+      {/* Create Course Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative"
@@ -415,17 +535,17 @@ const CreateCourse = ({ onCourseCreated }) => {
                 <span className="text-xs text-gray-400">(File upload not supported in this demo)</span>
               </div>
               {formError && <div className="text-sm text-red-600 py-2">{formError}</div>}
-              <div className="flex justify-end space-x-3 pt-2">
+              <div className="flex gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Create Course
                 </button>
@@ -471,23 +591,27 @@ const CreateCourse = ({ onCourseCreated }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Duration</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration*</label>
                   <input
                     type="text"
                     name="estimated_duration"
                     value={editCourseData.estimated_duration}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Price*</label>
                   <input
-                    type="text"
+                    type="number"
                     name="price"
                     value={editCourseData.price}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    min="0"
+                    step="0.01"
+                    required
                   />
                 </div>
               </div>
@@ -537,22 +661,21 @@ const CreateCourse = ({ onCourseCreated }) => {
                   <span className="text-sm">Require Final Quiz</span>
                 </label>
               </div>
-              {editError && <div className="text-red-600 text-sm mb-2">{editError}</div>}
-              <div className="flex justify-end space-x-3 pt-2">
+              {editError && <div className="text-sm text-red-600 py-2">{editError}</div>}
+              <div className="flex gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setEditModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  disabled={editLoading}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
                   disabled={editLoading}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  {editLoading ? "Saving..." : "Save Changes"}
+                  {editLoading ? 'Updating...' : 'Update Course'}
                 </button>
               </div>
             </form>
