@@ -17,7 +17,7 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const API_BASE = import.meta.env.VITE_API_URL || "https://sharebackend-9g3y.onrender.com/";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,12 +27,13 @@ export function Login() {
       const response = await axios.post(`${API_BASE}api/auth/login`, {
         email,
         password,
+      }, {
+        withCredentials: true
       });
 
       console.log('Login response from backend:', response.data);
 
       if (response.data.token) {
-        // localStorage.setItem("token", response.data.token);
         Cookies.set("token", response.data.token, { expires: 7 }); // Store token in cookies for 7 days
         // Fetch user profile and set userRole in localStorage
         try {
