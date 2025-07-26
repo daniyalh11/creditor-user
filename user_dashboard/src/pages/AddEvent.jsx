@@ -2,20 +2,17 @@
 import React, { useState, useEffect } from "react";
 import { currentUserId } from "@/data/currentUser";
 import { getAllEvents } from "@/services/calendarService";
+import { fetchUserProfile } from "@/services/userService";
 
-const DEFAULT_TIMEZONE = "EST";
-const dummyCourses = [
-  { id: "course-1", title: "JavaScript for Beginners" },
-  { id: "course-2", title: "Advanced PostgreSQL" },
-  { id: "course-3", title: "React Mastery" }
-];
-
+const DEFAULT_TIMEZONE = "America/New_York";
 const AddEvent = () => {
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [events, setEvents] = useState([]);
+  const [userTimezone, setUserTimezone] = useState(DEFAULT_TIMEZONE);
+  const [courses, setCourses] = useState([]);
   const [form, setForm] = useState({
     id: "", // <-- add this
     title: "",
@@ -31,6 +28,48 @@ const AddEvent = () => {
   });
   const [editIndex, setEditIndex] = useState(null);
   const [showPastDateModal, setShowPastDateModal] = useState(false);
+
+  // Fetch user profile to get timezone
+  useEffect(() => {
+    const fetchUserProfileData = async () => {
+      try {
+        const data = await fetchUserProfile();
+        const timezone = data.timezone || DEFAULT_TIMEZONE;
+        setUserTimezone(timezone);
+        // Update form timezone as well
+        setForm(prev => ({ ...prev, timeZone: timezone }));
+      } catch (err) {
+        console.error("Failed to fetch user profile:", err);
+      }
+    };
+    fetchUserProfileData();
+  }, []);
+
+  // Fetch courses from API
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/getAllCourses`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (data && data.data) {
+          setCourses(data.data);
+          // Set first course as default if available
+          if (data.data.length > 0) {
+            setForm(prev => ({ ...prev, courseId: data.data[0].id }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch courses:", err);
+      }
+    };
+    fetchCourses();
+  }, []);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -71,12 +110,12 @@ const AddEvent = () => {
       description: "",
       startTime: date ? date.toISOString().slice(0, 16) : "",
       endTime: date ? date.toISOString().slice(0, 16) : "",
-      timeZone: DEFAULT_TIMEZONE,
+      timeZone: userTimezone, // Use user's timezone
       location: "",
       isRecurring: false,
       recurrence: "none",
       zoomLink: "",
-      courseId: dummyCourses[0]?.id || ""
+      courseId: courses.length > 0 ? courses[0].id : ""
     });
     setShowModal(true);
   };
@@ -103,7 +142,7 @@ const AddEvent = () => {
       isRecurring: event.isRecurring,
       recurrence: event.recurrence || "none",
       zoomLink: event.zoomLink || "",
-      courseId: event.courseId || dummyCourses[0]?.id || ""
+      courseId: event.courseId || courses.length > 0 ? courses[0].id : ""
     });
     setEditIndex(index);
     setShowModal(true);
@@ -141,7 +180,7 @@ const AddEvent = () => {
     e.preventDefault();
     
     // Prepare payload for backend
-    const selectedCourse = dummyCourses.find(c => c.id === form.courseId);
+    const selectedCourse = courses.find(c => c.id === form.courseId);
     const toIsoUtc = (dateString) => {
       if (!dateString) return "";
       if (dateString.endsWith('Z')) return dateString;
@@ -347,7 +386,7 @@ const AddEvent = () => {
                   <div className="flex flex-col items-end gap-2">
                     {event.courseId && (
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full mb-1">
-                        {dummyCourses.find(c => c.id === event.courseId)?.title || event.courseId}
+                        {courses.find(c => c.id === event.courseId)?.title || event.courseId}
                       </span>
                     )}
                     <div className="flex gap-2">
@@ -426,16 +465,19 @@ const AddEvent = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description* <span className="text-xs text-gray-400">(Add meeting link here if needed)</span></label>
-                    <textarea
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Meeting Link* <span className="text-xs text-gray-400">(Enter the meeting URL)</span></label>
+                    <input
+                      type="url"
                       name="description"
                       value={form.description}
                       onChange={handleFormChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Describe the event and add any meeting link here"
-                      rows={4}
+                      placeholder="https://meet.google.com/abc-defg-hij or https://zoom.us/j/123456789"
                       required
                     />
+                    {form.description && !isValidUrl(form.description) && (
+                      <p className="text-xs text-red-500 mt-1">Please enter a valid URL (e.g., https://meet.google.com/...)</p>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -466,18 +508,17 @@ const AddEvent = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Time Zone*</label>
-                    <select
+                    <input
+                      type="text"
                       name="timeZone"
                       value={form.timeZone}
                       onChange={handleFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="EST">Eastern Standard Time (EST)</option>
-                      <option value="UTC">Coordinated Universal Time (UTC)</option>
-                      <option value="PST">Pacific Standard Time (PST)</option>
-                      <option value="CST">Central Standard Time (CST)</option>
-                      <option value="IST">India Standard Time (IST)</option>
-                    </select>
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 cursor-not-allowed"
+                      readOnly
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Timezone can be changed in your profile settings
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
@@ -498,7 +539,7 @@ const AddEvent = () => {
                       onChange={handleFormChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      {dummyCourses.map(course => (
+                      {courses.map(course => (
                         <option key={course.id} value={course.id}>{course.title}</option>
                       ))}
                     </select>

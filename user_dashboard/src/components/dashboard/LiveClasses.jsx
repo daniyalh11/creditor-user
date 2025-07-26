@@ -98,15 +98,36 @@ export function LiveClasses() {
   const isClassActive = !!liveClass;
   const joinLink = liveClass?.description || "";
   const classTitle = liveClass?.title || "";
-  const classTime = liveClass ? `${new Date(liveClass.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${classTitle}` : "";
+  
+  // Get user's timezone from localStorage, default to EST if not set
+  const userTimezone = localStorage.getItem('userTimezone') || 'America/New_York';
+  
+  // Convert UTC time to user's timezone for display
+  const formatTimeInUserTimezone = (utcTime) => {
+    if (!utcTime) return '';
+    const date = new Date(utcTime);
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: userTimezone 
+    });
+  };
+  
+  const classTime = liveClass ? `${formatTimeInUserTimezone(liveClass.startTime)} - ${classTitle}` : "";
 
-  // Check if class is currently in session (within start and end time)
+  // Check if class is currently in session (within start and end time) using user's timezone
   const isClassInSession = () => {
     if (!liveClass) return false;
     const now = new Date();
     const startTime = new Date(liveClass.startTime);
     const endTime = new Date(liveClass.endTime);
-    return now >= startTime && now <= endTime;
+    
+    // Convert current time to user's timezone for comparison
+    const nowInUserTz = new Date(now.toLocaleString("en-US", {timeZone: userTimezone}));
+    const startInUserTz = new Date(startTime.toLocaleString("en-US", {timeZone: userTimezone}));
+    const endInUserTz = new Date(endTime.toLocaleString("en-US", {timeZone: userTimezone}));
+    
+    return nowInUserTz >= startInUserTz && nowInUserTz <= endInUserTz;
   };
 
   const isCurrentlyActive = isClassInSession();
@@ -120,8 +141,8 @@ export function LiveClasses() {
   };
 
   const handleViewAllRecordings = () => {
-    // Open recordings page with listed recordings
-    window.open('/recordings', '_blank');
+    // Open recordings Google Drive link from env
+    window.open(import.meta.env.VITE_RECORDINGS_DRIVE_URL, '_blank');
   };
 
   return (
