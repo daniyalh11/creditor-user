@@ -14,7 +14,7 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://creditor-backend-gvtd.onrender.com";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,10 +24,11 @@ export function Login() {
       const response = await axios.post(`${API_BASE}/api/auth/login`, {
         email,
         password,
+      }, {
+        withCredentials: true
       });
 
       if (response.data.token) {
-        // localStorage.setItem("token", response.data.token);
         Cookies.set("token", response.data.token, { expires: 7 }); // Store token in cookies for 7 days
         toast.success("Login successful!");
         navigate("/dashboard");

@@ -31,10 +31,9 @@ const AddEvent = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const res = await fetch("http://localhost:9000/calendar/events", {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+            "Content-Type": "application/json"
           },
           credentials: "include"
         });
@@ -151,20 +150,18 @@ const AddEvent = () => {
     } else {
       // Send to backend only on add
       try {
-        await fetch("http://localhost:9000/calendar/events", {
+        await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+            "Content-Type": "application/json"
           },
           body: JSON.stringify(payload),
           credentials: "include"
         });
         // Refetch events after adding
-        const res = await fetch("http://localhost:9000/calendar/events", {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+            "Content-Type": "application/json"
           },
           credentials: "include"
         });
