@@ -8,10 +8,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 3000,
-    proxy: {
-      // This will forward /calendar to your backend
-      '/calendar': 'http://localhost:9000'
-    }
   },
   plugins: [
     react(),
@@ -22,5 +18,8 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  define: {
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('https://sharebackend-9g3y.onrender.com'),
   },
 }));

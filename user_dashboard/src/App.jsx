@@ -88,7 +88,7 @@ import TermsAndConditions from "@/pages/TermCondition";
 import ReturnRefund from "@/pages/ReturnRefund";
 import MembershipTnC from "@/pages/MembershipTnC";  
 import ContactSection from "@/components/ContactSection"; 
-import AddUsersPage from "./pages/AddUsersPage";
+import AddUsersPage from "@/pages/AddUsersPage";
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -119,6 +119,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Instructorpage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/instructor/add-users"
+          element={
+            <ProtectedRoute>
+              <AddUsersPage />
             </ProtectedRoute>
           }
         />
