@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import * as XLSX from "xlsx";
+import axios from "axios";
 
 const EXCEL_UPLOAD_LIMIT = 10;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:9000";
 
 const AddUsersForm = () => {
   const [numUsers, setNumUsers] = useState(1);
@@ -13,6 +15,7 @@ const AddUsersForm = () => {
   const [error, setError] = useState("");
   const [addedUsers, setAddedUsers] = useState([]);
   const [showUserList, setShowUserList] = useState(false);
+  const [excelFile, setExcelFile] = useState(null);
 
   const handleNumUsersChange = (e) => {
     const value = parseInt(e.target.value, 10);
@@ -40,6 +43,7 @@ const AddUsersForm = () => {
 
   const handleExcelUpload = (e) => {
     const file = e.target.files[0];
+    setExcelFile(file);
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -79,20 +83,59 @@ const AddUsersForm = () => {
     setLoading(true);
     setError("");
     setSuccess(false);
+
     try {
-      // TODO: Replace with actual API call
-      setTimeout(() => {
-        setLoading(false);
+      let response;
+      const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
+
+      if (excelFile) {
+        // Excel upload: send as FormData
+        const formData = new FormData();
+        formData.append('file', excelFile);
+        response = await axios.post(
+          `${API_BASE}/admin/create-users`,
+          formData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        );
+      } else {
+        // Manual entry: send as JSON array
+        // Map frontend keys to backend expected keys
+        const payload = users.map(u => ({
+          email: u.email,
+          password: u.password,
+          first_name: u.firstName,
+          last_name: u.lastName,
+        }));
+        response = await axios.post(
+          `${API_BASE}/admin/create-users`,
+          payload,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      }
+
+      if (response.data && response.data.success) {
         setSuccess(true);
-        // Store the successfully added users
         setAddedUsers(prev => [...prev, ...users]);
-        // Clear the form
         setUsers([{ email: "", firstName: "", lastName: "", password: "" }]);
         setNumUsers(1);
-      }, 1000);
+        setExcelFile(null);
+      } else {
+        setError(response.data.message || "Failed to add users.");
+      }
     } catch (err) {
+      setError(err.response?.data?.message || "Failed to add users. Please try again.");
+    } finally {
       setLoading(false);
-      setError("Failed to add users. Please try again.");
     }
   };
 
@@ -101,6 +144,7 @@ const AddUsersForm = () => {
     setError("");
     setUsers([{ email: "", firstName: "", lastName: "", password: "" }]);
     setNumUsers(1);
+    setExcelFile(null);
   };
 
   if (success) {
