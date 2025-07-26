@@ -20,6 +20,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:9000'),
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('https://sharebackend-9g3y.onrender.com'),
   },
 }));
