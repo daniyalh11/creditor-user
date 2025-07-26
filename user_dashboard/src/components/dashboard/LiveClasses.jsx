@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +46,70 @@ const recordedSessions = [
 export function LiveClasses() {
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('upcoming');
-  const isClassActive = false; // This will be controlled later
+  const [liveClass, setLiveClass] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch today's live class from backend
+    const fetchLiveClass = async () => {
+      setLoading(true);
+      try {
+        const today = new Date();
+        const start = new Date(today.setHours(0,0,0,0)).toISOString();
+        const end = new Date(today.setHours(23,59,59,999)).toISOString();
+        const params = new URLSearchParams({ startDate: start, endDate: end });
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events?${params.toString()}`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (data && data.data && data.data.length > 0) {
+          setLiveClass(data.data[0]); // Take the first event for today
+        } else {
+          setLiveClass(null);
+        }
+      } catch (err) {
+        setLiveClass(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLiveClass();
+
+    // POST request for debugging
+    const postDebug = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ debug: true }) // Example body, adjust as needed
+        });
+        const postData = await response.json();
+        console.log('POST /calendar/events response:', postData);
+      } catch (err) {
+        console.error('POST /calendar/events error:', err);
+      }
+    };
+    postDebug();
+  }, []);
+
+  const isClassActive = !!liveClass;
+  const joinLink = liveClass?.description || "";
+  const classTitle = liveClass?.title || "";
+  const classTime = liveClass ? `${new Date(liveClass.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${classTitle}` : "";
+
+  // Check if class is currently in session (within start and end time)
+  const isClassInSession = () => {
+    if (!liveClass) return false;
+    const now = new Date();
+    const startTime = new Date(liveClass.startTime);
+    const endTime = new Date(liveClass.endTime);
+    return now >= startTime && now <= endTime;
+  };
+
+  const isCurrentlyActive = isClassInSession();
 
   const handleVideoClick = (driveLink) => {
     window.open(driveLink, '_blank');
@@ -57,8 +120,8 @@ export function LiveClasses() {
   };
 
   const handleViewAllRecordings = () => {
-    // Redirect to main Google Drive folder containing all recordings
-    window.open('https://drive.google.com/drive/folders/1ABCDEFGHIJKLMNOPQRSTUVWXYZ_recordings', '_blank');
+    // Open recordings page with listed recordings
+    window.open('/recordings', '_blank');
   };
 
   return (
@@ -75,19 +138,20 @@ export function LiveClasses() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
-                {isClassActive ? "Class is now in session" : "No active class right now"}
+                {loading ? "Checking for live class..." : (isClassActive ? (isCurrentlyActive ? "Class is now in session" : "Class is scheduled for today") : "No active class right now")}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Next class: Today at 3:00 PM - Constitutional Law Deep Dive
+                {isClassActive ? `Next class: Today at ${classTime}` : "No class scheduled for today"}
               </p>
             </div>
             <Button 
-              disabled={!isClassActive}
-              className={isClassActive ? "bg-green-600 hover:bg-green-700 animate-pulse" : ""}
+              disabled={!isClassActive || !joinLink || !isCurrentlyActive}
+              className={isCurrentlyActive ? "bg-green-600 hover:bg-green-700 animate-pulse" : ""}
               size="lg"
+              onClick={() => joinLink && window.open(joinLink, '_blank')}
             >
               <Video className="h-4 w-4 mr-2" />
-              {isClassActive ? "Join Live Class" : "No Active Class"}
+              {isClassActive ? (isCurrentlyActive ? "Join Live Class" : "Class Not Started") : "No Active Class"}
             </Button>
           </div>
         </CardContent>

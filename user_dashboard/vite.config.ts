@@ -20,6 +20,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('https://sharebackend-9g3y.onrender.com'),
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('https://creditor-backend-bh52.onrender.com'),
   },
 }));
