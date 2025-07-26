@@ -3,13 +3,17 @@ import CreateCourse from "./CreateCourse";
 import ScormPage from "./ScormPage";
 import AddEvent from "./AddEvent";
 import AddCatelog from "./AddCatelog";
+import AddUsersForm from "./AddUsersPage";
 import { allowedInstructorUserIds } from "@/data/allowedInstructorUsers";
 import { currentUserId } from "@/data/currentUser";
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import { useNavigate } from "react-router-dom";
 
 const Instructorpage = () => {
   const isAllowed = allowedInstructorUserIds.includes(currentUserId);
+  const [showAddUsersForm, setShowAddUsersForm] = React.useState(false);
+  const navigate = useNavigate();
 
   if (!isAllowed) {
     return (
@@ -54,7 +58,7 @@ const Instructorpage = () => {
           <DashboardHeader />
         </div>
         {/* Main content with improved spacing and visual hierarchy */}
-        <main className="max-w-6xl mx-auto px-6 py-8 space-y-12 pt-8">
+        <main className="max-w-6xl mx-auto px-6 py-8 space-y-12 pt-4">
           {/* Dashboard header section */}
           <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Instructor Dashboard</h1>
@@ -94,7 +98,9 @@ const Instructorpage = () => {
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                 <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
+                SCORM Content
                 SCORM Content
               </h2>
             </div>
@@ -103,12 +109,16 @@ const Instructorpage = () => {
             </div>
           </section>
           {/* Event management section */}
+          {/* Event management section */}
           <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                 <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
+                Event Management
                 Event Management
               </h2>
             </div>
