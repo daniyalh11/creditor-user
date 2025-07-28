@@ -20,43 +20,43 @@ import { Input } from '@/components/ui/input';
 const carouselItems = [
   {
     id: 1,
-    title: "Mock Trial Competition",
-    description: "Join our prestigious Mock Trial Competition next week. Register by Friday to secure your participation.",
-    icon: Calendar,
-    type: 'event',
-    image: "https://images.unsplash.com/photo-1453945619913-79ec89a82c51?q=80&w=1000",
-    buttonText: "Register Now",
-    buttonLink: "/events"
-  },
-  {
-    id: 2,
-    title: "Complete Your Profile",
-    description: "Add your certifications and specialized legal fields of interest to get personalized course recommendations.",
+    title: "Welcome to Your Dashboard!",
+    description: "Explore your personalized dashboard. Track your progress, manage your tasks, and stay updated with the latest features.",
     icon: User,
     type: 'profile',
-    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1000",
-    buttonText: "Update Profile",
+    image: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1000&q=80",
+    buttonText: "View Profile",
     buttonLink: "/profile"
   },
   {
+    id: 2,
+    title: "New Feature: Task Manager",
+    description: "Organize your work with our new Task Manager. Add, edit, and track your daily to-dos directly from your dashboard.",
+    icon: Calendar,
+    type: 'event',
+    image: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=1000&q=80",
+    buttonText: "Try It Now",
+    buttonLink: "/todo"
+  },
+  {
     id: 3,
-    title: "New Course: Corporate Law",
-    description: "Our new comprehensive course on Corporate Law taught by leading industry professionals is now available.",
-    icon: BookOpen,
-    type: 'course',
-    image: "https://images.unsplash.com/photo-1560264280-88b68371db39?q=80&w=1000",
-    buttonText: "View Course",
-    buttonLink: "/courses"
+    title: "Stay Notified",
+    description: "Enable notifications to never miss important updates, reminders, or announcements from your workspace.",
+    icon: AlertCircle,
+    type: 'alert',
+    image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80",
+    buttonText: "Enable Notifications",
+    buttonLink: "/settings"
   },
   {
     id: 4,
-    title: "Bar Exam Preparation",
-    description: "The platform will be updating our Bar Exam preparation materials next week. Complete your current modules before the update.",
-    icon: AlertCircle,
-    type: 'alert',
-    image: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?q=80&w=1000",
+    title: "Recent Improvements",
+    description: "We’ve improved performance and squashed bugs for a smoother experience. Thank you for your feedback!",
+    icon: BookOpen,
+    type: 'course',
+    image: "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=1000&q=80",
     buttonText: "Learn More",
-    buttonLink: "/courses"
+    buttonLink: "/updates"
   }
 ];
 
