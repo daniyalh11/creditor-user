@@ -180,7 +180,7 @@ export function Dashboard() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold mb-1 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                        Welcome Back, Alex! 👋
+                        Welcome Back 👋
                       </h2>
                       <p className="text-gray-600 text-base">Continue your legal education journey and achieve your learning goals.</p>
                     </div>
