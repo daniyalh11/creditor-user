@@ -278,14 +278,15 @@ const AddEvent = () => {
     }
   };
 
-  // Delete a single occurrence of a recurring event
+  // Delete a single occurrence of a recurring event (now POST)
   const handleDeleteOccurrence = async (eventId, occurrenceStartTime) => {
     setDeletingOccurrence(true);
     try {
       const token = getAuthToken();
-      // DELETE a single occurrence in a recurring event
+      console.log('Deleting occurrence:', { eventId, occurrenceDate: occurrenceStartTime });
+      // DELETE a single occurrence in a recurring event (POST)
       await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception`, {
-        method: "DELETE",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
@@ -331,14 +332,15 @@ const AddEvent = () => {
     }
   };
 
-  // Restore a deleted occurrence in a recurring event
+  // Restore a deleted occurrence in a recurring event (now DELETE)
   const handleRestoreOccurrence = async (eventId, occurrenceDate) => {
     setDeletingOccurrence(true);
     try {
       const token = getAuthToken();
-      // RESTORE a single occurrence in a recurring event
+      console.log('Restoring occurrence:', { eventId, occurrenceDate });
+      // RESTORE a single occurrence in a recurring event (DELETE)
       await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception`, {
-        method: "POST",
+        method: "DELETE",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
