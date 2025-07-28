@@ -3,9 +3,9 @@
 
 class ScormService {
   // Fetch course data from backend
-  static async fetchCourseData(courseId) {
+  static async fetchCourseData(moduleId) {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/courses/${courseId}/scorm`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/courses/${moduleId}/scorm`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -152,6 +152,28 @@ class ScormService {
       console.error('Error fetching course analytics:', error);
       throw error;
     }
+  }
+
+  static async uploadScorm({ moduleId, file, uploadedBy, description }) {
+    const formData = new FormData();
+    formData.append('scorm_package', file);
+    formData.append('module_id', moduleId);
+    formData.append('uploaded_by', uploadedBy);
+    formData.append('description', description);
+
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/scorm/upload_scorm`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(errorData.message || `Failed to upload SCORM (${response.status})`);
+    }
+    const data = await response.json();
+    console.log('SCORM upload response:', data);
+    return data;
   }
 }
 
