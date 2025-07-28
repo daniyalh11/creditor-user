@@ -196,6 +196,44 @@ export async function updateCatalog(catalogId, catalogData) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('Backend update failed:', errorData);
+      
+      // Handle permission errors gracefully
+      if (response.status === 403) {
+        console.log('Permission denied, updating locally instead');
+        // Update locally as fallback
+        const localCatalogs = JSON.parse(localStorage.getItem('localCatalogs') || '[]');
+        const catalogIndex = localCatalogs.findIndex(cat => cat.id === catalogId);
+        
+        if (catalogIndex !== -1) {
+          // Update existing local catalog
+          localCatalogs[catalogIndex] = {
+            ...localCatalogs[catalogIndex],
+            ...catalogData,
+            thumbnail: catalogData.thumbnail,
+            updatedAt: new Date().toISOString()
+          };
+        } else {
+          // Create new local catalog entry
+          localCatalogs.push({
+            id: catalogId,
+            ...catalogData,
+            thumbnail: catalogData.thumbnail,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isLocal: true
+          });
+        }
+        
+        localStorage.setItem('localCatalogs', JSON.stringify(localCatalogs));
+        
+        return {
+          success: true,
+          message: 'Catalog updated locally (permission denied for backend update)',
+          data: localCatalogs.find(cat => cat.id === catalogId),
+          warning: 'Changes saved locally due to permission restrictions'
+        };
+      }
+      
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
@@ -361,6 +399,7 @@ export async function removeCoursesFromCatalog(catalogId, courseIds) {
 // Get courses for a specific catalog
 export async function getCatalogCourses(catalogId) {
   try {
+    console.log('Fetching courses for catalog:', catalogId);
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/${catalogId}/courses`, {
       method: 'GET',
       headers: getAuthHeaders(),
@@ -368,15 +407,33 @@ export async function getCatalogCourses(catalogId) {
     });
 
     if (!response.ok) {
+      if (response.status === 404) {
+        console.log('No courses found for catalog:', catalogId);
+        return []; // Return empty array for 404 (no courses)
+      }
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.data || [];
+    console.log('Catalog courses API response:', data);
+    
+    // Handle different possible data structures
+    let courses = [];
+    if (data.data) {
+      courses = Array.isArray(data.data) ? data.data : (data.data.courses || []);
+    } else if (Array.isArray(data)) {
+      courses = data;
+    } else if (data.courses) {
+      courses = data.courses;
+    }
+    
+    console.log('Extracted courses:', courses);
+    return courses;
   } catch (error) {
     console.error('Error fetching catalog courses:', error);
-    throw error;
+    // Return empty array instead of throwing to prevent breaking the UI
+    return [];
   }
 }
 

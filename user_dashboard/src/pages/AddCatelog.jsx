@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   fetchAllCatalogs, 
   createCatalog, 
@@ -6,13 +7,15 @@ import {
   deleteCatalog, 
   addCoursesToCatalog, 
   removeCoursesFromCatalog,
-  fetchAvailableCourses 
+  fetchAvailableCourses,
+  getCatalogCourses
 } from "@/services/instructorCatalogService";
 
 
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=1000";
 
 const AddCatelog = () => {
+  const { userRole, isInstructorOrAdmin } = useAuth();
   const [catalogs, setCatalogs] = useState([]);
   const [availableCourses, setAvailableCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +112,13 @@ const AddCatelog = () => {
         console.log('Updating catalog with data:', catalogData);
         newCatalog = await updateCatalog(editId, catalogData);
         console.log('Update catalog response:', newCatalog);
-        setFormSuccess("Catalog updated successfully!");
+        
+        // Check if there's a warning about local storage
+        if (newCatalog.warning) {
+          setFormSuccess(`${newCatalog.message} (${newCatalog.warning})`);
+        } else {
+          setFormSuccess("Catalog updated successfully!");
+        }
       } else {
         // Create new catalog
         newCatalog = await createCatalog(catalogData);
@@ -118,13 +127,47 @@ const AddCatelog = () => {
       }
       setLastUpdateResponse(newCatalog);
 
-      // Handle course addition separately to avoid breaking catalog creation
-      if (form.courses.length > 0 && newCatalog.data?.id) {
+      // Handle course associations for both create and update
+      if (newCatalog.data?.id) {
         try {
-          await addCoursesToCatalog(newCatalog.data.id, form.courses);
-          console.log("Courses added successfully");
+          if (editId) {
+            // For updates, we need to get the current courses and sync them
+            let currentCourses = [];
+            try {
+              const currentCoursesData = await getCatalogCourses(editId);
+              currentCourses = Array.isArray(currentCoursesData) ? currentCoursesData : [];
+            } catch (error) {
+              console.log('Could not fetch current courses, proceeding with form data');
+            }
+            
+            const currentCourseIds = currentCourses.map(course => course.id || course._id || course);
+            const newCourseIds = form.courses;
+            
+            // Find courses to add (in new but not in current)
+            const coursesToAdd = newCourseIds.filter(id => !currentCourseIds.includes(id));
+            // Find courses to remove (in current but not in new)
+            const coursesToRemove = currentCourseIds.filter(id => !newCourseIds.includes(id));
+            
+            // Add new courses
+            if (coursesToAdd.length > 0) {
+              await addCoursesToCatalog(newCatalog.data.id, coursesToAdd);
+              console.log("Courses added successfully:", coursesToAdd);
+            }
+            
+            // Remove courses
+            if (coursesToRemove.length > 0) {
+              await removeCoursesFromCatalog(newCatalog.data.id, coursesToRemove);
+              console.log("Courses removed successfully:", coursesToRemove);
+            }
+          } else {
+            // For new catalogs, just add the selected courses
+            if (form.courses.length > 0) {
+              await addCoursesToCatalog(newCatalog.data.id, form.courses);
+              console.log("Courses added to new catalog successfully");
+            }
+          }
         } catch (courseError) {
-          console.warn("Course addition failed, but catalog was created/updated:", courseError);
+          console.warn("Course association failed, but catalog was created/updated:", courseError);
         }
       }
 
@@ -145,16 +188,86 @@ const AddCatelog = () => {
     }
   };
 
-  const handleEdit = (catalog) => {
-    // Always sync form state with latest catalog data
-    setForm({
-      name: catalog.name || "",
-      description: catalog.description || "",
-      thumbnail: catalog.thumbnail || "",
-      courses: catalog.courses?.map(c => c.id || c) || []
-    });
-    setEditId(catalog.id);
-    setShowModal(true);
+  const handleEdit = async (catalog) => {
+    try {
+      console.log('Editing catalog:', catalog);
+      
+      // Fetch the current courses associated with this catalog
+      let catalogCourses = [];
+      try {
+        const coursesData = await getCatalogCourses(catalog.id);
+        catalogCourses = Array.isArray(coursesData) ? coursesData : [];
+        console.log('Fetched catalog courses from API:', catalogCourses);
+      } catch (error) {
+        console.log('Could not fetch catalog courses, using fallback:', error);
+        // Fallback to courses from catalog object if API fails
+        catalogCourses = catalog.courses || [];
+      }
+
+      // Extract course IDs from the courses array - handle both object and string cases
+      const courseIds = catalogCourses.map(course => {
+        if (typeof course === 'string') {
+          return course;
+        }
+        if (typeof course === 'object' && course) {
+          return course.id || course._id || course.courseId || course.course_id;
+        }
+        return course;
+      }).filter(Boolean); // Remove any undefined/null values
+      
+      console.log('Extracted course IDs:', courseIds);
+      console.log('Available courses for comparison:', availableCourses.map(c => ({ id: c.id, title: c.title })));
+      
+      // More flexible matching - try to match by title if ID doesn't match
+      const validCourseIds = courseIds.map(catalogCourseId => {
+        // First try exact ID match
+        const exactMatch = availableCourses.find(availableCourse => 
+          availableCourse.id === catalogCourseId || 
+          availableCourse._id === catalogCourseId || 
+          availableCourse.courseId === catalogCourseId
+        );
+        
+        if (exactMatch) {
+          return exactMatch.id; // Return the standard ID format
+        }
+        
+        // If no exact match, try to find by title (for cases where IDs might be different)
+        const catalogCourse = catalogCourses.find(c => {
+          const cId = typeof c === 'string' ? c : (c.id || c._id || c.courseId);
+          return cId === catalogCourseId;
+        });
+        
+        if (catalogCourse && typeof catalogCourse === 'object' && catalogCourse.title) {
+          const titleMatch = availableCourses.find(availableCourse => 
+            availableCourse.title === catalogCourse.title ||
+            availableCourse.name === catalogCourse.title ||
+            availableCourse.courseName === catalogCourse.title
+          );
+          
+          if (titleMatch) {
+            console.log(`Matched course by title: ${catalogCourse.title} -> ${titleMatch.id}`);
+            return titleMatch.id;
+          }
+        }
+        
+        return null; // No match found
+      }).filter(Boolean); // Remove null values
+      
+      console.log('Final valid course IDs:', validCourseIds);
+      
+      // Always sync form state with latest catalog data
+      setForm({
+        name: catalog.name || "",
+        description: catalog.description || "",
+        thumbnail: catalog.thumbnail || "",
+        courses: validCourseIds
+      });
+      setEditId(catalog.id);
+      setShowModal(true);
+    } catch (error) {
+      console.error('Error preparing edit form:', error);
+      setFormError('Failed to load catalog details. Please try again.');
+    }
   };
 
   const handleDelete = async (id) => {
@@ -206,6 +319,24 @@ const AddCatelog = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+      {/* Permission Notice */}
+      {!isInstructorOrAdmin() && (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start">
+            <svg className="h-5 w-5 text-yellow-400 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <h3 className="text-sm font-medium text-yellow-800">Limited Permissions</h3>
+              <p className="text-sm text-yellow-700 mt-1">
+                You are logged in as a <strong>{userRole}</strong>. Catalog changes will be saved locally only. 
+                Contact an administrator to get instructor or admin permissions for full functionality.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
         <h2 className="text-2xl font-bold text-gray-800">Course Catalogs</h2>
         <button
@@ -418,24 +549,69 @@ const AddCatelog = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Select Courses</label>
+
+                  
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Select Courses {editId && <span className="text-xs text-gray-500">(✓ = already in catalog)</span>}
+                  </label>
                   {availableCourses.length === 0 ? (
                     <p className="text-gray-500 text-sm">No courses available. Please create some courses first.</p>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
-                      {availableCourses.map(course => (
-                        <label key={course.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                          <input
-                            type="checkbox"
-                            name="courses"
-                            value={course.id}
-                            checked={form.courses.includes(course.id)}
-                            onChange={handleFormChange}
-                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{course.title}</span>
-                        </label>
-                      ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                                            {availableCourses.map(course => {
+                        // Check if this course is selected using multiple ID formats
+                        const isSelected = form.courses.some(selectedId => 
+                          selectedId === course.id || 
+                          selectedId === course._id || 
+                          selectedId === course.courseId ||
+                          selectedId === course.course_id
+                        );
+                        
+                        return (
+                          <label 
+                            key={course.id} 
+                            className={`flex items-start space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                              isSelected 
+                                ? 'bg-blue-50 border border-blue-200' 
+                                : 'bg-gray-50 hover:bg-gray-100'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              name="courses"
+                              value={course.id}
+                              checked={isSelected}
+                              onChange={handleFormChange}
+                              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-700 truncate">
+                                {course.title || course.name || course.courseName || 'Untitled Course'}
+                              </div>
+                              {course.description && (
+                                <div className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                  {course.description}
+                                </div>
+                              )}
+                              {course.category && (
+                                <div className="text-xs text-blue-600 mt-1">
+                                  {course.category}
+                                </div>
+                              )}
+                            </div>
+                            {isSelected && (
+                              <div className="text-blue-600 text-xs font-medium">
+                                ✓ Added
+                              </div>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {form.courses.length > 0 && (
+                    <div className="mt-2 text-xs text-gray-600">
+                      {form.courses.length} course{form.courses.length !== 1 ? 's' : ''} selected
                     </div>
                   )}
                 </div>
@@ -473,28 +649,6 @@ const AddCatelog = () => {
               </form>
             </div>
           </div>
-        </div>
-      )}
-      {/* Debug Panel - Only show in development */}
-      {process.env.NODE_ENV === 'development' && (lastUpdateRequest || lastUpdateResponse) && (
-        <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <h3 className="text-sm font-medium text-yellow-800 mb-2">Debug Info (Development Only)</h3>
-          {lastUpdateRequest && (
-            <details className="text-xs mb-2" open>
-              <summary className="cursor-pointer text-yellow-700">Last Update Request</summary>
-              <pre className="mt-2 p-2 bg-white rounded border text-xs overflow-auto max-h-40">
-                {JSON.stringify(lastUpdateRequest, null, 2)}
-              </pre>
-            </details>
-          )}
-          {lastUpdateResponse && (
-            <details className="text-xs" open>
-              <summary className="cursor-pointer text-yellow-700">Last Update Response</summary>
-              <pre className="mt-2 p-2 bg-white rounded border text-xs overflow-auto max-h-40">
-                {JSON.stringify(lastUpdateResponse, null, 2)}
-              </pre>
-            </details>
-          )}
         </div>
       )}
     </div>
