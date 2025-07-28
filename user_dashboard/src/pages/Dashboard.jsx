@@ -73,9 +73,9 @@ export function Dashboard() {
       
       // Use the working endpoints from your backend
       try {
-        console.log('🔍 Fetching user courses from:', `${API_BASE}/api/course/getCourses`);
-        console.log('🔑 Token available:', !!token);
-        console.log('👤 User ID:', currentUserId);
+        // console.log('🔍 Fetching user courses from:', `${API_BASE}/api/course/getCourses`);
+        // console.log('🔑 Token available:', !!token);
+        // console.log('👤 User ID:', currentUserId);
         
         // Get user courses using the correct endpoint
         const userCoursesResponse = await axios.get(`${API_BASE}/api/course/getCourses`, {
@@ -86,11 +86,11 @@ export function Dashboard() {
           withCredentials: true
         });
         
-        console.log('✅ API Response:', userCoursesResponse.data);
+        // console.log('✅ API Response:', userCoursesResponse.data);
         
         if (userCoursesResponse.data && userCoursesResponse.data.data) {
           const courses = userCoursesResponse.data.data;
-          console.log('📚 Courses found:', courses.length, courses);
+          // console.log('📚 Courses found:', courses.length, courses);
           
           // Calculate basic dashboard stats from available data
           const activeCourses = courses.length;
@@ -98,12 +98,12 @@ export function Dashboard() {
           const totalLearningHours = 0; // Will be calculated when time tracking is implemented
           const averageProgress = 0; // Will be calculated when progress tracking is implemented
           
-          console.log('📊 Dashboard stats calculated:', {
-            activeCourses,
-            completedCourses,
-            totalLearningHours,
-            averageProgress
-          });
+          // console.log('📊 Dashboard stats calculated:', {
+          //   activeCourses,
+          //   completedCourses,
+          //   totalLearningHours,
+          //   averageProgress
+          // });
           
                       const newDashboardData = {
               summary: {
@@ -120,7 +120,7 @@ export function Dashboard() {
               learningActivities: []
             };
             
-            console.log('📊 Setting dashboard data:', newDashboardData);
+            // console.log('📊 Setting dashboard data:', newDashboardData);
             setDashboardData(newDashboardData);
         } else {
           console.log('⚠️ No courses data found in response');
@@ -202,17 +202,17 @@ export function Dashboard() {
   };
 
   useEffect(() => {
-    console.log('🚀 Dashboard useEffect triggered');
+    // console.log('🚀 Dashboard useEffect triggered');
     // Check if user is authenticated before making API call
     const token = Cookies.get('token') || localStorage.getItem('token');
-    console.log('🔑 Token found:', !!token);
-    console.log('👤 Current userId:', userId);
+    // console.log('🔑 Token found:', !!token);
+    // console.log('👤 Current userId:', userId);
     
     if (token) {
-      console.log('✅ Token available, calling fetchUserOverview');
+      // console.log('✅ Token available, calling fetchUserOverview');
       fetchUserOverview();
     } else {
-      console.log('❌ No token found, redirecting to login');
+      // console.log('❌ No token found, redirecting to login');
       setError('Please log in to view your dashboard.');
       // Redirect to login
       setTimeout(() => {
@@ -223,7 +223,7 @@ export function Dashboard() {
 
   // Monitor dashboard data changes
   useEffect(() => {
-    console.log('📊 Dashboard data updated:', dashboardData);
+    // console.log('📊 Dashboard data updated:', dashboardData);
   }, [dashboardData]);
 
   // Fetch user profile to get userId if not available
@@ -384,7 +384,7 @@ export function Dashboard() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold mb-1 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                        Welcome Back 👋
+                        Welcome Back Learner!
                       </h2>
                       <p className="text-gray-600 text-base">Continue your legal education journey and achieve your learning goals.</p>
                     </div>

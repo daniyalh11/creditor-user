@@ -38,7 +38,7 @@ const InstructorPage = () => {
               <div>
                 <h3 className="text-lg font-medium text-yellow-800 mb-1">Access Restricted</h3>
                 <p className="text-yellow-700">
-                  This page is only accessible to authorized instructors. Please contact support if you believe this is an error.
+                  This page is only accessible to authorized instructors or admins. Please contact support if you believe this is an error.
                 </p>
                 <button
                   onClick={() => window.history.back()}
