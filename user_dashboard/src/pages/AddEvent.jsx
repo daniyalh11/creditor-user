@@ -32,6 +32,10 @@ const AddEvent = () => {
   });
   const [editIndex, setEditIndex] = useState(null);
   const [showPastDateModal, setShowPastDateModal] = useState(false);
+  const [showRecurringDeleteModal, setShowRecurringDeleteModal] = useState(false);
+  const [recurringDeleteEvent, setRecurringDeleteEvent] = useState(null);
+  const [deletingOccurrence, setDeletingOccurrence] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   // Get authentication token from cookies
   const getAuthToken = () => {
@@ -137,6 +141,7 @@ const AddEvent = () => {
       try {
         const data = await getAllEvents();
         setEvents(data);
+        console.log('Loaded events:', data.map(e => e.id));
       } catch (err) {
         console.error("Failed to fetch events", err);
       }
@@ -189,21 +194,47 @@ const AddEvent = () => {
     }));
   };
 
-  const handleEdit = (index) => {
+  // Fetch event details for editing
+  const fetchEventDetails = async (eventId) => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'X-User-Role': getUserRole(),
+        },
+        credentials: 'include',
+      });
+      const data = await res.json();
+      console.log('GET /calendar/events/:eventId response:', data);
+      return data.data || null;
+    } catch (err) {
+      console.error('Failed to fetch event details', err);
+      return null;
+    }
+  };
+
+  // Edit handler: fetch event details and populate modal
+  const handleEdit = async (index) => {
     const event = events[index];
-    setSelectedDate(event.date);
+    // Fetch latest event details from backend
+    const backendEvent = await fetchEventDetails(event.id);
+    const e = backendEvent || event;
+    setSelectedDate(e.date ? new Date(e.date) : (e.startTime ? new Date(e.startTime) : null));
     setForm({
-      id: event.id, // <-- add this
-      title: event.title,
-      description: event.description,
-      startTime: event.startTime,
-      endTime: event.endTime,
-      timeZone: event.timeZone,
-      location: event.location,
-      isRecurring: event.isRecurring,
-      recurrence: event.recurrence || "none",
-      zoomLink: event.zoomLink || "",
-      courseId: event.courseId || courses.length > 0 ? courses[0].id : ""
+      id: e.id,
+      title: e.title || '',
+      description: e.description || '',
+      startTime: e.startTime ? e.startTime.slice(0, 16) : '',
+      endTime: e.endTime ? e.endTime.slice(0, 16) : '',
+      timeZone: e.timeZone || userTimezone,
+      location: e.location || '',
+      isRecurring: e.isRecurring || false,
+      recurrence: e.recurrence || 'none',
+      zoomLink: e.zoomLink || '',
+      courseId: e.courseId || e.course_id || (courses.length > 0 ? courses[0].id : ''),
     });
     setEditIndex(index);
     setShowModal(true);
@@ -211,6 +242,12 @@ const AddEvent = () => {
 
   const handleDelete = async (index) => {
     const event = events[index];
+    // For non-recurring events, use DELETE /calendar/events/:eventId
+    if (event.isRecurring && event.occurrences && event.occurrences.length > 0) {
+      setRecurringDeleteEvent({ ...event, index });
+      setShowRecurringDeleteModal(true);
+      return;
+    }
     if (!event.id) {
       // If no id, just remove from local state
       setEvents(events.filter((_, i) => i !== index));
@@ -218,6 +255,7 @@ const AddEvent = () => {
     }
     try {
       const token = getAuthToken();
+      // DELETE non-recurring event
       await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${event.id}`, {
         method: "DELETE",
         headers: {
@@ -237,6 +275,86 @@ const AddEvent = () => {
       setEvents(normalizedEvents);
     } catch (err) {
       console.error("Failed to delete event", err);
+    }
+  };
+
+  // Delete a single occurrence of a recurring event
+  const handleDeleteOccurrence = async (eventId, occurrenceStartTime) => {
+    setDeletingOccurrence(true);
+    try {
+      const token = getAuthToken();
+      // DELETE a single occurrence in a recurring event
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "X-User-Role": getUserRole(),
+        },
+        credentials: "include",
+        body: JSON.stringify({ occurrenceDate: occurrenceStartTime })
+      });
+      // Refetch events after deletion
+      const data = await getAllEvents();
+      setEvents(data);
+      setShowRecurringDeleteModal(false);
+    } catch (err) {
+      console.error("Failed to delete occurrence", err);
+    } finally {
+      setDeletingOccurrence(false);
+    }
+  };
+
+  // Delete all occurrences (the whole series)
+  const handleDeleteAllOccurrences = async (eventId) => {
+    setDeletingAll(true);
+    try {
+      const token = getAuthToken();
+      // DELETE recurring event series
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/recurring/${eventId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "X-User-Role": getUserRole(),
+        },
+        credentials: "include"
+      });
+      // Refetch events after deletion
+      const data = await getAllEvents();
+      setEvents(data);
+      setShowRecurringDeleteModal(false);
+    } catch (err) {
+      console.error("Failed to delete all occurrences", err);
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
+  // Restore a deleted occurrence in a recurring event
+  const handleRestoreOccurrence = async (eventId, occurrenceDate) => {
+    setDeletingOccurrence(true);
+    try {
+      const token = getAuthToken();
+      // RESTORE a single occurrence in a recurring event
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "X-User-Role": getUserRole(),
+        },
+        credentials: "include",
+        body: JSON.stringify({ occurrenceDate })
+      });
+      // Refetch events after restore
+      const data = await getAllEvents();
+      setEvents(data);
+      setShowRecurringDeleteModal(false);
+    } catch (err) {
+      console.error("Failed to restore occurrence", err);
+    } finally {
+      setDeletingOccurrence(false);
     }
   };
 
@@ -287,8 +405,9 @@ const AddEvent = () => {
       // Update event in backend
       try {
         const token = getAuthToken();
-        await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${form.id}`, {
-          method: "PUT",
+        console.log('Updating event with ID:', form.id);
+        const patchRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${form.id}`, {
+          method: "PATCH",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`,
@@ -297,12 +416,31 @@ const AddEvent = () => {
           body: JSON.stringify(payload),
           credentials: "include"
         });
+        const rawText = await patchRes.text();
+        let patchData;
+        try {
+          patchData = JSON.parse(rawText);
+        } catch (jsonErr) {
+          console.error('PATCH response not JSON:', rawText);
+          if (patchRes.status === 404) {
+            alert('Event not found. It may have been deleted or does not exist.');
+          } else {
+            alert('Server error: ' + rawText);
+          }
+          throw new Error('Server error: ' + rawText);
+        }
+        if (!patchRes.ok) {
+          throw new Error(patchData?.message || 'Failed to update event');
+        }
+        console.log('PATCH /calendar/events/:eventId payload:', payload);
+        console.log('PATCH /calendar/events/:eventId response:', patchData);
         // Refetch events after updating
         const data = await getAllEvents();
         console.log("Fetched events after update:", data);
         setEvents(data);
       } catch (err) {
         console.error("Failed to update event", err);
+        alert(err.message || 'Failed to update event');
       }
       setEditIndex(null);
     } else {
@@ -422,8 +560,7 @@ const AddEvent = () => {
                   </h3>
                   <div className="mt-2 text-sm text-yellow-700">
                     <p>
-                      Your account shows you have <strong>{userRole}</strong> permissions, but the server cannot verify this. 
-                      You may experience permission errors when creating events. Please contact support to resolve this issue.
+                      Your account shows you have <strong>{userRole}</strong> permissions, if you may experience permission errors when creating events. Please contact support to resolve this issue.
                     </p>
                   </div>
                 </div>
@@ -521,7 +658,11 @@ const AddEvent = () => {
               <li key={event.id || i} className="border rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-semibold text-gray-800">{event.title}</h4>
+                    <h4 className="font-semibold text-gray-800">{event.title}
+                      {event.isRecurring && (
+                        <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full align-middle">Recurring</span>
+                      )}
+                    </h4>
                     <p className="text-sm text-gray-600 mt-1">{event.description}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
@@ -755,6 +896,110 @@ const AddEvent = () => {
                   onClick={() => setShowPastDateModal(false)}
                 >
                   OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recurring Delete Modal */}
+      {showRecurringDeleteModal && recurringDeleteEvent && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity">
+        <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 relative">
+          <button
+            className="absolute top-5 right-5 text-gray-500 hover:text-gray-700 transition-colors duration-200 rounded-full p-1 hover:bg-gray-100"
+            onClick={() => setShowRecurringDeleteModal(false)}
+            aria-label="Close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-gray-900">Delete Recurring Event</h2>
+              <p className="text-gray-600">This event repeats. What would you like to delete or restore?</p>
+            </div>
+            
+            <div className="border rounded-lg overflow-hidden">
+              <h3 className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 border-b">
+                Upcoming occurrences
+              </h3>
+              <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
+                {/* Show active occurrences with Delete, deleted with Restore */}
+                {recurringDeleteEvent.occurrences && recurringDeleteEvent.occurrences.map((occ, idx) => {
+                  // Assume recurringDeleteEvent.deletedOccurrences is an array of ISO strings
+                  const deletedOccurrences = recurringDeleteEvent.deletedOccurrences || [];
+                  const isDeleted = deletedOccurrences.includes(occ.startTime);
+                  return (
+                    <li key={occ.startTime} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {new Date(occ.startTime).toLocaleDateString(undefined, { 
+                            weekday: 'short', 
+                            month: 'short', 
+                            day: 'numeric',
+                            timeZone: userTimezone 
+                          })}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(occ.startTime).toLocaleTimeString(undefined, { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            timeZone: userTimezone 
+                          })} - {new Date(occ.endTime).toLocaleTimeString(undefined, { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            timeZone: userTimezone 
+                          })}
+                        </p>
+                      </div>
+                      {isDeleted ? (
+                        <button
+                          className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrence ? 'bg-gray-100 text-gray-400' : 'text-green-600 hover:bg-green-50'}`}
+                          disabled={deletingOccurrence}
+                          onClick={() => handleRestoreOccurrence(recurringDeleteEvent.id, occ.startTime)}
+                        >
+                          {deletingOccurrence ? 'Restoring...' : 'Restore'}
+                        </button>
+                      ) : (
+                        <button
+                          className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrence ? 'bg-gray-100 text-gray-400' : 'text-red-600 hover:bg-red-50'}`}
+                          disabled={deletingOccurrence}
+                          onClick={() => handleDeleteOccurrence(recurringDeleteEvent.id, occ.startTime)}
+                        >
+                          {deletingOccurrence ? 'Deleting...' : 'Delete'}
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+            
+            <div className="space-y-2 pt-2">
+              <button
+                className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${deletingAll ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 text-white'}`}
+                disabled={deletingAll}
+                onClick={() => handleDeleteAllOccurrences(recurringDeleteEvent.id)}
+              >
+                {deletingAll ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Deleting all occurrences...
+                  </span>
+                ) : 'Delete entire series'}
+              </button>
+              <button
+                className="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                onClick={() => setShowRecurringDeleteModal(false)}
+              >
+                Cancel
                 </button>
               </div>
             </div>

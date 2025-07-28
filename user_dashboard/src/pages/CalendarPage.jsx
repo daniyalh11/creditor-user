@@ -9,6 +9,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { getAllEvents, getAllUpcomingEvents } from "@/services/calendarService";
 
 // Utility functions for date handling
+const getUserTimezone = () => {
+  return localStorage.getItem('userTimezone') || 'America/New_York';
+};
+
 const getTodayBounds = () => {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
@@ -31,7 +35,8 @@ const formatDateForDisplay = (date) => {
     weekday: 'long', 
     year: 'numeric', 
     month: 'long', 
-    day: 'numeric' 
+    day: 'numeric',
+    timeZone: getUserTimezone()
   });
 };
 
@@ -65,7 +70,7 @@ export function CalendarPage() {
                 expanded.push({
                   ...event,
                   date: occDate,
-                  time: occDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  time: occDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: getUserTimezone() }),
                   isOccurrence: true
                 });
               }
@@ -76,7 +81,7 @@ export function CalendarPage() {
               expanded.push({
                 ...event,
                 date: eventDate,
-                time: eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                time: eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: getUserTimezone() }),
                 isOccurrence: false
               });
             }
@@ -157,6 +162,9 @@ export function CalendarPage() {
         
         {/* Events List */}
         <div className="lg:col-span-2">
+          <p className="text-xs text-muted-foreground mb-2">
+            All times shown in your timezone: <b>{getUserTimezone()}</b>
+          </p>
           <div className="space-y-6">
             <h3 className="text-xl font-semibold">
               {loading.all ? (
