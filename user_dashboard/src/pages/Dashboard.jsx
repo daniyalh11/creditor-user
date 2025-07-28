@@ -635,7 +635,7 @@ export function Dashboard() {
             <div className="text-center mb-8 sm:mb-10">
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 sm:mb-3">How It Works</h2>
               <p className="text-gray-600 max-w-2xl mx-auto text-base sm:text-lg">
-                Start your legal education journey in just three simple steps. Our platform makes learning law accessible and effective.
+                Start your education journey in just three simple steps. Our platform makes learning accessible and effective.
               </p>
             </div>
             

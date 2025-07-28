@@ -31,7 +31,7 @@ const carouselItems = [
   {
     id: 2,
     title: "New Feature: Your Calendar ",
-    description: "Plan and view your upcoming events and deadlines with the new integrated calendar. Stay organized and never miss an important date.",
+    description: "View your upcoming events and deadlines with the new integrated calendar. Stay organized and never miss an important date.",
     icon: Calendar,
     type: 'event',
     image: "https://i.pinimg.com/1200x/0b/0a/da/0b0ada13a45165cec43bdc91d2fe9028.jpg",
