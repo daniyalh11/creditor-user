@@ -46,6 +46,7 @@ export function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userName, setUserName] = useState("");
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://creditor-backend-gvtd.onrender.com";
   // Get userId from localStorage or cookies, or fetch from profile
@@ -225,7 +226,7 @@ export function Dashboard() {
     // console.log('📊 Dashboard data updated:', dashboardData);
   }, [dashboardData]);
 
-  // Fetch user profile to get userId if not available
+  // Fetch user profile to get userId and userName if not available
   const fetchUserProfile = async () => {
     try {
       const token = Cookies.get('token') || localStorage.getItem('token');
@@ -242,16 +243,25 @@ export function Dashboard() {
       });
       
       if (response.data && response.data.data && response.data.data.id) {
-        const userProfileId = response.data.data.id;
-        setUserId(userProfileId);
-        localStorage.setItem('userId', userProfileId);
-        return userProfileId;
+        const userProfile = response.data.data;
+        setUserId(userProfile.id);
+        localStorage.setItem('userId', userProfile.id);
+        // Set user name for welcome message
+        const name = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim();
+        setUserName(name || userProfile.email || "User");
+        return userProfile.id;
       }
     } catch (err) {
       console.error('Error fetching user profile:', err);
       throw err;
     }
   };
+
+  // Fetch user name on mount
+  useEffect(() => {
+    fetchUserProfile();
+    // eslint-disable-next-line
+  }, []);
 
   // Add retry functionality
   const handleRetry = () => {
@@ -383,7 +393,7 @@ export function Dashboard() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold mb-1 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                        Welcome Back Learner!
+                        {`Welcome back${userName ? `, ${userName}` : ''}!`}
                       </h2>
                       <p className="text-gray-600 text-base">Continue your legal education journey and achieve your learning goals.</p>
                     </div>
