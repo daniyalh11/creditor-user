@@ -11,50 +11,253 @@ import MonthlyProgress from "@/components/dashboard/MonthlyProgress";
 import DashboardAnnouncements from "@/components/dashboard/DashboardAnnouncements";
 import LiveClasses from "@/components/dashboard/LiveClasses";
 import axios from "axios";
+import Cookies from "js-cookie";
 
 export function Dashboard() {
+  // Dashboard data structure based on backend getUserOverview endpoint
+  // Expected response structure:
+  // {
+  //   summary: { activeCourses, completedCourses, totalLearningHours, averageProgress },
+  //   weeklyPerformance: { studyHours, lessonsCompleted },
+  //   monthlyProgressChart: [...],
+  //   learningActivities: [...]
+  // }
+  // 
+  // NOTE: Using the working endpoints from your backend:
+  // - /api/course/getCourses - for user courses
+  // - /api/user/getUserProfile - for user profile
+  // 
+  // The dashboard shows basic stats based on available data.
+  // Progress tracking, time tracking, and detailed analytics will be added
+  // when those features are implemented in the backend.
   const [dashboardData, setDashboardData] = useState({
-    activeCourses: 0,
-    completedCourses: 0,
-    courseProgress: 0,
-    learningHours: 0,
-    averageProgress: 0
+    summary: {
+      activeCourses: 0,
+      completedCourses: 0,
+      totalLearningHours: 0,
+      averageProgress: 0
+    },
+    weeklyPerformance: {
+      studyHours: 0,
+      lessonsCompleted: 0
+    },
+    monthlyProgressChart: [],
+    learningActivities: []
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://creditor-backend-gvtd.onrender.com";
-  // Get userId from localStorage or set a placeholder for now
-  const userId = localStorage.getItem('userId') || 'test-user-id';
+  // Get userId from localStorage or cookies, or fetch from profile
+  const [userId, setUserId] = useState(localStorage.getItem('userId') || Cookies.get('userId'));
 
   const fetchUserOverview = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
+      // Get token from cookies (primary) or localStorage (fallback)
+      const token = Cookies.get('token') || localStorage.getItem('token');
       if (!token) {
-        throw new Error('No authentication token found');
+        throw new Error('No authentication token found. Please log in again.');
       }
-      // Use the overview endpoint for now
-      const response = await axios.get(`${API_BASE}/api/user/${userId}/overview`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      
+      // Get userId - fetch from profile if not available
+      let currentUserId = userId;
+      if (!currentUserId) {
+        currentUserId = await fetchUserProfile();
+      }
+      
+      if (!currentUserId) {
+        throw new Error('Unable to get user ID. Please log in again.');
+      }
+      
+      // Use the working endpoints from your backend
+      try {
+        console.log('🔍 Fetching user courses from:', `${API_BASE}/api/course/getCourses`);
+        console.log('🔑 Token available:', !!token);
+        console.log('👤 User ID:', currentUserId);
+        
+        // Get user courses using the correct endpoint
+        const userCoursesResponse = await axios.get(`${API_BASE}/api/course/getCourses`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        console.log('✅ API Response:', userCoursesResponse.data);
+        
+        if (userCoursesResponse.data && userCoursesResponse.data.data) {
+          const courses = userCoursesResponse.data.data;
+          console.log('📚 Courses found:', courses.length, courses);
+          
+          // Calculate basic dashboard stats from available data
+          const activeCourses = courses.length;
+          const completedCourses = 0; // Will be calculated when progress tracking is implemented
+          const totalLearningHours = 0; // Will be calculated when time tracking is implemented
+          const averageProgress = 0; // Will be calculated when progress tracking is implemented
+          
+          console.log('📊 Dashboard stats calculated:', {
+            activeCourses,
+            completedCourses,
+            totalLearningHours,
+            averageProgress
+          });
+          
+                      const newDashboardData = {
+              summary: {
+                activeCourses,
+                completedCourses,
+                totalLearningHours,
+                averageProgress
+              },
+              weeklyPerformance: {
+                studyHours: 0, // Will be calculated when time tracking is implemented
+                lessonsCompleted: activeCourses
+              },
+              monthlyProgressChart: [],
+              learningActivities: []
+            };
+            
+            console.log('📊 Setting dashboard data:', newDashboardData);
+            setDashboardData(newDashboardData);
+        } else {
+          console.log('⚠️ No courses data found in response');
+          // No courses found, set default values
+          setDashboardData({
+            summary: {
+              activeCourses: 0,
+              completedCourses: 0,
+              totalLearningHours: 0,
+              averageProgress: 0
+            },
+            weeklyPerformance: {
+              studyHours: 0,
+              lessonsCompleted: 0
+            },
+            monthlyProgressChart: [],
+            learningActivities: []
+          });
         }
-      });
-      if (response.data && response.data.data) {
-        setDashboardData(response.data.data);
+      } catch (coursesError) {
+        console.error('❌ Failed to fetch user courses:', coursesError);
+        console.error('❌ Error details:', {
+          message: coursesError.message,
+          status: coursesError.response?.status,
+          data: coursesError.response?.data
+        });
+        // Set default values if endpoint fails
+        setDashboardData({
+          summary: {
+            activeCourses: 0,
+            completedCourses: 0,
+            totalLearningHours: 0,
+            averageProgress: 0
+          },
+          weeklyPerformance: {
+            studyHours: 0,
+            lessonsCompleted: 0
+          },
+          monthlyProgressChart: [],
+          learningActivities: []
+        });
       }
     } catch (err) {
       console.error('Error fetching user overview:', err);
-      setError(err.message);
+      
+      // Handle specific error cases
+      if (err.response?.status === 401) {
+        setError('Authentication failed. Please log in again.');
+        // Redirect to login after a delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 3000);
+      } else if (err.response?.status === 403) {
+        setError('Access denied. You do not have permission to view this data.');
+      } else if (err.response?.status === 404) {
+        setError('User data not found. Please contact support.');
+      } else {
+        setError(err.message || 'Failed to load dashboard data. Please try again.');
+      }
+      
+      // Set default values if API fails
+      setDashboardData({
+        summary: {
+          activeCourses: 0,
+          completedCourses: 0,
+          totalLearningHours: 0,
+          averageProgress: 0
+        },
+        weeklyPerformance: {
+          studyHours: 0,
+          lessonsCompleted: 0
+        },
+        monthlyProgressChart: [],
+        learningActivities: []
+      });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    console.log('🚀 Dashboard useEffect triggered');
+    // Check if user is authenticated before making API call
+    const token = Cookies.get('token') || localStorage.getItem('token');
+    console.log('🔑 Token found:', !!token);
+    console.log('👤 Current userId:', userId);
+    
+    if (token) {
+      console.log('✅ Token available, calling fetchUserOverview');
+      fetchUserOverview();
+    } else {
+      console.log('❌ No token found, redirecting to login');
+      setError('Please log in to view your dashboard.');
+      // Redirect to login
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+    }
+  }, [userId]);
+
+  // Monitor dashboard data changes
+  useEffect(() => {
+    console.log('📊 Dashboard data updated:', dashboardData);
+  }, [dashboardData]);
+
+  // Fetch user profile to get userId if not available
+  const fetchUserProfile = async () => {
+    try {
+      const token = Cookies.get('token') || localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      const response = await axios.get(`${API_BASE}/api/user/getUserProfile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      });
+      
+      if (response.data && response.data.data && response.data.data.id) {
+        const userProfileId = response.data.data.id;
+        setUserId(userProfileId);
+        localStorage.setItem('userId', userProfileId);
+        return userProfileId;
+      }
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      throw err;
+    }
+  };
+
+  // Add retry functionality
+  const handleRetry = () => {
+    setError(null);
     fetchUserOverview();
-  }, []);
+  };
 
   const inProgressCourses = [
     {
@@ -186,6 +389,26 @@ export function Dashboard() {
                     </div>
                   </div>
                   
+                  {/* Error Display */}
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <span className="text-red-700 text-sm">Failed to load dashboard data</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleRetry}
+                          className="border-red-200 text-red-600 hover:bg-red-50"
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Quick Stats */}
                   <div className="grid grid-cols-3 gap-4 mt-6">
                     <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
@@ -194,7 +417,11 @@ export function Dashboard() {
                         <span className="text-blue-600 font-semibold">Completed</span>
                       </div>
                       <p className="text-2xl font-bold text-blue-700 mt-1">
-                        {loading ? '...' : dashboardData.completedCourses}
+                        {loading ? (
+                          <div className="animate-pulse bg-blue-200 h-8 w-12 rounded"></div>
+                        ) : (
+                          dashboardData.summary?.completedCourses || 0
+                        )}
                       </p>
                       <p className="text-blue-600 text-sm">Courses finished</p>
                     </div>
@@ -204,7 +431,11 @@ export function Dashboard() {
                         <span className="text-emerald-600 font-semibold">This Week</span>
                       </div>
                       <p className="text-2xl font-bold text-emerald-700 mt-1">
-                        {loading ? '...' : `${dashboardData.learningHours}h`}
+                        {loading ? (
+                          <div className="animate-pulse bg-emerald-200 h-8 w-12 rounded"></div>
+                        ) : (
+                          `${dashboardData.weeklyPerformance?.studyHours || 0}h`
+                        )}
                       </p>
                       <p className="text-emerald-600 text-sm">Study Time</p>
                     </div>
@@ -214,7 +445,11 @@ export function Dashboard() {
                         <span className="text-purple-600 font-semibold">Active</span>
                       </div>
                       <p className="text-2xl font-bold text-purple-700 mt-1">
-                        {loading ? '...' : dashboardData.activeCourses}
+                        {loading ? (
+                          <div className="animate-pulse bg-purple-200 h-8 w-12 rounded"></div>
+                        ) : (
+                          dashboardData.summary?.activeCourses || 0
+                        )}
                       </p>
                       <p className="text-purple-600 text-sm">Courses</p>
                     </div>
