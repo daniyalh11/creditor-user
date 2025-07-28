@@ -40,7 +40,14 @@ const AddCatelog = () => {
           fetchAvailableCourses()
         ]);
         console.log('Fetched catalogsData:', catalogsData); // Debug log
-        setCatalogs(Array.isArray(catalogsData) ? catalogsData : []);
+        console.log('Catalogs data type:', typeof catalogsData);
+        console.log('Is catalogs array:', Array.isArray(catalogsData));
+        
+        // Ensure catalogs is always an array
+        const catalogsArray = Array.isArray(catalogsData) ? catalogsData : [];
+        console.log('Final catalogs array:', catalogsArray);
+        
+        setCatalogs(catalogsArray);
         setAvailableCourses(Array.isArray(coursesData) ? coursesData : []);
       } catch (err) {
         console.error("Failed to fetch data:", err);
@@ -212,7 +219,13 @@ const AddCatelog = () => {
 
       {safeCatalogs.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">No catalogs found. Create your first catalog to get started.</p>
+          <div className="max-w-md mx-auto">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <h3 className="mt-4 text-lg font-medium text-gray-900">No catalogs found</h3>
+            <p className="mt-2 text-gray-500">Create your first catalog to organize your courses.</p>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -232,8 +245,9 @@ const AddCatelog = () => {
                     <div className="flex gap-3">
                       <button
                         onClick={() => handleEdit(catalog)}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
+                        className="text-blue-600 hover:text-blue-800 transition-colors p-1 rounded hover:bg-blue-50"
                         aria-label="Edit"
+                        title="Edit catalog"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -241,8 +255,9 @@ const AddCatelog = () => {
                       </button>
                       <button
                         onClick={() => handleDelete(catalog.id)}
-                        className="text-red-600 hover:text-red-800 transition-colors"
+                        className="text-red-600 hover:text-red-800 transition-colors p-1 rounded hover:bg-red-50"
                         aria-label="Delete"
+                        title="Delete catalog"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -250,21 +265,42 @@ const AddCatelog = () => {
                       </button>
                     </div>
                   </div>
-                  <p className="text-gray-600 text-sm mb-4">{catalog.description}</p>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{catalog.description}</p>
+                  
+                  {/* Catalog metadata */}
+                  <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                    <span className="flex items-center gap-1">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                      {catalog.courses?.length || 0} courses
+                    </span>
+                    {catalog.category && (
+                      <span className="bg-gray-100 px-2 py-1 rounded text-xs">
+                        {catalog.category}
+                      </span>
+                    )}
+                  </div>
+                  
                   <div className="mt-auto">
                     <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Included Courses</div>
-                    <ul className="space-y-1">
+                    <ul className="space-y-1 max-h-20 overflow-y-auto">
                       {(!catalog.courses || catalog.courses.length === 0) ? (
                         <li className="text-xs text-gray-400 italic">No courses added</li>
                       ) : (
-                        catalog.courses.map(course => (
+                        catalog.courses.slice(0, 3).map(course => (
                           <li key={course.id || course} className="text-sm text-gray-700 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-green-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                             </svg>
-                            {course.title || course.name || course.id || course}
+                            <span className="truncate">{course.title || course.name || course.id || course}</span>
                           </li>
                         ))
+                      )}
+                      {catalog.courses && catalog.courses.length > 3 && (
+                        <li className="text-xs text-gray-500 italic">
+                          +{catalog.courses.length - 3} more courses
+                        </li>
                       )}
                     </ul>
                   </div>

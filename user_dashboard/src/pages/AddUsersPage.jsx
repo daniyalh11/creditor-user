@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import axios from "axios";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:9000";
+
+const LOCAL_STORAGE_KEY = "addedUsersList";
 
 const AddUsersForm = () => {
   const [numUsers, setNumUsers] = useState(1);
@@ -13,6 +15,23 @@ const AddUsersForm = () => {
   const [error, setError] = useState("");
   const [addedUsers, setAddedUsers] = useState([]);
   const [showUserList, setShowUserList] = useState(false);
+
+  // Load added users from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (stored) {
+      try {
+        setAddedUsers(JSON.parse(stored));
+      } catch {
+        setAddedUsers([]);
+      }
+    }
+  }, []);
+
+  // Save added users to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(addedUsers));
+  }, [addedUsers]);
   const [excelFile, setExcelFile] = useState(null);
   const [excelData, setExcelData] = useState([]);
   const [showExcelPreview, setShowExcelPreview] = useState(false);
@@ -123,7 +142,12 @@ const AddUsersForm = () => {
 
       if (response.data && response.data.success) {
         setSuccess(true);
-        setAddedUsers(prev => [...prev, ...users]);
+        setAddedUsers(prev => {
+          const updated = [...prev, ...users];
+          // Save to localStorage here for immediate persistence
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+          return updated;
+        });
         setUsers([{ email: "", first_name: "", last_name: "", password: "" }]);
         setNumUsers(1);
         setExcelFile(null);
@@ -204,6 +228,29 @@ const AddUsersForm = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden p-8 mb-8">
+      {/* Toggle button for previously added users */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setShowUserList(!showUserList)}
+          className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors font-medium"
+        >
+          {showUserList ? 'Hide Previously Added Users' : 'View Previously Added Users'}
+        </button>
+      </div>
+      {/* User list (always available) */}
+      {showUserList && addedUsers.length > 0 && (
+        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">Previously Added Users ({addedUsers.length})</h3>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {addedUsers.map((user, index) => (
+              <div key={index} className="bg-white p-3 rounded border">
+                <div className="font-medium text-gray-800">{user.firstName} {user.lastName}</div>
+                <div className="text-sm text-gray-600">{user.email}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Add New Users</h1>
         <p className="text-gray-600">Fill in the details for each user you want to add to the system</p>

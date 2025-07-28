@@ -33,7 +33,9 @@ export async function fetchAllCatalogs() {
 
     if (response.ok) {
       const data = await response.json();
-      catalogs = data.data || [];
+      console.log('Catalogs API response:', data);
+      // Handle the nested structure: data.data.catalogs or data.data
+      catalogs = data.data?.catalogs || data.data || [];
     } else {
       // If that fails, try the course endpoint as fallback
       console.log('Catalog endpoint failed, trying course endpoint as fallback...');
@@ -74,6 +76,7 @@ export async function fetchAllCatalogs() {
     const localCatalogs = JSON.parse(localStorage.getItem('localCatalogs') || '[]');
     catalogs = [...catalogs, ...localCatalogs];
 
+    console.log('Final catalogs array:', catalogs);
     return catalogs;
   } catch (error) {
     console.error('Error fetching catalogs:', error);
@@ -216,7 +219,7 @@ export async function deleteCatalog(catalogId) {
     }
 
     // Try backend deletion
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/${catalogId}/Deletecatalog`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/${catalogId}/deletecatalog`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
       credentials: 'include',
