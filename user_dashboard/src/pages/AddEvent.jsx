@@ -1,8 +1,11 @@
 
+
 import React, { useState, useEffect } from "react";
 import { currentUserId } from "@/data/currentUser";
 import { getAllEvents } from "@/services/calendarService";
 import { fetchUserProfile } from "@/services/userService";
+import Cookies from "js-cookie";
+import { jwtDecode } from "jwt-decode";
 
 const DEFAULT_TIMEZONE = "America/New_York";
 const AddEvent = () => {
@@ -13,6 +16,7 @@ const AddEvent = () => {
   const [events, setEvents] = useState([]);
   const [userTimezone, setUserTimezone] = useState(DEFAULT_TIMEZONE);
   const [courses, setCourses] = useState([]);
+  const [userRole, setUserRole] = useState("");
   const [form, setForm] = useState({
     id: "", // <-- add this
     title: "",
@@ -29,7 +33,57 @@ const AddEvent = () => {
   const [editIndex, setEditIndex] = useState(null);
   const [showPastDateModal, setShowPastDateModal] = useState(false);
 
-  // Fetch user profile to get timezone
+  // Get authentication token from cookies
+  const getAuthToken = () => {
+    return Cookies.get("token");
+  };
+
+  // Get user role from localStorage
+  const getUserRole = () => {
+    return localStorage.getItem("userRole") || "";
+  };
+
+  // Decode JWT token to see what's in it
+  const decodeToken = () => {
+    const token = getAuthToken();
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        console.log("Decoded JWT token:", decoded);
+        return decoded;
+      } catch (error) {
+        console.error("Failed to decode token:", error);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  // Try to refresh the token to get one with role information
+  const refreshToken = async () => {
+    try {
+      console.log("Attempting to refresh token...");
+      // This would require the user's credentials, which we don't have stored
+      // For now, let's just log that we need a token with role information
+      console.log("Current token doesn't contain role information. Need to contact backend team to include role in JWT token.");
+      return false;
+    } catch (error) {
+      console.error("Failed to refresh token:", error);
+      return false;
+    }
+  };
+
+  // URL validation function
+  const isValidUrl = (string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  // Fetch user profile to get timezone and role
   useEffect(() => {
     const fetchUserProfileData = async () => {
       try {
@@ -38,6 +92,10 @@ const AddEvent = () => {
         setUserTimezone(timezone);
         // Update form timezone as well
         setForm(prev => ({ ...prev, timeZone: timezone }));
+        
+        // Set user role
+        const role = getUserRole();
+        setUserRole(role);
       } catch (err) {
         console.error("Failed to fetch user profile:", err);
       }
@@ -45,14 +103,17 @@ const AddEvent = () => {
     fetchUserProfileData();
   }, []);
 
-  // Fetch courses from API
+  // Fetch courses from API with proper authentication
   useEffect(() => {
     const fetchCourses = async () => {
       try {
+        const token = getAuthToken();
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/getAllCourses`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'X-User-Role': getUserRole(), // Add role in header as well
           },
           credentials: 'include'
         });
@@ -156,10 +217,13 @@ const AddEvent = () => {
       return;
     }
     try {
+      const token = getAuthToken();
       await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${event.id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "X-User-Role": getUserRole(), // Add role in header as well
         },
         credentials: "include"
       });
@@ -178,6 +242,18 @@ const AddEvent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check if user has permission to create events
+    const currentRole = getUserRole();
+    if (!currentRole || (currentRole !== 'admin' && currentRole !== 'instructor')) {
+      console.error("User does not have permission to create events. Required role: admin or instructor. Current role:", currentRole);
+      alert("You don't have permission to create events. Only administrators and instructors can create events.");
+      return;
+    }
+    
+    // Decode and log the JWT token to see what's in it
+    const decodedToken = decodeToken();
+    console.log("Token contents:", decodedToken);
     
     // Prepare payload for backend
     const selectedCourse = courses.find(c => c.id === form.courseId);
@@ -199,18 +275,24 @@ const AddEvent = () => {
       isRecurring: form.recurrence !== "none",
       calendarType: "GROUP",
       visibility: "PRIVATE",
-      courseName: selectedCourse ? selectedCourse.title : ""
+      courseName: selectedCourse ? selectedCourse.title : "",
+      userRole: currentRole // Include user role in payload
     };
 
     console.log("Payload being sent:", payload);
+    console.log("User role:", currentRole);
+    console.log("JWT token role (if any):", decodedToken?.role || decodedToken?.userRole || "No role in token");
 
     if (editIndex !== null) {
       // Update event in backend
       try {
+        const token = getAuthToken();
         await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${form.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+            "X-User-Role": currentRole, // Add role in header as well
           },
           body: JSON.stringify(payload),
           credentials: "include"
@@ -226,16 +308,27 @@ const AddEvent = () => {
     } else {
       // Send to backend only on add
       try {
+        const token = getAuthToken();
         const postRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+            "X-User-Role": currentRole, // Add role in header as well
           },
           body: JSON.stringify(payload),
           credentials: "include"
         });
         const postData = await postRes.json();
         console.log("POST response:", postData);
+        
+        // Check if it's a role-related error
+        if (postRes.status === 403 && postData.message?.includes('Access restricted to admin, instructor roles')) {
+          console.error("Role verification failed. Backend expects role in JWT token but token doesn't contain role information.");
+          alert("Permission Error: Your account role cannot be verified by the server. Please contact support to ensure your instructor role is properly configured in the system.");
+          return;
+        }
+        
         // Refetch events after adding
         const data = await getAllEvents();
         console.log("Fetched events after add:", data);
@@ -248,6 +341,7 @@ const AddEvent = () => {
       } catch (err) {
         // Optionally handle error
         console.error("Failed to add event to backend", err);
+        alert("Failed to create event. Please try again or contact support if the issue persists.");
       }
     }
     
@@ -291,7 +385,54 @@ const AddEvent = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Calendar</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-semibold text-gray-800">Calendar</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Role:</span>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            userRole === 'admin' ? 'bg-red-100 text-red-800' :
+            userRole === 'instructor' ? 'bg-blue-100 text-blue-800' :
+            'bg-gray-100 text-gray-800'
+          }`}>
+            {userRole || 'Loading...'}
+          </span>
+          {userRole && userRole !== 'admin' && userRole !== 'instructor' && (
+            <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+              Read-only access
+            </span>
+          )}
+        </div>
+      </div>
+      
+      {/* Role Verification Warning */}
+      {(() => {
+        const token = decodeToken();
+        if (token && !token.role && !token.userRole && (userRole === 'admin' || userRole === 'instructor')) {
+          return (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Role Verification Issue
+                  </h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>
+                      Your account shows you have <strong>{userRole}</strong> permissions, but the server cannot verify this. 
+                      You may experience permission errors when creating events. Please contact support to resolve this issue.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
       
       {/* Calendar Header */}
       <div className="flex items-center justify-between mb-6">
