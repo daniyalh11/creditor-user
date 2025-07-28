@@ -139,7 +139,13 @@ export function CourseView() {
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute top-3 right-3">
-                          <Badge variant={module.module_status === 'PUBLISHED' ? "default" : "outline"}>
+                          <Badge 
+                            className={`${
+                              module.module_status === 'PUBLISHED' 
+                                ? 'bg-green-100 text-green-800 border-green-200' 
+                                : 'bg-amber-50 text-amber-900 border-amber-200'
+                            } border font-medium px-3 py-1 rounded-full shadow-sm`}
+                          >
                             {module.module_status}
                           </Badge>
                         </div>

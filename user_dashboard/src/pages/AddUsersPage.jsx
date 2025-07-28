@@ -15,6 +15,7 @@ const AddUsersForm = () => {
   const [error, setError] = useState("");
   const [addedUsers, setAddedUsers] = useState([]);
   const [showUserList, setShowUserList] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
 
   // Load added users from localStorage on mount
   useEffect(() => {
@@ -228,33 +229,49 @@ const AddUsersForm = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden p-8 mb-8">
-      {/* Toggle button for previously added users */}
-      <div className="flex justify-end mb-4">
+      {/* Heading and View Users button in the same row */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-1">Add New Users</h1>
+          <p className="text-gray-600">Fill in the details for each user you want to add to the system</p>
+        </div>
         <button
-          onClick={() => setShowUserList(!showUserList)}
-          className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors font-medium"
+          onClick={() => setShowUserModal(true)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700`}
         >
-          {showUserList ? 'Hide Previously Added Users' : 'View Previously Added Users'}
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+          </svg>
+          View Users ({addedUsers.length})
         </button>
       </div>
-      {/* User list (always available) */}
-      {showUserList && addedUsers.length > 0 && (
-        <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Previously Added Users ({addedUsers.length})</h3>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {addedUsers.map((user, index) => (
-              <div key={index} className="bg-white p-3 rounded border">
-                <div className="font-medium text-gray-800">{user.firstName} {user.lastName}</div>
-                <div className="text-sm text-gray-600">{user.email}</div>
+      {/* User list modal */}
+      {showUserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-lg p-8 max-w-lg w-full relative">
+            <button
+              onClick={() => setShowUserModal(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Previously Added Users ({addedUsers.length})</h3>
+            {addedUsers.length === 0 ? (
+              <div className="text-gray-500 text-center py-8">No users added yet.</div>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {addedUsers.map((user, index) => (
+                  <div key={index} className="bg-gray-50 p-3 rounded border">
+                    <div className="font-medium text-gray-800">{user.first_name} {user.last_name}</div>
+                    <div className="text-sm text-gray-600">{user.email}</div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </div>
       )}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Add New Users</h1>
-        <p className="text-gray-600">Fill in the details for each user you want to add to the system</p>
-      </div>
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="bg-blue-50 p-4 rounded-lg">
           <label className="block text-sm font-medium text-gray-700 mb-2">Number of Users to Add</label>

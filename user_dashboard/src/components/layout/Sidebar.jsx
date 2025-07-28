@@ -108,8 +108,7 @@ const SidebarItem = ({ icon: Icon, label, href, active, collapsed, dropdownConte
   );
 };
 
-export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+export function Sidebar({ collapsed, setCollapsed }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { userRole } = useAuth();
