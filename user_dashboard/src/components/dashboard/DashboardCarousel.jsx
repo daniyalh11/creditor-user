@@ -30,23 +30,23 @@ const carouselItems = [
   },
   {
     id: 2,
-    title: "New Feature: Task Manager",
-    description: "Organize your work with our new Task Manager. Add, edit, and track your daily to-dos directly from your dashboard.",
+    title: "New Feature: Your Calendar ",
+    description: "Plan and view your upcoming events and deadlines with the new integrated calendar. Stay organized and never miss an important date.",
     icon: Calendar,
     type: 'event',
-    image: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=1000&q=80",
-    buttonText: "Try It Now",
-    buttonLink: "/todo"
+    image: "https://i.pinimg.com/1200x/0b/0a/da/0b0ada13a45165cec43bdc91d2fe9028.jpg",
+    buttonText: "Open Calendar",
+    buttonLink: "/calendar"
   },
   {
     id: 3,
-    title: "Stay Notified",
-    description: "Enable notifications to never miss important updates, reminders, or announcements from your workspace.",
-    icon: AlertCircle,
-    type: 'alert',
-    image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80",
-    buttonText: "Enable Notifications",
-    buttonLink: "/settings"
+    title: "Explore the Course Catalog",
+    description: "Browse all available courses and find new learning opportunities tailored to your interests.",
+    icon: BookOpen,
+    type: 'course',
+    image: "https://i.pinimg.com/1200x/a0/15/f7/a015f7b1535d6bd8ce88d705cdcbd231.jpg",
+    buttonText: "Browse Catalog",
+    buttonLink: "/dashboard/catalog"
   },
   {
     id: 4,
@@ -54,7 +54,7 @@ const carouselItems = [
     description: "We’ve improved performance and squashed bugs for a smoother experience. Thank you for your feedback!",
     icon: BookOpen,
     type: 'course',
-    image: "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=1000&q=80",
+    image: "https://i.pinimg.com/736x/b5/3e/be/b53ebe5bb381adc4d177f2aa81b1a829.jpg",
     buttonText: "Learn More",
     buttonLink: "/updates"
   }
@@ -109,7 +109,7 @@ export function DashboardCarousel() {
                       alt={item.title}
                       className="h-full w-full object-cover object-center"
                     />
-                    <div className={`absolute inset-0 bg-gradient-to-r ${gradientClass} mix-blend-multiply opacity-80`} />
+                    <div className={`absolute inset-0 bg-gradient-to-r ${gradientClass} mix-blend-multiply opacity-50`} />
                   </div>
 
                   <div className="absolute inset-0 p-8 flex flex-col justify-between text-white">
