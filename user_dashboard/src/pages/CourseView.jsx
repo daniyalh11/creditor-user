@@ -128,10 +128,10 @@ export function CourseView() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredModules.map((module) => {
-                console.log('Rendering module:', module.title);
+                // console.log('Rendering module:', module.title);
                 return (
-                  <div key={module.id} className="module-card">
-                    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
+                  <div key={module.id} className="module-card h-full">
+                    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col h-full">
                       <div className="aspect-video relative overflow-hidden">
                         <img 
                           src={module.thumbnail || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000"} 
@@ -144,39 +144,42 @@ export function CourseView() {
                           </Badge>
                         </div>
                       </div>
-                      
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg line-clamp-2">{module.title}</CardTitle>
-                        <p className="text-sm text-muted-foreground line-clamp-2">{module.description}</p>
-                      </CardHeader>
-                      
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <BookOpen size={14} />
-                            <span>Order: {module.order || 'N/A'}</span>
+                      {/* Fixed height for content area, flex-grow to fill space */}
+                      <div className="flex flex-col flex-grow min-h-[170px] max-h-[170px] px-6 pt-4 pb-2">
+                        <CardHeader className="pb-2 px-0 pt-0">
+                          <CardTitle className="text-lg line-clamp-2 min-h-[56px]">{module.title}</CardTitle>
+                          <p className="text-sm text-muted-foreground line-clamp-3 min-h-[60px]">{module.description}</p>
+                        </CardHeader>
+                        <CardContent className="space-y-3 px-0 pt-0 pb-0">
+                          <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <BookOpen size={14} />
+                              <span>Order: {module.order || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock size={14} />
+                              <span>{module.estimated_duration || 0} min</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Clock size={14} />
-                            <span>{module.estimated_duration || 0} min</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                      
-                      <CardFooter>
-                        {module.resource_url ? (
-                          <Link to={`/dashboard/courses/${courseId}/modules/${module.id}/view`} className="w-full">
-                            <Button className="w-full">
-                              <Play size={16} className="mr-2" />
-                              Start Module
+                        </CardContent>
+                      </div>
+                      {/* Footer always at the bottom */}
+                      <div className="mt-auto px-6 pb-4">
+                        <CardFooter className="p-0">
+                          {module.resource_url ? (
+                            <Link to={`/dashboard/courses/${courseId}/modules/${module.id}/view`} className="w-full">
+                              <Button className="w-full">
+                                <Play size={16} className="mr-2" />
+                                Start Module
+                              </Button>
+                            </Link>
+                          ) : (
+                            <Button className="w-full" variant="outline" disabled>
+                              No Content Available
                             </Button>
-                          </Link>
-                        ) : (
-                          <Button className="w-full" variant="outline" disabled>
-                            No Content Available
-                          </Button>
-                        )}
-                      </CardFooter>
+                          )}
+                        </CardFooter>
+                      </div>
                     </Card>
                   </div>
                 );
