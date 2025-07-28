@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, SortAsc, BookOpen, FileCheck, Clock, Users, ChevronLeft } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useCourseTimer } from "@/components/courses/CourseTimerProvider";
+import { Search, Clock, ChevronLeft, Play, BookOpen } from "lucide-react";
 import { fetchCourseModules } from "@/services/courseService";
 
 export function CourseView() {
@@ -16,40 +14,25 @@ export function CourseView() {
   const [modules, setModules] = useState([]);
   const [filteredModules, setFilteredModules] = useState([]);
   const [error, setError] = useState("");
-  
-  // Use timer context with default values
-  const timer = useCourseTimer();
-  const timeSpent = timer?.timeSpent || 0;
-  const formatTime = timer?.formatTime || ((secs) => {
-    const h = Math.floor(secs / 3600).toString().padStart(2, "0");
-    const m = Math.floor((secs % 3600) / 60).toString().padStart(2, "0");
-    const s = (secs % 60).toString().padStart(2, "0");
-    return `${h}:${m}:${s}`;
-  });
 
-  // Fetch modules for the course
   useEffect(() => {
     const fetchModules = async () => {
       setIsLoading(true);
       setError("");
       try {
         const data = await fetchCourseModules(courseId);
+        console.log('Fetched modules:', data);
         setModules(data);
         setFilteredModules(data);
       } catch (err) {
-        console.error('Error fetching modules:', err);
         setError("Failed to load course modules");
       } finally {
         setIsLoading(false);
       }
     };
-
-    if (courseId) {
-      fetchModules();
-    }
+    if (courseId) fetchModules();
   }, [courseId]);
 
-  // Filter modules based on search query
   useEffect(() => {
     if (searchQuery.trim() === "") {
       setFilteredModules(modules);
@@ -87,7 +70,7 @@ export function CourseView() {
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <div className="text-red-500 mb-4">
-                  <FileCheck size={48} className="mx-auto" />
+                  <span className="text-4xl">❌</span>
                 </div>
                 <h3 className="text-lg font-medium mb-2">Failed to load modules</h3>
                 <p className="text-muted-foreground mb-4">{error}</p>
@@ -103,41 +86,37 @@ export function CourseView() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 to-white">
       <main className="flex-1">
-        <div className="container py-6 max-w-7xl">
-          <div className="flex items-center gap-2 mb-6">
+        <div className="container py-8 max-w-7xl">
+          <div className="flex items-center gap-2 mb-8">
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/courses">
+              <Link to="/dashboard/courses">
                 <ChevronLeft size={16} />
                 Back to courses
               </Link>
             </Button>
+            <h1 className="text-3xl font-bold ml-4">Course Modules</h1>
           </div>
-          
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-6">
-              <h1 className="text-3xl font-bold">Course Modules</h1>
-              <div className="flex items-center gap-2">
-                <Clock className="text-muted-foreground" size={20} />
-                <span className="font-medium">Time Spent:</span>
-                <span className="font-mono text-lg">{formatTime(timeSpent)}</span>
-              </div>
-            </div>
+
+          <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search modules..."
-                  className="pl-8 w-[250px]"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+              <Clock className="text-muted-foreground" size={20} />
+              <span className="font-medium">Total Modules:</span>
+              <span className="font-mono text-lg">{modules.length}</span>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search modules..."
+                className="pl-8 w-[250px]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
-          
+
           {filteredModules.length === 0 ? (
             <div className="text-center py-12">
               <Search className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -148,67 +127,60 @@ export function CourseView() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredModules.map((module) => (
-                <div key={module.id} className="module-card opacity-0 transition-all duration-500 ease-in-out">
-                  <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
-                    <div className="aspect-video relative overflow-hidden">
-                      <img 
-                        src={module.image || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000"} 
-                        alt={module.title}
-                        className="w-full h-full object-cover"
-                      />
-                      {module.status === "locked" && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <div className="text-white text-center">
-                            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                              🔒
-                            </div>
-                            <p className="text-sm">Module Locked</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg line-clamp-2">{module.title}</CardTitle>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{module.description}</p>
-                    </CardHeader>
-                    
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <BookOpen size={14} />
-                          <span>{module.lessonCount || 0} Lessons</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <FileCheck size={14} />
-                          <span>{module.assessmentCount || 0} Assessments</span>
+              {filteredModules.map((module) => {
+                console.log('Rendering module:', module.title);
+                return (
+                  <div key={module.id} className="module-card">
+                    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
+                      <div className="aspect-video relative overflow-hidden">
+                        <img 
+                          src={module.thumbnail || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000"} 
+                          alt={module.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute top-3 right-3">
+                          <Badge variant={module.module_status === 'PUBLISHED' ? "default" : "outline"}>
+                            {module.module_status}
+                          </Badge>
                         </div>
                       </div>
                       
-                      {module.duration && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Clock size={14} />
-                          <span>{module.duration}</span>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg line-clamp-2">{module.title}</CardTitle>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{module.description}</p>
+                      </CardHeader>
+                      
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <BookOpen size={14} />
+                            <span>Order: {module.order || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock size={14} />
+                            <span>{module.estimated_duration || 0} min</span>
+                          </div>
                         </div>
-                      )}
-                    </CardContent>
-                    
-                    <CardFooter>
-                      <Button 
-                        className="w-full" 
-                        variant={module.status === "locked" ? "outline" : "default"}
-                        disabled={module.status === "locked"}
-                        asChild
-                      >
-                        <Link to={`/courses/${courseId}/module/${module.id}`}>
-                          {module.status === "locked" ? "Module Locked" : "Start Module"}
-                        </Link>
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                </div>
-              ))}
+                      </CardContent>
+                      
+                      <CardFooter>
+                        {module.resource_url ? (
+                          <Link to={`/dashboard/courses/${courseId}/modules/${module.id}/view`} className="w-full">
+                            <Button className="w-full">
+                              <Play size={16} className="mr-2" />
+                              Start Module
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Button className="w-full" variant="outline" disabled>
+                            No Content Available
+                          </Button>
+                        )}
+                      </CardFooter>
+                    </Card>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

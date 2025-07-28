@@ -20,7 +20,7 @@ const AddCatelog = () => {
   const [form, setForm] = useState({
     name: "",
     description: "",
-    thumbnail: null,
+    thumbnail: "",
     courses: []
   });
   const [showModal, setShowModal] = useState(false);
@@ -28,7 +28,8 @@ const AddCatelog = () => {
   const [formSuccess, setFormSuccess] = useState("");
   const [editId, setEditId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [thumbnailWarning, setThumbnailWarning] = useState("");
+  const [lastUpdateRequest, setLastUpdateRequest] = useState(null);
+  const [lastUpdateResponse, setLastUpdateResponse] = useState(null);
 
   // Fetch catalogs and courses on component mount
   useEffect(() => {
@@ -60,7 +61,9 @@ const AddCatelog = () => {
   }, []);
 
   const handleFormChange = (e) => {
-    const { name, value, checked, files } = e.target;
+    const { name, value, checked } = e.target;
+    console.log('Form change:', name, value);
+    
     if (name === "courses") {
       const courseId = value;
       setForm(prev => ({
@@ -69,11 +72,12 @@ const AddCatelog = () => {
           ? [...prev.courses, courseId]
           : prev.courses.filter(id => id !== courseId)
       }));
-    } else if (name === "thumbnail" && files && files[0]) {
-      setForm(prev => ({ ...prev, thumbnail: files[0] }));
-      setThumbnailWarning("Thumbnail upload is not supported yet. Please leave this empty.");
     } else {
-      setForm(prev => ({ ...prev, [name]: value }));
+      setForm(prev => {
+        const newForm = { ...prev, [name]: value };
+        console.log('Updated form state:', newForm);
+        return newForm;
+      });
     }
   };
 
@@ -81,10 +85,6 @@ const AddCatelog = () => {
     e.preventDefault();
     if (!form.name || !form.description) {
       setFormError("Name and description are required.");
-      return;
-    }
-    if (form.thumbnail) {
-      setThumbnailWarning("Thumbnail upload is not supported yet. Please remove the image.");
       return;
     }
 
@@ -96,17 +96,24 @@ const AddCatelog = () => {
       const catalogData = {
         name: form.name,
         description: form.description,
-        // thumbnail: form.thumbnail, // Do NOT send thumbnail
+        thumbnail: form.thumbnail || '', // Always send thumbnail, even if empty
       };
 
+      setLastUpdateRequest({ editId, catalogData });
       let newCatalog;
       if (editId) {
+        // Update existing catalog
+        console.log('Updating catalog with data:', catalogData);
         newCatalog = await updateCatalog(editId, catalogData);
+        console.log('Update catalog response:', newCatalog);
         setFormSuccess("Catalog updated successfully!");
       } else {
+        // Create new catalog
         newCatalog = await createCatalog(catalogData);
+        console.log('Create catalog response:', newCatalog);
         setFormSuccess("Catalog created successfully!");
       }
+      setLastUpdateResponse(newCatalog);
 
       // Handle course addition separately to avoid breaking catalog creation
       if (form.courses.length > 0 && newCatalog.data?.id) {
@@ -114,20 +121,19 @@ const AddCatelog = () => {
           await addCoursesToCatalog(newCatalog.data.id, form.courses);
           console.log("Courses added successfully");
         } catch (courseError) {
-          console.warn("Course addition failed, but catalog was created:", courseError);
-          // Don't fail the entire operation, just log the warning
+          console.warn("Course addition failed, but catalog was created/updated:", courseError);
         }
       }
 
       // Refresh catalogs list
       const updatedCatalogs = await fetchAllCatalogs();
+      console.log('Catalogs after update/create:', updatedCatalogs);
       setCatalogs(updatedCatalogs || []);
-      
+
       // Reset form
-      setForm({ name: "", description: "", thumbnail: null, courses: [] });
+      setForm({ name: "", description: "", thumbnail: "", courses: [] });
       setShowModal(false);
       setEditId(null);
-      setThumbnailWarning("");
     } catch (err) {
       console.error("Failed to save catalog:", err);
       setFormError((err && err.message ? err.message : "Failed to save catalog. Please try again.") + (err && err.stack ? "\n" + err.stack : ""));
@@ -137,10 +143,11 @@ const AddCatelog = () => {
   };
 
   const handleEdit = (catalog) => {
+    // Always sync form state with latest catalog data
     setForm({
       name: catalog.name || "",
       description: catalog.description || "",
-      thumbnail: null,
+      thumbnail: catalog.thumbnail || "",
       courses: catalog.courses?.map(c => c.id || c) || []
     });
     setEditId(catalog.id);
@@ -201,10 +208,9 @@ const AddCatelog = () => {
           onClick={() => { 
             setShowModal(true); 
             setEditId(null); 
-            setForm({ name: "", description: "", thumbnail: null, courses: [] }); 
+            setForm({ name: "", description: "", thumbnail: "", courses: [] }); 
             setFormError("");
             setFormSuccess("");
-            setThumbnailWarning("");
           }}
         >
           Add New Catalog
@@ -237,6 +243,9 @@ const AddCatelog = () => {
                     src={catalog.thumbnail || PLACEHOLDER_IMAGE}
                     alt={catalog.name}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = PLACEHOLDER_IMAGE;
+                    }}
                   />
                 </div>
                 <div className="w-2/3 p-5 flex flex-col">
@@ -340,27 +349,33 @@ const AddCatelog = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail Image</label>
-                    <div className="flex items-center gap-4">
-                      <label className="cursor-pointer">
-                        <span className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors inline-block">
-                          Choose File
-                        </span>
-                        <input
-                          type="file"
-                          name="thumbnail"
-                          accept="image/*"
-                          onChange={handleFormChange}
-                          className="hidden"
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail Image URL</label>
+                    <input
+                      type="url"
+                      name="thumbnail"
+                      value={form.thumbnail}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="https://example.com/image.jpg"
+                    />
+                    {form.thumbnail && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-500 mb-2">Preview:</p>
+                        <img
+                          src={form.thumbnail}
+                          alt="Thumbnail preview"
+                          className="w-20 h-20 object-cover rounded border"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'block';
+                          }}
                         />
-                      </label>
-                      {form.thumbnail && (
-                        <span className="text-sm text-gray-500 truncate">{form.thumbnail.name}</span>
-                      )}
-                    </div>
-                    {thumbnailWarning && (
-                      <p className="text-red-500 text-xs mt-2">{thumbnailWarning}</p>
+                        <div className="w-20 h-20 bg-gray-100 rounded border flex items-center justify-center text-xs text-gray-500" style={{display: 'none'}}>
+                          Invalid URL
+                        </div>
+                      </div>
                     )}
+                    <p className="text-xs text-gray-500 mt-1">Paste the URL of an image to use as the catalog thumbnail</p>
                   </div>
                 </div>
                 
@@ -433,6 +448,28 @@ const AddCatelog = () => {
               </form>
             </div>
           </div>
+        </div>
+      )}
+      {/* Debug Panel - Only show in development */}
+      {process.env.NODE_ENV === 'development' && (lastUpdateRequest || lastUpdateResponse) && (
+        <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h3 className="text-sm font-medium text-yellow-800 mb-2">Debug Info (Development Only)</h3>
+          {lastUpdateRequest && (
+            <details className="text-xs mb-2" open>
+              <summary className="cursor-pointer text-yellow-700">Last Update Request</summary>
+              <pre className="mt-2 p-2 bg-white rounded border text-xs overflow-auto max-h-40">
+                {JSON.stringify(lastUpdateRequest, null, 2)}
+              </pre>
+            </details>
+          )}
+          {lastUpdateResponse && (
+            <details className="text-xs" open>
+              <summary className="cursor-pointer text-yellow-700">Last Update Response</summary>
+              <pre className="mt-2 p-2 bg-white rounded border text-xs overflow-auto max-h-40">
+                {JSON.stringify(lastUpdateResponse, null, 2)}
+              </pre>
+            </details>
+          )}
         </div>
       )}
     </div>

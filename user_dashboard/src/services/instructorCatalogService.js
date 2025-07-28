@@ -124,6 +124,7 @@ export async function createCatalog(catalogData) {
         id: `local-${Date.now()}`,
         name: catalogData.name,
         description: catalogData.description,
+        thumbnail: catalogData.thumbnail, // Include thumbnail
         courses: [],
         createdAt: new Date().toISOString(),
         isLocal: true // Flag to indicate this is a local catalog
@@ -161,19 +162,20 @@ export async function createCatalog(catalogData) {
 // Update a catalog
 export async function updateCatalog(catalogId, catalogData) {
   try {
+    console.log('updateCatalog called with:', catalogId, catalogData);
     // Check if it's a local catalog
     if (catalogId.startsWith('local-')) {
       const localCatalogs = JSON.parse(localStorage.getItem('localCatalogs') || '[]');
       const catalogIndex = localCatalogs.findIndex(cat => cat.id === catalogId);
-      
       if (catalogIndex !== -1) {
         localCatalogs[catalogIndex] = {
           ...localCatalogs[catalogIndex],
           ...catalogData,
+          thumbnail: catalogData.thumbnail, // Always update thumbnail
           updatedAt: new Date().toISOString()
         };
         localStorage.setItem('localCatalogs', JSON.stringify(localCatalogs));
-        
+        console.log('Local catalog after update:', localCatalogs[catalogIndex]);
         return {
           success: true,
           message: 'Local catalog updated successfully',
@@ -183,6 +185,7 @@ export async function updateCatalog(catalogId, catalogData) {
     }
 
     // Try backend update
+    console.log('Sending PUT to backend with:', catalogData);
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/${catalogId}/updatecatalog`, {
       method: 'PUT',
       headers: getAuthHeaders(),
@@ -192,10 +195,12 @@ export async function updateCatalog(catalogId, catalogData) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('Backend update failed:', errorData);
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('Backend update response:', data);
     return data;
   } catch (error) {
     console.error('Error updating catalog:', error);

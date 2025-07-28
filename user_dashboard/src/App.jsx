@@ -2,7 +2,6 @@ import React from "react";
 import { Routes, Route, Outlet, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
-// import ChatbotContainer from "@/components/layout/ChatbotContainer";
 
 import DashboardLayout from "@/layouts/DashboardLayout";
 import Dashboard from "@/pages/Dashboard";
@@ -76,9 +75,9 @@ import Sophomore from "./coursesL/Sophomore";
 import OperatePrivate from './coursesL/OperatePrivate'; 
 import Senior from './coursesL/Senior';
 import Remedy from './coursesL/Remedy';
-import PrivateMerchant from './coursesL/PrivateMerchant' // adjust path if different
+import PrivateMerchant from './coursesL/PrivateMerchant';
 import { MasterClass } from '@/pages/MasterClass';
-import LiveClass from './pages/LiveClass'; // adjust path if different
+import LiveClass from './pages/LiveClass';
 import { WebsiteCreation } from './pages/WebsiteCreation';
 import MerchantProcessing from './pages/MerchantProcessing';
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -90,6 +89,7 @@ import MembershipTnC from "@/pages/MembershipTnC";
 import ContactSection from "@/components/ContactSection"; 
 import AddUsersPage from "@/pages/AddUsersPage";
 import { AuthProvider } from "./contexts/AuthContext";
+import ModuleView from "@/pages/ModuleView";
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -160,6 +160,8 @@ function App() {
                     <CourseView />
                   </CourseTimerProvider>
                 } />
+                <Route path="modules" element={<ModulesList />} />
+                <Route path="modules/:moduleId/view" element={<ModuleView />} />
                 <Route path="module/:moduleId">
                   <Route index element={<ModuleDetail />} />
                   <Route path="lessons" element={<ModuleLessonsView />} />

@@ -130,7 +130,18 @@ export function CatalogPage() {
               {filteredCatalogs.map((catalog) => (
                 <div key={catalog.id} className="group overflow-hidden rounded-lg border bg-card hover:shadow-md transition-all">
                   <div className="aspect-video w-full relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    {catalog.thumbnail ? (
+                      <img
+                        src={catalog.thumbnail}
+                        alt={catalog.name}
+                        className="w-full h-full object-cover"
+                        onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                      />
+                    ) : null}
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{ display: catalog.thumbnail ? 'none' : 'flex' }}
+                    >
                       <FolderOpen className="h-16 w-16 text-blue-500" />
                     </div>
                     <Badge 

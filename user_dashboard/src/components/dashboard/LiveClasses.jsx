@@ -63,7 +63,23 @@ export function LiveClasses() {
         });
         const data = await response.json();
         if (data && data.data && data.data.length > 0) {
-          setLiveClass(data.data[0]); // Take the first event for today
+          // Filter events to only show classes for the current date
+          const todayEvents = data.data.filter(event => {
+            if (!event.startTime) return false;
+            const eventDate = new Date(event.startTime);
+            const currentDate = new Date();
+            
+            // Compare dates (year, month, day) only, ignoring time
+            return eventDate.getFullYear() === currentDate.getFullYear() &&
+                   eventDate.getMonth() === currentDate.getMonth() &&
+                   eventDate.getDate() === currentDate.getDate();
+          });
+          
+          if (todayEvents.length > 0) {
+            setLiveClass(todayEvents[0]); // Take the first event for today
+          } else {
+            setLiveClass(null);
+          }
         } else {
           setLiveClass(null);
         }
