@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import * as XLSX from "xlsx";
 import axios from "axios";
-
-const EXCEL_UPLOAD_LIMIT = 10;
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:9000";
 
 const AddUsersForm = () => {
@@ -16,6 +14,8 @@ const AddUsersForm = () => {
   const [addedUsers, setAddedUsers] = useState([]);
   const [showUserList, setShowUserList] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
+  const [excelData, setExcelData] = useState([]);
+  const [showExcelPreview, setShowExcelPreview] = useState(false);
 
   const handleNumUsersChange = (e) => {
     const value = parseInt(e.target.value, 10);
@@ -52,27 +52,31 @@ const AddUsersForm = () => {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      // Expect header row: email, password, firstName, lastName
       const [header, ...rows] = json;
       const headerMap = header.map(h => h && h.toString().toLowerCase().trim());
       const emailIdx = headerMap.indexOf("email");
       const passwordIdx = headerMap.indexOf("password");
       const firstNameIdx = headerMap.indexOf("first_name");
       const lastNameIdx = headerMap.indexOf("last_name");
+      
       if (emailIdx === -1 || passwordIdx === -1 || firstNameIdx === -1 || lastNameIdx === -1) {
         setError("Excel file must have columns: email, password, first_name, last_name");
         return;
       }
+      
       const parsedUsers = rows
         .filter(row => row[emailIdx] && row[passwordIdx] && row[firstNameIdx] && row[lastNameIdx])
+        .slice(0, numUsers) // Only take the number of users selected
         .map(row => ({
           email: row[emailIdx],
           password: row[passwordIdx],
           first_name: row[firstNameIdx],
           last_name: row[lastNameIdx],
         }));
+
+      setExcelData(parsedUsers);
       setUsers(parsedUsers);
-      setNumUsers(parsedUsers.length);
+      setShowExcelPreview(true);
       setError("");
     };
     reader.readAsArrayBuffer(file);
@@ -123,6 +127,8 @@ const AddUsersForm = () => {
         setUsers([{ email: "", first_name: "", last_name: "", password: "" }]);
         setNumUsers(1);
         setExcelFile(null);
+        setExcelData([]);
+        setShowExcelPreview(false);
       } else {
         setError(response.data.message || "Failed to add users.");
       }
@@ -139,13 +145,15 @@ const AddUsersForm = () => {
     setUsers([{ email: "", first_name: "", last_name: "", password: "" }]);
     setNumUsers(1);
     setExcelFile(null);
+    setExcelData([]);
+    setShowExcelPreview(false);
   };
 
   if (success) {
     return (
       <div className="bg-white rounded-xl shadow-md overflow-hidden p-8 mb-8">
         <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 text-green-700">
-          <p className="font-medium">Users added successfully! You can now add more users or view the list of added users.</p>
+          <p className="font-medium">Successfully added {addedUsers.length} user(s)!</p>
         </div>
         
         <div className="flex gap-4 mb-6">
@@ -163,16 +171,30 @@ const AddUsersForm = () => {
           </button>
         </div>
 
-        {showUserList && addedUsers.length > 0 && (
+        {showUserList && (
           <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Successfully Added Users ({addedUsers.length})</h3>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {addedUsers.map((user, index) => (
-                <div key={index} className="bg-white p-3 rounded border">
-                  <div className="font-medium text-gray-800">{user.first_name} {user.last_name}</div>
-                  <div className="text-sm text-gray-600">{user.email}</div>
-                </div>
-              ))}
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Added Users ({addedUsers.length})</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {addedUsers.map((user, index) => (
+                    <tr key={index}>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {user.first_name} {user.last_name}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {user.email}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -199,75 +221,148 @@ const AddUsersForm = () => {
             ))}
           </select>
         </div>
-        {numUsers > EXCEL_UPLOAD_LIMIT && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded mb-4">
-            <p className="text-yellow-800 mb-2 font-medium">For bulk upload, you can use an Excel file (.xlsx) with columns: <b>email, password, first_name, last_name</b>.</p>
-            <input
-              type="file"
-              accept=".xlsx, .xls"
-              onChange={handleExcelUpload}
-              className="mt-2"
-            />
+        
+        {/* Show Excel upload when more than 1 user */}
+        {numUsers > 1 && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-yellow-800 mb-1">Bulk Upload Option</h3>
+                <p className="text-xs text-yellow-700">
+                  Upload an Excel file with columns: 
+                  <span className="font-mono bg-yellow-100 px-1 mx-1 rounded">email</span>, 
+                  <span className="font-mono bg-yellow-100 px-1 mx-1 rounded">password</span>, 
+                  <span className="font-mono bg-yellow-100 px-1 mx-1 rounded">firstName</span>, 
+                  <span className="font-mono bg-yellow-100 px-1 mx-1 rounded">lastName</span>
+                </p>
+              </div>
+              <label className="cursor-pointer">
+                <div className="px-4 py-2 bg-white border border-yellow-400 text-yellow-700 rounded-md text-sm font-medium hover:bg-yellow-50 transition-colors flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  Upload Excel File
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls"
+                    onChange={handleExcelUpload}
+                    className="hidden"
+                  />
+                </div>
+              </label>
+            </div>
           </div>
         )}
-        <div className="space-y-6">
-          {users.map((user, idx) => (
-            <div key={idx} className="border border-gray-200 p-6 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-              <div className="flex items-center mb-4">
-                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                  <span className="text-blue-600 font-medium">{idx + 1}</span>
-                </div>
-                <h2 className="text-lg font-semibold text-gray-800">User Details</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    placeholder="user@example.com"
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    value={user.email}
-                    onChange={(e) => handleUserChange(idx, "email", e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                  <input
-                    type="text"
-                    placeholder="••••••••"
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    value={user.password}
-                    onChange={(e) => handleUserChange(idx, "password", e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                  <input
-                    type="text"
-                    placeholder="John"
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    value={user.first_name}
-                    onChange={(e) => handleUserChange(idx, "first_name", e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    placeholder="Doe"
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    value={user.last_name}
-                    onChange={(e) => handleUserChange(idx, "last_name", e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
+
+        {/* Show Excel data preview if uploaded */}
+        {showExcelPreview && excelData.length > 0 && (
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Excel Data Preview ({excelData.length} users)</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {excelData.slice(0, 5).map((user, index) => (
+                    <tr key={index}>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{user.firstName}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{user.lastName}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                    </tr>
+                  ))}
+                  {excelData.length > 5 && (
+                    <tr>
+                      <td colSpan="4" className="px-4 py-3 text-center text-sm text-gray-500">
+                        Showing 5 of {excelData.length} users
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {/* Manual input fields - only show if not using Excel or for 1-2 users */}
+        {(!showExcelPreview && numUsers <= 2) && (
+          <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+            {users.map((user, idx) => (
+              <div key={idx} className="border border-gray-200 p-6 rounded-lg bg-white shadow-sm">
+                <div className="flex items-center mb-4">
+                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                    <span className="text-blue-600 font-medium">{idx + 1}</span>
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-800">User Details</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      placeholder="user@example.com"
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      value={user.email}
+                      onChange={(e) => handleUserChange(idx, "email", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input
+                      type="text"
+                      placeholder="••••••••"
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      value={user.password}
+                      onChange={(e) => handleUserChange(idx, "password", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                    <input
+                      type="text"
+                      placeholder="John"
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      value={user.first_name}
+                      onChange={(e) => handleUserChange(idx, "first_name", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                    <input
+                      type="text"
+                      placeholder="Doe"
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      value={user.last_name}
+                      onChange={(e) => handleUserChange(idx, "last_name", e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Show summary for manual input when more than 2 users */}
+        {(!showExcelPreview && numUsers > 2) && (
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">You've selected to add {numUsers} users</h3>
+            <p className="text-gray-600 mb-4">
+              Please use the Excel upload option above for adding multiple users, 
+              or reduce the number of users to 2 or fewer to enter details manually.
+            </p>
+          </div>
+        )}
+
         <div className="pt-4">
           {error && (
             <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
@@ -277,7 +372,7 @@ const AddUsersForm = () => {
           <button
             type="submit"
             className={`w-full md:w-auto px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 ${loading ? 'opacity-75 cursor-not-allowed' : ''}`}
-            disabled={loading}
+            disabled={loading || (!showExcelPreview && numUsers > 2)}
           >
             {loading ? (
               <span className="flex items-center justify-center">
@@ -295,4 +390,4 @@ const AddUsersForm = () => {
   );
 };
 
-export default AddUsersForm; 
+export default AddUsersForm;
