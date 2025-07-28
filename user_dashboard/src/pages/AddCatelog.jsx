@@ -9,6 +9,7 @@ import {
   fetchAvailableCourses 
 } from "@/services/instructorCatalogService";
 
+
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=1000";
 
 const AddCatelog = () => {

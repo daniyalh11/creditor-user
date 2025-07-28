@@ -11,6 +11,7 @@ const getAuthHeaders = () => {
     'Content-Type': 'application/json',
   };
   
+  
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -22,7 +23,7 @@ const getAuthHeaders = () => {
 export async function fetchAllCatalogs() {
   try {
     // First try the catalog-specific endpoint
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/getAllCatalogs`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/getallcatalogs`, {
       method: 'GET',
       headers: getAuthHeaders(),
       credentials: 'include',
@@ -86,7 +87,7 @@ export async function fetchAllCatalogs() {
 export async function createCatalog(catalogData) {
   try {
     console.log('Creating catalog with data:', catalogData);
-    console.log('API URL:', `${import.meta.env.VITE_API_BASE_URL}/api/catalog/createCatalog`);
+    console.log('API URL:', `${import.meta.env.VITE_API_BASE_URL}/api/catalog/createcatalog`);
     
     const headers = getAuthHeaders();
     console.log('Request headers:', headers);
@@ -95,7 +96,7 @@ export async function createCatalog(catalogData) {
     const requestBody = JSON.stringify(catalogData);
     console.log('Request body:', requestBody);
     
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/createCatalog`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/createcatalog`, {
       method: 'POST',
       headers: headers,
       credentials: 'include',

@@ -171,6 +171,7 @@ function App() {
               </Route>
             </Route>
 
+
             {/* Assessment routes */}
             <Route path="quiz">
               <Route path=":quizType" element={<QuizTypePage />} />
@@ -219,7 +220,7 @@ function App() {
             {/* Catalog and enrollment */}
             <Route path="catalog">
               <Route index element={<Catalog />} />
-              <Route path="category/:categoryName" element={<CatelogCourses />} />
+              <Route path=":catalogId" element={<CatelogCourses />} />
             </Route>
             <Route path="course-enrollment/:courseId" element={<CourseEnrollment />} />
             <Route path="payment-success/:courseId" element={<PaymentSuccess />} />

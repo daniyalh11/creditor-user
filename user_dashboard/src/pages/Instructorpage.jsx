@@ -12,6 +12,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { useAuth } from "@/contexts/AuthContext";
 
+
 const InstructorPage = () => {
   // Use role-based access
   const { userRole, isInstructorOrAdmin } = useAuth();

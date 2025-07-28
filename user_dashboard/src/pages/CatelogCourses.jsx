@@ -1,36 +1,59 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Clock, ArrowLeft, Loader2 } from "lucide-react";
-import { fetchCoursesByCategory } from "@/services/catalogService";
+import { fetchCatalogById, fetchCatalogCourses } from "@/services/catalogService";
 
 const CatelogCourses = () => {
-  const { categoryName } = useParams();
-  const decodedCategory = decodeURIComponent(categoryName || "");
+  const { catalogId } = useParams();
+  const location = useLocation();
+  const [catalog, setCatalog] = useState(null);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
 
-  // Fetch courses from backend
+  
+  // Fetch catalog courses from backend
   useEffect(() => {
-    const fetchCourses = async () => {
+    const fetchCatalogData = async () => {
       try {
         setLoading(true);
-        const data = await fetchCoursesByCategory(decodedCategory);
-        setCourses(data || []);
+        
+        console.log('Fetching courses for catalog ID:', catalogId);
+        
+        // Use catalog data from URL state if available, otherwise create basic object
+        const catalogFromState = location.state?.catalog;
+        if (catalogFromState) {
+          setCatalog(catalogFromState);
+        } else {
+          setCatalog({
+            id: catalogId,
+            name: `Catalog ${catalogId.split('-')[0]}`, // Show first part of UUID for readability
+            description: "Course catalog"
+          });
+        }
+        
+        // Fetch the courses in this catalog
+        const coursesData = await fetchCatalogCourses(catalogId);
+        console.log('Courses data:', coursesData);
+        setCourses(coursesData || []);
+        
       } catch (err) {
-        console.error("Failed to fetch courses:", err);
-        setError("Failed to load courses. Please try again later.");
+        console.error("Failed to fetch catalog courses:", err);
+        // Don't show error, just set empty courses array
+        setCourses([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCourses();
-  }, [decodedCategory]);
+    if (catalogId) {
+      fetchCatalogData();
+    }
+  }, [catalogId, location.state]);
 
-  // Use the fetched courses directly since they're already filtered by category
-  const filteredCourses = courses;
+  // Use the fetched courses directly since they're already filtered by catalog
+  const filteredCourses = courses || [];
 
   if (loading) {
     return (
@@ -40,7 +63,7 @@ const CatelogCourses = () => {
             <div className="flex items-center justify-center py-12">
               <div className="flex items-center gap-2">
                 <Loader2 className="h-6 w-6 animate-spin" />
-                <span>Loading courses...</span>
+                <span>Loading catalog...</span>
               </div>
             </div>
           </div>
@@ -84,19 +107,27 @@ const CatelogCourses = () => {
                   className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors mb-4"
                 >
                   <ArrowLeft size={16} className="shrink-0" />
-                  Back to Catalog
+                  Back to Catalogs
                 </Link>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{decodedCategory}</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+                      {catalog?.name || "Catalog"}
+                    </h1>
                     <p className="mt-2 text-gray-600">
+                      {catalog?.description || "Course catalog"}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-500">
                       {filteredCourses.length === 0 
-                        ? "No courses available in this category" 
+                        ? "No courses available in this catalog" 
                         : `${filteredCourses.length} ${filteredCourses.length === 1 ? 'course' : 'courses'} available`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="px-3 py-1 text-sm">
+                    <Badge key="category" variant="secondary" className="px-3 py-1 text-sm">
+                      {catalog?.category || "General"}
+                    </Badge>
+                    <Badge key="count" variant="outline" className="px-3 py-1 text-sm">
                       {filteredCourses.length} {filteredCourses.length === 1 ? 'Course' : 'Courses'}
                     </Badge>
                   </div>
@@ -112,14 +143,16 @@ const CatelogCourses = () => {
                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <h3 className="mt-4 text-lg font-medium text-gray-900">No courses found</h3>
-                <p className="mt-2 text-gray-600">We couldn't find any courses matching this category.</p>
+                <h3 className="mt-4 text-lg font-medium text-gray-900">No courses available</h3>
+                <p className="mt-2 text-gray-600">
+                  {loading ? "Loading courses..." : "This catalog doesn't have any courses yet. Check back later for new content!"}
+                </p>
                 <div className="mt-6">
                   <Link
                     to="/dashboard/catalog"
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    Browse all categories
+                    Browse all catalogs
                   </Link>
                 </div>
               </div>
@@ -138,10 +171,10 @@ const CatelogCourses = () => {
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     <div className="absolute bottom-3 left-3 flex gap-2">
-                      <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-gray-800 shadow-sm">
+                      <Badge key="level" variant="secondary" className="bg-white/90 backdrop-blur-sm text-gray-800 shadow-sm">
                         {course.course_level || course.level || "Beginner"}
                       </Badge>
-                      <Badge variant="secondary" className="bg-white/90 backdrop-blur-sm text-gray-800 shadow-sm">
+                      <Badge key="price" variant="secondary" className="bg-white/90 backdrop-blur-sm text-gray-800 shadow-sm">
                         ${course.price || 0}
                       </Badge>
                     </div>
