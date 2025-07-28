@@ -12,6 +12,7 @@ import DashboardAnnouncements from "@/components/dashboard/DashboardAnnouncement
 import LiveClasses from "@/components/dashboard/LiveClasses";
 import axios from "axios";
 import Cookies from "js-cookie";
+import { fetchUserCourses, fetchCourseModules } from '../services/courseService';
 
 export function Dashboard() {
   // Dashboard data structure based on backend getUserOverview endpoint
@@ -47,6 +48,9 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userName, setUserName] = useState("");
+  const [userCourses, setUserCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [coursesError, setCoursesError] = useState(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://creditor-backend-gvtd.onrender.com";
   // Get userId from localStorage or cookies, or fetch from profile
@@ -220,6 +224,35 @@ export function Dashboard() {
       }, 2000);
     }
   }, [userId]);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      setCoursesLoading(true);
+      try {
+        const data = await fetchUserCourses();
+        // Fetch modules for each course and add modulesCount and totalDuration
+        const coursesWithModules = await Promise.all(
+          data.map(async (course) => {
+            try {
+              const modules = await fetchCourseModules(course.id);
+              const modulesCount = modules.length;
+              const totalDurationMins = modules.reduce((sum, m) => sum + (parseInt(m.estimated_duration, 10) || 0), 0);
+              const totalDurationSecs = totalDurationMins * 60;
+              return { ...course, modulesCount, totalDurationSecs };
+            } catch {
+              return { ...course, modulesCount: 0, totalDurationSecs: 0 };
+            }
+          })
+        );
+        setUserCourses(coursesWithModules);
+      } catch (err) {
+        setCoursesError('Failed to fetch courses');
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+    fetchCourses();
+  }, []);
 
   // Monitor dashboard data changes
   useEffect(() => {
@@ -478,46 +511,67 @@ export function Dashboard() {
                     </Link>
                   </Button>
                 </div>
-                {/* Carousel row with arrows */}
-                <div className="relative">
-                  {/* Left Arrow */}
-                  {scrollIndex > 0 && (
-                    <button
-                      onClick={() => handleScroll(-1)}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 rounded-full shadow-md p-2 hover:bg-blue-50 transition disabled:opacity-40"
-                      style={{ marginLeft: '-24px' }}
-                      aria-label="Scroll left"
-                    >
-                      <ChevronLeft size={24} />
-                    </button>
-                  )}
-                  {/* Cards Row */}
-                  <div
-                    ref={courseScrollRef}
-                    className="flex gap-6 overflow-x-hidden scroll-smooth"
-                    style={{ scrollBehavior: 'smooth' }}
-                  >
-                    {inProgressCourses.map((course) => (
-                      <div
-                        key={course.id}
-                        className="min-w-[320px] max-w-xs flex-shrink-0"
-                      >
-                        <CourseCard {...course} />
-                      </div>
-                    ))}
+                {/* Cards Row or Empty State */}
+                {coursesLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Loading courses...</p>
+                    </div>
                   </div>
-                  {/* Right Arrow */}
-                  {scrollIndex < totalCards - visibleCards && (
-                    <button
-                      onClick={() => handleScroll(1)}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 rounded-full shadow-md p-2 hover:bg-blue-50 transition disabled:opacity-40"
-                      style={{ marginRight: '-24px' }}
-                      aria-label="Scroll right"
+                ) : userCourses && userCourses.length > 0 ? (
+                  <div className="relative">
+                    {/* Left Arrow */}
+                    {scrollIndex > 0 && (
+                      <button
+                        onClick={() => handleScroll(-1)}
+                        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 rounded-full shadow-md p-2 hover:bg-blue-50 transition disabled:opacity-40"
+                        style={{ marginLeft: '-24px' }}
+                        aria-label="Scroll left"
+                      >
+                        <ChevronLeft size={24} />
+                      </button>
+                    )}
+                    {/* Cards Row */}
+                    <div
+                      ref={courseScrollRef}
+                      className="flex gap-6 overflow-x-hidden scroll-smooth"
+                      style={{ scrollBehavior: 'smooth' }}
                     >
-                      <ChevronRight size={24} />
-                    </button>
-                  )}
-                </div>
+                      {userCourses.map((course) => (
+                        <div
+                          key={course.id}
+                          className="min-w-[320px] max-w-xs flex-shrink-0"
+                        >
+                          <CourseCard {...course} />
+                        </div>
+                      ))}
+                    </div>
+                    {/* Right Arrow */}
+                    {scrollIndex < userCourses.length - visibleCards && (
+                      <button
+                        onClick={() => handleScroll(1)}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white border border-gray-200 rounded-full shadow-md p-2 hover:bg-blue-50 transition disabled:opacity-40"
+                        style={{ marginRight: '-24px' }}
+                        aria-label="Scroll right"
+                      >
+                        <ChevronRight size={24} />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <h3 className="text-lg font-medium mb-2">No courses enrolled</h3>
+                    <p className="text-muted-foreground mb-4">You are not enrolled in any courses yet.</p>
+                    <Button
+                      variant="default"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md transition-colors duration-200"
+                      onClick={() => window.location.href = '/dashboard/catalog'}
+                    >
+                      Click to view courses
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Latest Updates Section */}
