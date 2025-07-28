@@ -72,7 +72,6 @@ import Instructorpage from "@/pages/Instructorpage";
 import LandingPage from "@/pages/LandingPage";
 import AdminModal from "@/components/AdminModal";
 import Scrompack from "@/pages/Scrompack";
-import { CourseTimerProvider } from "@/components/courses/CourseTimerProvider";
 import Sov from "./coursesL/Sov";
 import Sophomore from "./coursesL/Sophomore";
 import OperatePrivate from './coursesL/OperatePrivate'; 
@@ -99,7 +98,6 @@ function ProtectedScormRoute() {
   }
   return <ScormPage />;
 }
-import Scrompack from "@/pages/Scrompack";
 
 function App() {
   return (
@@ -245,9 +243,8 @@ function App() {
           <Route path="instructor" element={<Instructorpage />} />
           <Route path="add-users" element={<AddUsersPage />} />
           <Route path="*" element={<NotFound />} />
-          <Route path="/scorm/:courseId" element={<Scrompack />} />
-
         </Route>
+        <Route path="/scorm/:courseId" element={<Scrompack />} />
         <Route path="/speechify-reader" element={<SpeechifyReaderView />} />
         <Route path="/games" element={<Games />} />
       </Routes>
