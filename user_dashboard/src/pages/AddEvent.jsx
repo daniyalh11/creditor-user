@@ -18,7 +18,7 @@ const AddEvent = () => {
   const [courses, setCourses] = useState([]);
   const [userRole, setUserRole] = useState("");
   const [form, setForm] = useState({
-    id: "", // <-- add this
+    id: "",
     title: "",
     description: "",
     startTime: "",
@@ -171,7 +171,7 @@ const AddEvent = () => {
 
     setSelectedDate(date);
     setForm({
-      id: "", // <-- clear the id for new event
+      id: "",
       title: "",
       description: "",
       startTime: date ? date.toISOString().slice(0, 16) : "",

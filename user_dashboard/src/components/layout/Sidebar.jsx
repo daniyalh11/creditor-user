@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { allowedScormUserIds } from "@/data/allowedScormUsers";
 import { currentUserId } from "@/data/currentUser";
+import { getUserRole } from "@/services/userService";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Tooltip,
   TooltipContent,
@@ -110,14 +112,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const [userRole, setUserRole] = useState("");
-
-  useEffect(() => {
-    // Try to get user role from localStorage (set after login/profile fetch)
-    // You may want to sync this with your auth/user context for production
-    const storedRole = localStorage.getItem("userRole");
-    setUserRole(storedRole || "");
-  }, []);
+  const { userRole } = useAuth();
 
   const isActive = (path) => {
     if (path === "/dashboard") {
