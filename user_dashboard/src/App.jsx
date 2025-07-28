@@ -1,17 +1,17 @@
 import React from "react";
-import { Routes, Route, Outlet, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 // import ChatbotContainer from "@/components/layout/ChatbotContainer";
 
 import DashboardLayout from "@/layouts/DashboardLayout";
-import Dashboard from "@/pages/Dashboard";
-import Courses from "@/pages/Courses";
-import ModulesList from "@/pages/ModulesList";
-import ModuleDetail from "@/pages/ModuleDetail";
-import LessonDetail from "@/pages/LessonDetail";
-import LessonView from "@/pages/LessonView";
-import QuizView from "@/pages/QuizView";
+import  Dashboard  from "@/pages/Dashboard";
+import  Courses  from "@/pages/Courses";
+import  ModulesList  from "@/pages/ModulesList";
+import  ModuleDetail  from "@/pages/ModuleDetail";
+import  LessonDetail  from "@/pages/LessonDetail";
+import  LessonView  from "@/pages/LessonView";
+import  QuizView  from "@/pages/QuizView";
 import QuizTypePage from "@/pages/QuizTypePage";
 import QuizInstructionPage from "@/pages/QuizInstructionPage";
 import QuizTakePage from "@/pages/QuizTakePage";
@@ -22,12 +22,13 @@ import AssignmentResultsPage from "@/pages/AssignmentResultsPage";
 import EssayInstructionPage from "@/pages/EssayInstructionPage";
 import EssayTakePage from "@/pages/EssayTakePage";
 import EssayResultsPage from "@/pages/EssayResultsPage";
-import Groups from "@/pages/Groups";
+import  Groups  from "@/pages/Groups";
 import Catalog from "@/pages/Catalog";
 import CatelogCourses from "@/pages/CatelogCourses";
+
 import Progress from "@/pages/Progress";
 import Messages from "@/pages/Messages";
-import Profile from "@/pages/Profile";
+import  Profile  from "@/pages/Profile";
 import NotFound from "@/pages/NotFound";
 import CourseView from "@/pages/CourseView";
 import ModuleLessonsView from "@/pages/ModuleLessonsView";
@@ -38,7 +39,7 @@ import NewsPage from "@/pages/group/NewsPage";
 import GroupCalendarPage from "@/pages/group/CalendarPage";
 import AnnouncementPage from "@/pages/group/AnnouncementPage";
 import ChatPage from "@/pages/group/ChatPage";
-import SpeechifyReaderView from "@/pages/SpeechifyReaderView";
+import  SpeechifyReaderView  from "@/pages/SpeechifyReaderView";
 import AvatarPickerPage from "@/pages/AvatarPickerPage";
 import FAQs from "@/pages/FAQs";
 import Support from "@/pages/Support";
@@ -63,6 +64,7 @@ import DebateTakePage from "@/pages/DebateTakePage";
 import Games from "@/pages/Games";
 import GameDetailView from "@/components/games/GameDetailView";
 import MyTickets from "@/pages/MyTickets";
+import { CourseTimerProvider } from "@/components/courses/CourseTimerProvider";
 import ScormPage from "@/pages/ScormPage";
 import { allowedScormUserIds } from "@/data/allowedScormUsers";
 import { currentUserId } from "@/data/currentUser";
@@ -70,7 +72,6 @@ import Instructorpage from "@/pages/Instructorpage";
 import LandingPage from "@/pages/LandingPage";
 import AdminModal from "@/components/AdminModal";
 import Scrompack from "@/pages/Scrompack";
-import { CourseTimerProvider } from "@/components/courses/CourseTimerProvider";
 import Sov from "./coursesL/Sov";
 import Sophomore from "./coursesL/Sophomore";
 import OperatePrivate from './coursesL/OperatePrivate'; 
@@ -225,42 +226,49 @@ function App() {
           <Route path="course-enrollment/:courseId" element={<CourseEnrollment />} />
           <Route path="payment-success/:courseId" element={<PaymentSuccess />} />
           <Route path="payment-failed/:courseId" element={<PaymentFailed />} />
-
-          {/* User related routes */}
-          <Route path="profile" element={<Profile />} />
-          <Route path="avatar-picker" element={<AvatarPickerPage />} />
           <Route path="progress" element={<Progress />} />
           <Route path="messages" element={<Messages />} />
-
-          {/* Other dashboard routes */}
-          <Route path="certificate/:courseId" element={<CertificatePage />} />
-          <Route path="demo-quiz/:assessmentTitle" element={<DemoQuizPage />} />
-          <Route path="class-recordings" element={<ClassRecordings />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="privacy" element={<Privacy />} />
+          <Route path="avatar-picker" element={<AvatarPickerPage />} />
+          <Route path="faqs" element={<FAQs />} />
           <Route path="announcements" element={<Announcements />} />
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="todo" element={<TodoPage />} />
-          <Route path="faqs" element={<FAQs />} />
-          <Route path="privacy" element={<Privacy />} />
+          <Route path="support" element={<Support />} />
           <Route path="guides" element={<Guides />} />
           <Route path="support/ticket" element={<SupportTicket />} />
           <Route path="support/tickets" element={<MyTickets />} />
           <Route path="scorm" element={<ProtectedScormRoute />} />
           <Route path="instructor" element={<Instructorpage />} />
+          <Route path="add-users" element={<AddUsersPage />} />
           <Route path="*" element={<NotFound />} />
-          <Route path="scorm/:courseId" element={<Scrompack />} />
-
         </Route>
-
-        {/* Standalone routes */}
+        <Route path="/scorm/:courseId" element={<Scrompack />} />
         <Route path="/speechify-reader" element={<SpeechifyReaderView />} />
         <Route path="/games" element={<Games />} />
-        
-        {/* 404 route */}
-        <Route path="*" element={<NotFound />} />
       </Routes>
-      <AdminModal />
       <Toaster />
+      {/** <ChatbotContainer /> */}
     </ThemeProvider>
+  );
+}
+
+// Helper wrapper to extract courseId param and wrap children in CourseTimerProvider
+import { useParams, Routes as SubRoutes, Route as SubRoute } from "react-router-dom";
+function CourseTimerProviderWrapper() {
+  const { courseId } = useParams();
+  return (
+    <CourseTimerProvider courseId={courseId}>
+      <SubRoutes>
+        <SubRoute index element={<CourseView />} />
+        <SubRoute path="module/:moduleId/lessons" element={<ModuleLessonsView />} />
+        <SubRoute path="module/:moduleId/assessments" element={<ModuleAssessmentsView />} />
+        <SubRoute path="module/:moduleId/lesson/:lessonId" element={<LessonView />} />
+        <SubRoute path="module/:moduleId/lesson/:lessonId/detail" element={<LessonDetail />} />
+        {/* Add more subroutes as needed */}
+      </SubRoutes>
+    </CourseTimerProvider>
   );
 }
 

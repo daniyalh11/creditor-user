@@ -46,17 +46,17 @@ const AddUsersForm = () => {
           newUsers.push({ email: "", first_name: "", last_name: "", password: "" });
         }
       } else {
-        newUsers.length = value;
+        arr.length = value;
       }
-      return newUsers;
+      return arr;
     });
   };
 
   const handleUserChange = (idx, field, value) => {
     setUsers((prev) => {
-      const updated = [...prev];
-      updated[idx][field] = value;
-      return updated;
+      const arr = [...prev];
+      arr[idx][field] = value;
+      return arr;
     });
   };
 

@@ -28,6 +28,37 @@ export function Courses() {
     const s = (secs % 60).toString().padStart(2, "0");
     return `${h}:${m}:${s}`;
   }
+
+  function parseDuration(durationStr) {
+    if (!durationStr) return 0;
+    // Format: "60 min"
+    const minMatch = durationStr.match(/(\d+)\s*min/);
+    if (minMatch) return parseInt(minMatch[1], 10);
+
+    // Format: "1h 45m"
+    const hourMinMatch = durationStr.match(/(\d+)\s*h(?:ours?)?\s*(\d+)?\s*m?/i);
+    if (hourMinMatch) {
+      const hours = parseInt(hourMinMatch[1], 10);
+      const mins = hourMinMatch[2] ? parseInt(hourMinMatch[2], 10) : 0;
+      return hours * 60 + mins;
+    }
+
+    // Format: "15:30" (mm:ss or hh:mm)
+    const colonMatch = durationStr.match(/(\d+):(\d+)/);
+    if (colonMatch) {
+      const first = parseInt(colonMatch[1], 10);
+      const second = parseInt(colonMatch[2], 10);
+      // If first > 10, assume mm:ss, else hh:mm
+      if (first > 10) return first; // mm:ss, ignore seconds
+      return first * 60 + second; // hh:mm
+    }
+
+    // Format: "8 min read"
+    const minReadMatch = durationStr.match(/(\d+)\s*min read/);
+    if (minReadMatch) return parseInt(minReadMatch[1], 10);
+
+    return 0;
+  }
   // Get time spent for all courses from localStorage
   const getCourseTimes = () => {
     const times = {};
@@ -66,8 +97,23 @@ export function Courses() {
       setLoading(true);
       try {
         const data = await fetchUserCourses();
-        setCourses(data);
-        setFilteredCourses(data);
+        // Fetch modules for each course and add modulesCount and totalDuration
+        const coursesWithModules = await Promise.all(
+          data.map(async (course) => {
+            try {
+              const modules = await fetchCourseModules(course.id);
+              // Sum durations using 'estimated_duration' (in minutes)
+              const totalDurationMins = modules.reduce((sum, m) => sum + (parseInt(m.estimated_duration, 10) || 0), 0);
+              // Convert to seconds for formatTime
+              const totalDurationSecs = totalDurationMins * 60;
+              return { ...course, modulesCount: modules.length, totalDurationSecs };
+            } catch {
+              return { ...course, modulesCount: 0, totalDurationSecs: 0 };
+            }
+          })
+        );
+        setCourses(coursesWithModules);
+        setFilteredCourses(coursesWithModules);
       } catch (err) {
         setError("Failed to fetch courses");
       } finally {
@@ -273,20 +319,21 @@ export function Courses() {
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Clock size={14} />
-                          <span>{course.duration || "Duration not specified"}</span>
+                          <span>{course.totalDurationSecs ? formatTime(course.totalDurationSecs) : "Duration not specified"}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <BookOpen size={14} />
-                          <span>{course.lessonsCount || 0} lessons</span>
+                          <span>{course.modulesCount || 0} modules</span>
                         </div>
                       </div>
                       
                       <Progress value={course.progress || 0} className="h-2" />
-                      
+                      {/*
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>Time spent: {formatTime(courseTimes[course.id] || 0)}</span>
                         <span>{course.category || "Uncategorized"}</span>
                       </div>
+                      */}
                     </CardContent>
                     
                     <CardFooter className="pt-2 flex flex-col gap-2">
