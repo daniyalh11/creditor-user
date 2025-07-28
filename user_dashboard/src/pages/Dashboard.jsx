@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import ProgressStats from "@/components/dashboard/ProgressStats";
 import CourseCard from "@/components/dashboard/CourseCard";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,255 @@ import DashboardTodo from "@/components/dashboard/DashboardTodo";
 import MonthlyProgress from "@/components/dashboard/MonthlyProgress";
 import DashboardAnnouncements from "@/components/dashboard/DashboardAnnouncements";
 import LiveClasses from "@/components/dashboard/LiveClasses";
+import axios from "axios";
+import Cookies from "js-cookie";
 
 export function Dashboard() {
+  // Dashboard data structure based on backend getUserOverview endpoint
+  // Expected response structure:
+  // {
+  //   summary: { activeCourses, completedCourses, totalLearningHours, averageProgress },
+  //   weeklyPerformance: { studyHours, lessonsCompleted },
+  //   monthlyProgressChart: [...],
+  //   learningActivities: [...]
+  // }
+  // 
+  // NOTE: Using the working endpoints from your backend:
+  // - /api/course/getCourses - for user courses
+  // - /api/user/getUserProfile - for user profile
+  // 
+  // The dashboard shows basic stats based on available data.
+  // Progress tracking, time tracking, and detailed analytics will be added
+  // when those features are implemented in the backend.
+  const [dashboardData, setDashboardData] = useState({
+    summary: {
+      activeCourses: 0,
+      completedCourses: 0,
+      totalLearningHours: 0,
+      averageProgress: 0
+    },
+    weeklyPerformance: {
+      studyHours: 0,
+      lessonsCompleted: 0
+    },
+    monthlyProgressChart: [],
+    learningActivities: []
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://creditor-backend-gvtd.onrender.com";
+  // Get userId from localStorage or cookies, or fetch from profile
+  const [userId, setUserId] = useState(localStorage.getItem('userId') || Cookies.get('userId'));
+
+  const fetchUserOverview = async () => {
+    try {
+      setLoading(true);
+      // Get token from cookies (primary) or localStorage (fallback)
+      const token = Cookies.get('token') || localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      // Get userId - fetch from profile if not available
+      let currentUserId = userId;
+      if (!currentUserId) {
+        currentUserId = await fetchUserProfile();
+      }
+      
+      if (!currentUserId) {
+        throw new Error('Unable to get user ID. Please log in again.');
+      }
+      
+      // Use the working endpoints from your backend
+      try {
+        console.log('🔍 Fetching user courses from:', `${API_BASE}/api/course/getCourses`);
+        console.log('🔑 Token available:', !!token);
+        console.log('👤 User ID:', currentUserId);
+        
+        // Get user courses using the correct endpoint
+        const userCoursesResponse = await axios.get(`${API_BASE}/api/course/getCourses`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
+        
+        console.log('✅ API Response:', userCoursesResponse.data);
+        
+        if (userCoursesResponse.data && userCoursesResponse.data.data) {
+          const courses = userCoursesResponse.data.data;
+          console.log('📚 Courses found:', courses.length, courses);
+          
+          // Calculate basic dashboard stats from available data
+          const activeCourses = courses.length;
+          const completedCourses = 0; // Will be calculated when progress tracking is implemented
+          const totalLearningHours = 0; // Will be calculated when time tracking is implemented
+          const averageProgress = 0; // Will be calculated when progress tracking is implemented
+          
+          console.log('📊 Dashboard stats calculated:', {
+            activeCourses,
+            completedCourses,
+            totalLearningHours,
+            averageProgress
+          });
+          
+                      const newDashboardData = {
+              summary: {
+                activeCourses,
+                completedCourses,
+                totalLearningHours,
+                averageProgress
+              },
+              weeklyPerformance: {
+                studyHours: 0, // Will be calculated when time tracking is implemented
+                lessonsCompleted: activeCourses
+              },
+              monthlyProgressChart: [],
+              learningActivities: []
+            };
+            
+            console.log('📊 Setting dashboard data:', newDashboardData);
+            setDashboardData(newDashboardData);
+        } else {
+          console.log('⚠️ No courses data found in response');
+          // No courses found, set default values
+          setDashboardData({
+            summary: {
+              activeCourses: 0,
+              completedCourses: 0,
+              totalLearningHours: 0,
+              averageProgress: 0
+            },
+            weeklyPerformance: {
+              studyHours: 0,
+              lessonsCompleted: 0
+            },
+            monthlyProgressChart: [],
+            learningActivities: []
+          });
+        }
+      } catch (coursesError) {
+        console.error('❌ Failed to fetch user courses:', coursesError);
+        console.error('❌ Error details:', {
+          message: coursesError.message,
+          status: coursesError.response?.status,
+          data: coursesError.response?.data
+        });
+        // Set default values if endpoint fails
+        setDashboardData({
+          summary: {
+            activeCourses: 0,
+            completedCourses: 0,
+            totalLearningHours: 0,
+            averageProgress: 0
+          },
+          weeklyPerformance: {
+            studyHours: 0,
+            lessonsCompleted: 0
+          },
+          monthlyProgressChart: [],
+          learningActivities: []
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching user overview:', err);
+      
+      // Handle specific error cases
+      if (err.response?.status === 401) {
+        setError('Authentication failed. Please log in again.');
+        // Redirect to login after a delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 3000);
+      } else if (err.response?.status === 403) {
+        setError('Access denied. You do not have permission to view this data.');
+      } else if (err.response?.status === 404) {
+        setError('User data not found. Please contact support.');
+      } else {
+        setError(err.message || 'Failed to load dashboard data. Please try again.');
+      }
+      
+      // Set default values if API fails
+      setDashboardData({
+        summary: {
+          activeCourses: 0,
+          completedCourses: 0,
+          totalLearningHours: 0,
+          averageProgress: 0
+        },
+        weeklyPerformance: {
+          studyHours: 0,
+          lessonsCompleted: 0
+        },
+        monthlyProgressChart: [],
+        learningActivities: []
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    console.log('🚀 Dashboard useEffect triggered');
+    // Check if user is authenticated before making API call
+    const token = Cookies.get('token') || localStorage.getItem('token');
+    console.log('🔑 Token found:', !!token);
+    console.log('👤 Current userId:', userId);
+    
+    if (token) {
+      console.log('✅ Token available, calling fetchUserOverview');
+      fetchUserOverview();
+    } else {
+      console.log('❌ No token found, redirecting to login');
+      setError('Please log in to view your dashboard.');
+      // Redirect to login
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+    }
+  }, [userId]);
+
+  // Monitor dashboard data changes
+  useEffect(() => {
+    console.log('📊 Dashboard data updated:', dashboardData);
+  }, [dashboardData]);
+
+  // Fetch user profile to get userId if not available
+  const fetchUserProfile = async () => {
+    try {
+      const token = Cookies.get('token') || localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      const response = await axios.get(`${API_BASE}/api/user/getUserProfile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      });
+      
+      if (response.data && response.data.data && response.data.data.id) {
+        const userProfileId = response.data.data.id;
+        setUserId(userProfileId);
+        localStorage.setItem('userId', userProfileId);
+        return userProfileId;
+      }
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      throw err;
+    }
+  };
+
+  // Add retry functionality
+  const handleRetry = () => {
+    setError(null);
+    fetchUserOverview();
+  };
+
   const inProgressCourses = [
     {
       id: "1",
@@ -136,28 +383,60 @@ export function Dashboard() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold mb-1 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                        Welcome Back, Alex! 👋
+                        Welcome Back 👋
                       </h2>
                       <p className="text-gray-600 text-base">Continue your legal education journey and achieve your learning goals.</p>
                     </div>
                   </div>
                   
+                  {/* Error Display */}
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <span className="text-red-700 text-sm">Failed to load dashboard data</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleRetry}
+                          className="border-red-200 text-red-600 hover:bg-red-50"
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Quick Stats */}
                   <div className="grid grid-cols-3 gap-4 mt-6">
                     <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
                       <div className="flex items-center gap-2">
-                        <Target className="text-blue-600" size={20} />
-                        <span className="text-blue-600 font-semibold">Current Goal</span>
+                        <CheckCircle className="text-blue-600" size={20} />
+                        <span className="text-blue-600 font-semibold">Completed</span>
                       </div>
-                      <p className="text-2xl font-bold text-blue-700 mt-1">62%</p>
-                      <p className="text-blue-600 text-sm">Course Completion</p>
+                      <p className="text-2xl font-bold text-blue-700 mt-1">
+                        {loading ? (
+                          <div className="animate-pulse bg-blue-200 h-8 w-12 rounded"></div>
+                        ) : (
+                          dashboardData.summary?.completedCourses || 0
+                        )}
+                      </p>
+                      <p className="text-blue-600 text-sm">Courses finished</p>
                     </div>
                     <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
                       <div className="flex items-center gap-2">
                         <Clock className="text-emerald-600" size={20} />
                         <span className="text-emerald-600 font-semibold">This Week</span>
                       </div>
-                      <p className="text-2xl font-bold text-emerald-700 mt-1">12h</p>
+                      <p className="text-2xl font-bold text-emerald-700 mt-1">
+                        {loading ? (
+                          <div className="animate-pulse bg-emerald-200 h-8 w-12 rounded"></div>
+                        ) : (
+                          `${dashboardData.weeklyPerformance?.studyHours || 0}h`
+                        )}
+                      </p>
                       <p className="text-emerald-600 text-sm">Study Time</p>
                     </div>
                     <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
@@ -165,7 +444,13 @@ export function Dashboard() {
                         <BookOpen className="text-purple-600" size={20} />
                         <span className="text-purple-600 font-semibold">Active</span>
                       </div>
-                      <p className="text-2xl font-bold text-purple-700 mt-1">3</p>
+                      <p className="text-2xl font-bold text-purple-700 mt-1">
+                        {loading ? (
+                          <div className="animate-pulse bg-purple-200 h-8 w-12 rounded"></div>
+                        ) : (
+                          dashboardData.summary?.activeCourses || 0
+                        )}
+                      </p>
                       <p className="text-purple-600 text-sm">Courses</p>
                     </div>
                   </div>
@@ -281,65 +566,65 @@ export function Dashboard() {
           </div>
 
           {/* How It Works Section */}
-          <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-200 p-8 mb-8">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-gray-800 mb-3">How It Works</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
+          <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-200 p-4 sm:p-6 md:p-8 mb-8">
+            <div className="text-center mb-8 sm:mb-10">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 sm:mb-3">How It Works</h2>
+              <p className="text-gray-600 max-w-2xl mx-auto text-base sm:text-lg">
                 Start your legal education journey in just three simple steps. Our platform makes learning law accessible and effective.
               </p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
               {/* Step 1 */}
-              <div className="group relative bg-gradient-to-br from-blue-50 to-white p-6 rounded-xl border border-blue-100 hover:shadow-lg transition-all duration-300">
-                <div className="absolute -top-5 left-6 w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg">
+              <div className="group relative bg-gradient-to-br from-blue-50 to-white p-4 sm:p-6 rounded-xl border border-blue-100 hover:shadow-lg transition-all duration-300 min-h-[320px] flex flex-col justify-between">
+                <div className="absolute -top-5 left-4 sm:left-6 w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg">
                   <span className="font-bold">1</span>
                 </div>
-                <div className="flex flex-col items-center text-center pt-6">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-all">
-                    <Search className="text-blue-600" size={28} />
+                <div className="flex flex-col items-center text-center pt-8 sm:pt-6">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-blue-200 transition-all">
+                    <Search className="text-blue-600" size={24} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">Choose a Course</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-1 sm:mb-2">Choose a Course</h3>
+                  <p className="text-gray-600 text-sm sm:text-base">
                     Browse our extensive catalog of legal courses and select the one that matches your career goals.
                   </p>
                 </div>
               </div>
               
               {/* Step 2 */}
-              <div className="group relative bg-gradient-to-br from-purple-50 to-white p-6 rounded-xl border border-purple-100 hover:shadow-lg transition-all duration-300">
-                <div className="absolute -top-5 left-6 w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white shadow-lg">
+              <div className="group relative bg-gradient-to-br from-purple-50 to-white p-4 sm:p-6 rounded-xl border border-purple-100 hover:shadow-lg transition-all duration-300 min-h-[320px] flex flex-col justify-between">
+                <div className="absolute -top-5 left-4 sm:left-6 w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white shadow-lg">
                   <span className="font-bold">2</span>
                 </div>
-                <div className="flex flex-col items-center text-center pt-6">
-                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-200 transition-all">
-                    <MonitorPlay className="text-purple-600" size={28} />
+                <div className="flex flex-col items-center text-center pt-8 sm:pt-6">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-purple-200 transition-all">
+                    <MonitorPlay className="text-purple-600" size={24} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">Learn Anytime</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-1 sm:mb-2">Learn Anytime</h3>
+                  <p className="text-gray-600 text-sm sm:text-base">
                     Access high-quality video lectures, case studies, and interactive materials at your own pace.
                   </p>
                 </div>
               </div>
               
               {/* Step 3 - Updated version without certification mention */}
-              <div className="group relative bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 hover:shadow-lg transition-all duration-300">
-                <div className="absolute -top-5 left-6 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg">
+              <div className="group relative bg-gradient-to-br from-green-50 to-white p-4 sm:p-6 rounded-xl border border-green-100 hover:shadow-lg transition-all duration-300 min-h-[320px] flex flex-col justify-between">
+                <div className="absolute -top-5 left-4 sm:left-6 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg">
                   <span className="font-bold">3</span>
                 </div>
-                <div className="flex flex-col items-center text-center pt-6">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-200 transition-all">
-                    <CheckCircle className="text-green-600" size={28} />
+                <div className="flex flex-col items-center text-center pt-8 sm:pt-6">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-green-200 transition-all">
+                    <CheckCircle className="text-green-600" size={24} />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">Master the Material</h3>
-                  <p className="text-gray-600">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-1 sm:mb-2">Master the Material</h3>
+                  <p className="text-gray-600 text-sm sm:text-base">
                     Complete lessons, apply your knowledge with practical exercises, and track your progress.
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="text-center mt-10">
+            <div className="text-center mt-8 sm:mt-10">
             </div>
           </div>
 

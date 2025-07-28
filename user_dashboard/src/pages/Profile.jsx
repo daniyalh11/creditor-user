@@ -19,6 +19,7 @@ import { fetchUserProfile, updateUserProfile } from "@/services/userService";
 function Profile() {
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const form = useForm({
     defaultValues: {
@@ -28,7 +29,7 @@ function Profile() {
       title: "Software Developer",
       phone: "+1 (555) 123-4567",
       location: "San Francisco, CA",
-      timezone: "Asia/Kolkata" // Default to IST
+      timezone: "America/New_York" // Default to EST
     }
   });
 
@@ -36,30 +37,50 @@ function Profile() {
   useEffect(() => {
     async function loadProfile() {
       try {
+        console.log("🔍 Fetching user profile from /api/user/getUserProfile...");
         const data = await fetchUserProfile();
-        console.log('User profile data:', data); // Debug log
+        console.log("✅ GET /api/user/getUserProfile - Response Data:", data);
+        
         setUserRole(
           Array.isArray(data.user_roles) && data.user_roles.length > 0
             ? data.user_roles.map(r => r.role).join(', ')
             : 'User'
         );
+        
         // Store the first role in localStorage for sidebar access
         if (Array.isArray(data.user_roles) && data.user_roles.length > 0) {
           localStorage.setItem('userRole', data.user_roles[0].role);
         } else {
           localStorage.setItem('userRole', 'user');
         }
-        form.reset({
+        
+        // Store timezone in localStorage for use in other components
+        const userTimezone = data.timezone || 'America/New_York';
+        localStorage.setItem('userTimezone', userTimezone);
+        
+        const formData = {
           fullName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
           email: data.email || 'Not Provided',
           bio: data.bio || '',
           title: data.title || '',
           phone: data.phone || '',
           location: data.location || '',
-          timezone: data.timezone || 'Asia/Kolkata',
+          timezone: userTimezone,
+        };
+        
+        console.log("📝 Setting form data with timezone:", formData);
+        form.reset(formData);
+        
+        console.log("📝 Form populated with user data:", {
+          fullName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+          email: data.email,
+          timezone: userTimezone,
+          user_roles: data.user_roles
         });
+        
       } catch (err) {
-        console.log("Failed to load profile..", err);
+        console.error("❌ Failed to load profile:", err);
+        toast.error("Failed to load profile data");
       }
     }
     loadProfile();
@@ -67,24 +88,79 @@ function Profile() {
 
   // Update user profile on submit
   const onSubmit = async (values) => {
+    setIsUpdating(true);
     try {
       // Split fullName into first and last name
       const [first_name, ...rest] = values.fullName.split(" ");
       const last_name = rest.join(" ");
-      await updateUserProfile({
+      
+      const updateData = {
         first_name,
         last_name,
-        // email is not sent for update
         bio: values.bio,
         title: values.title,
         phone: values.phone,
         location: values.location,
         timezone: values.timezone,
-      });
+      };
+      
+      console.log("📤 POST /api/user/updateUserProfile - Request Data:", updateData);
+      console.log("🕐 Timezone being sent:", values.timezone);
+      
+      const response = await updateUserProfile(updateData);
+      console.log("✅ POST /api/user/updateUserProfile - Response:", response);
+      
+      // Check if the response contains the updated timezone
+      if (response.data && response.data.timezone) {
+        console.log("✅ Timezone updated in response:", response.data.timezone);
+      } else {
+        console.warn("⚠️ No timezone found in response data:", response);
+      }
+      
+      // Update timezone in localStorage after successful profile update
+      localStorage.setItem('userTimezone', values.timezone);
+      console.log("💾 Timezone saved to localStorage:", values.timezone);
+      
       toast.success("Profile updated successfully");
-      window.location.reload(); // Reload page to reflect changes immediately
+      
+      // Instead of reloading, let's refetch the profile to confirm the update
+      console.log("🔄 Refetching profile to confirm timezone update...");
+      const updatedProfile = await fetchUserProfile();
+      console.log("✅ Refetched profile data:", updatedProfile);
+      console.log("🕐 Current timezone in profile:", updatedProfile.timezone);
+      
+      // Update the form with the latest data
+      const updatedFormData = {
+        fullName: `${updatedProfile.first_name || ''} ${updatedProfile.last_name || ''}`.trim(),
+        email: updatedProfile.email || 'Not Provided',
+        bio: updatedProfile.bio || '',
+        title: updatedProfile.title || '',
+        phone: updatedProfile.phone || '',
+        location: updatedProfile.location || '',
+        timezone: updatedProfile.timezone || 'America/New_York',
+      };
+      
+      console.log("📝 Resetting form with updated data:", updatedFormData);
+      form.reset(updatedFormData);
+      
+      // Update localStorage with the confirmed timezone
+      localStorage.setItem('userTimezone', updatedProfile.timezone || 'America/New_York');
+      
+      // Force a re-render by updating the form state
+      setTimeout(() => {
+        console.log("🔄 Form state after reset:", form.getValues());
+        console.log("🕐 Current timezone in form:", form.getValues('timezone'));
+      }, 100);
+      
     } catch (err) {
+      console.error("❌ Failed to update profile:", err);
+      console.error("❌ Error details:", {
+        message: err.message,
+        stack: err.stack
+      });
       toast.error("Failed to update profile");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -259,88 +335,37 @@ function Profile() {
                       <FormItem>
                         <FormLabel>Timezone</FormLabel>
                         <FormControl>
-                          <Select value={field.value} onValueChange={field.onChange}>
+                          <Select value={field.value} onValueChange={(value) => {
+                            console.log("🕐 Timezone field changed to:", value);
+                            field.onChange(value);
+                          }}>
                             <SelectTrigger>
                               <SelectValue placeholder="Select timezone" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Asia/Kolkata">IST (India Standard Time)</SelectItem>
-                              <SelectItem value="UTC">UTC (Coordinated Universal Time)</SelectItem>
-                              <SelectItem value="America/New_York">EST (Eastern Time US & Canada)</SelectItem>
-                              <SelectItem value="America/Chicago">CST (Central Time US & Canada)</SelectItem>
-                              <SelectItem value="America/Denver">MST (Mountain Time US & Canada)</SelectItem>
                               <SelectItem value="America/Los_Angeles">PST (Pacific Time US & Canada)</SelectItem>
-                              <SelectItem value="America/Phoenix">MST (Arizona - no DST)</SelectItem>
-                              <SelectItem value="America/Anchorage">AKST (Alaska Standard Time)</SelectItem>
-                              <SelectItem value="America/Adak">HST (Hawaii-Aleutian Standard Time)</SelectItem>
-                              <SelectItem value="America/Argentina/Buenos_Aires">ART (Argentina Time)</SelectItem>
-                              <SelectItem value="America/Sao_Paulo">BRT (Brasilia Time, Brazil)</SelectItem>
-                              <SelectItem value="America/Bogota">COT (Colombia Time)</SelectItem>
-                              <SelectItem value="America/Caracas">VET (Venezuela Time)</SelectItem>
-                              <SelectItem value="America/Lima">PET (Peru Time)</SelectItem>
-                              <SelectItem value="America/Mexico_City">CST (Mexico City)</SelectItem>
-                              <SelectItem value="America/Toronto">EST (Toronto, Canada)</SelectItem>
-                              <SelectItem value="America/Vancouver">PST (Vancouver, Canada)</SelectItem>
-                              <SelectItem value="America/Guatemala">CST (Central America)</SelectItem>
-                              <SelectItem value="America/La_Paz">BOT (Bolivia Time)</SelectItem>
-                              <SelectItem value="America/Santiago">CLT (Chile Standard Time)</SelectItem>
-                              <SelectItem value="America/Halifax">AST (Atlantic Standard Time, Canada)</SelectItem>
-                              <SelectItem value="America/St_Johns">NST (Newfoundland Standard Time, Canada)</SelectItem>
-                              <SelectItem value="America/Montevideo">UYT (Uruguay Time)</SelectItem>
-                              <SelectItem value="America/Panama">EST (Panama Time)</SelectItem>
-                              <SelectItem value="America/Port_of_Spain">AST (Trinidad & Tobago)</SelectItem>
-                              <SelectItem value="America/Puerto_Rico">AST (Puerto Rico)</SelectItem>
-                              <SelectItem value="America/El_Salvador">CST (El Salvador)</SelectItem>
-                              <SelectItem value="America/Managua">CST (Nicaragua)</SelectItem>
-                              <SelectItem value="America/Costa_Rica">CST (Costa Rica)</SelectItem>
-                              <SelectItem value="America/Guayaquil">ECT (Ecuador Time)</SelectItem>
-                              <SelectItem value="America/Asuncion">PYT (Paraguay Time)</SelectItem>
-                              <SelectItem value="America/Havana">CST (Cuba Standard Time)</SelectItem>
-                              <SelectItem value="America/Barbados">AST (Barbados)</SelectItem>
-                              <SelectItem value="America/Jamaica">EST (Jamaica)</SelectItem>
-                              <SelectItem value="America/Belize">CST (Belize)</SelectItem>
-                              <SelectItem value="America/Aruba">AST (Aruba)</SelectItem>
-                              <SelectItem value="America/Curacao">AST (Curacao)</SelectItem>
-                              <SelectItem value="America/Port-au-Prince">EST (Haiti)</SelectItem>
-                              <SelectItem value="America/Paramaribo">SRT (Suriname Time)</SelectItem>
-                              <SelectItem value="America/Grand_Turk">EST (Turks and Caicos)</SelectItem>
-                              <SelectItem value="America/Martinique">AST (Martinique)</SelectItem>
-                              <SelectItem value="America/Cayenne">GFT (French Guiana Time)</SelectItem>
-                              <SelectItem value="America/Grenada">AST (Grenada)</SelectItem>
-                              <SelectItem value="America/Dominica">AST (Dominica)</SelectItem>
-                              <SelectItem value="America/Antigua">AST (Antigua & Barbuda)</SelectItem>
-                              <SelectItem value="America/St_Lucia">AST (Saint Lucia)</SelectItem>
-                              <SelectItem value="America/St_Vincent">AST (Saint Vincent & Grenadines)</SelectItem>
-                              <SelectItem value="America/St_Kitts">AST (Saint Kitts & Nevis)</SelectItem>
-                              <SelectItem value="America/Montserrat">AST (Montserrat)</SelectItem>
-                              <SelectItem value="America/Bahia">BRT (Bahia, Brazil)</SelectItem>
-                              <SelectItem value="America/Fortaleza">BRT (Fortaleza, Brazil)</SelectItem>
-                              <SelectItem value="America/Recife">BRT (Recife, Brazil)</SelectItem>
-                              <SelectItem value="America/Belem">BRT (Belem, Brazil)</SelectItem>
-                              <SelectItem value="America/Manaus">AMT (Manaus, Brazil)</SelectItem>
-                              <SelectItem value="America/Boa_Vista">AMT (Boa Vista, Brazil)</SelectItem>
-                              <SelectItem value="America/Porto_Velho">AMT (Porto Velho, Brazil)</SelectItem>
-                              <SelectItem value="America/Campo_Grande">AMT (Campo Grande, Brazil)</SelectItem>
-                              <SelectItem value="America/Cuiaba">AMT (Cuiaba, Brazil)</SelectItem>
-                              <SelectItem value="America/Rio_Branco">ACT (Acre, Brazil)</SelectItem>
-                              <SelectItem value="America/Nassau">EST (Bahamas)</SelectItem>
-                              <SelectItem value="America/Tegucigalpa">CST (Honduras)</SelectItem>
-                              <SelectItem value="America/Santo_Domingo">AST (Dominican Republic)</SelectItem>
-                              <SelectItem value="America/Guadeloupe">AST (Guadeloupe)</SelectItem>
-                              <SelectItem value="America/St_Barthelemy">AST (Saint Barthelemy)</SelectItem>
+                              <SelectItem value="America/Denver">MST (Mountain Time US & Canada)</SelectItem>
+                              <SelectItem value="America/New_York">EST (Eastern Time US & Canada)</SelectItem>
                               <SelectItem value="Europe/London">GMT (Greenwich Mean Time)</SelectItem>
-                              <SelectItem value="Asia/Tokyo">JST (Japan Standard Time)</SelectItem>
-                              <SelectItem value="Australia/Sydney">AEST (Australian Eastern Time)</SelectItem>
-                              {/* Add more as needed */}
                             </SelectContent>
                           </Select>
                         </FormControl>
                         <FormMessage />
+                        {/* Debug info */}
+                        <div className="text-xs text-gray-500 mt-1">
+                          Current value: {field.value || 'Not set'}
+                        </div>
                       </FormItem>
                     )}
                   />
 
-                  <Button type="submit" className="bg-gradient-to-r from-primary to-purple-400 transition-all duration-300 hover:opacity-90">Save Changes</Button>
+                  <Button 
+                    type="submit" 
+                    className="bg-gradient-to-r from-primary to-purple-400 transition-all duration-300 hover:opacity-90"
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? "Updating..." : "Save Changes"}
+                  </Button>
                 </form>
               </Form>
             </CardContent>

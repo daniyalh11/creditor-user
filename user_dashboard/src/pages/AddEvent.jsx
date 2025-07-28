@@ -1,19 +1,22 @@
+
+
 import React, { useState, useEffect } from "react";
 import { currentUserId } from "@/data/currentUser";
+import { getAllEvents } from "@/services/calendarService";
+import { fetchUserProfile } from "@/services/userService";
+import Cookies from "js-cookie";
+import { jwtDecode } from "jwt-decode";
 
-const DEFAULT_TIMEZONE = "EST";
-const dummyCourses = [
-  { id: "course-1", title: "JavaScript for Beginners" },
-  { id: "course-2", title: "Advanced PostgreSQL" },
-  { id: "course-3", title: "React Mastery" }
-];
-
+const DEFAULT_TIMEZONE = "America/New_York";
 const AddEvent = () => {
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [events, setEvents] = useState([]);
+  const [userTimezone, setUserTimezone] = useState(DEFAULT_TIMEZONE);
+  const [courses, setCourses] = useState([]);
+  const [userRole, setUserRole] = useState("");
   const [form, setForm] = useState({
     id: "", // <-- add this
     title: "",
@@ -30,20 +33,110 @@ const AddEvent = () => {
   const [editIndex, setEditIndex] = useState(null);
   const [showPastDateModal, setShowPastDateModal] = useState(false);
 
+  // Get authentication token from cookies
+  const getAuthToken = () => {
+    return Cookies.get("token");
+  };
+
+  // Get user role from localStorage
+  const getUserRole = () => {
+    return localStorage.getItem("userRole") || "";
+  };
+
+  // Decode JWT token to see what's in it
+  const decodeToken = () => {
+    const token = getAuthToken();
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        console.log("Decoded JWT token:", decoded);
+        return decoded;
+      } catch (error) {
+        console.error("Failed to decode token:", error);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  // Try to refresh the token to get one with role information
+  const refreshToken = async () => {
+    try {
+      console.log("Attempting to refresh token...");
+      // This would require the user's credentials, which we don't have stored
+      // For now, let's just log that we need a token with role information
+      console.log("Current token doesn't contain role information. Need to contact backend team to include role in JWT token.");
+      return false;
+    } catch (error) {
+      console.error("Failed to refresh token:", error);
+      return false;
+    }
+  };
+
+  // URL validation function
+  const isValidUrl = (string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  // Fetch user profile to get timezone and role
+  useEffect(() => {
+    const fetchUserProfileData = async () => {
+      try {
+        const data = await fetchUserProfile();
+        const timezone = data.timezone || DEFAULT_TIMEZONE;
+        setUserTimezone(timezone);
+        // Update form timezone as well
+        setForm(prev => ({ ...prev, timeZone: timezone }));
+        
+        // Set user role
+        const role = getUserRole();
+        setUserRole(role);
+      } catch (err) {
+        console.error("Failed to fetch user profile:", err);
+      }
+    };
+    fetchUserProfileData();
+  }, []);
+
+  // Fetch courses from API with proper authentication
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const token = getAuthToken();
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/getAllCourses`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'X-User-Role': getUserRole(), // Add role in header as well
+          },
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (data && data.data) {
+          setCourses(data.data);
+          // Set first course as default if available
+          if (data.data.length > 0) {
+            setForm(prev => ({ ...prev, courseId: data.data[0].id }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch courses:", err);
+      }
+    };
+    fetchCourses();
+  }, []);
+
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const res = await fetch("http://localhost:9000/calendar/events", {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
-          },
-          credentials: "include"
-        });
-        const data = await res.json();
-        if (data && data.data) {
-          setEvents(data.data);
-        }
+        const data = await getAllEvents();
+        setEvents(data);
       } catch (err) {
         console.error("Failed to fetch events", err);
       }
@@ -78,12 +171,12 @@ const AddEvent = () => {
       description: "",
       startTime: date ? date.toISOString().slice(0, 16) : "",
       endTime: date ? date.toISOString().slice(0, 16) : "",
-      timeZone: DEFAULT_TIMEZONE,
+      timeZone: userTimezone, // Use user's timezone
       location: "",
       isRecurring: false,
       recurrence: "none",
       zoomLink: "",
-      courseId: dummyCourses[0]?.id || ""
+      courseId: courses.length > 0 ? courses[0].id : ""
     });
     setShowModal(true);
   };
@@ -110,7 +203,7 @@ const AddEvent = () => {
       isRecurring: event.isRecurring,
       recurrence: event.recurrence || "none",
       zoomLink: event.zoomLink || "",
-      courseId: event.courseId || dummyCourses[0]?.id || ""
+      courseId: event.courseId || courses.length > 0 ? courses[0].id : ""
     });
     setEditIndex(index);
     setShowModal(true);
@@ -120,29 +213,24 @@ const AddEvent = () => {
     const event = events[index];
     if (!event.id) {
       // If no id, just remove from local state
-    setEvents(events.filter((_, i) => i !== index));
+      setEvents(events.filter((_, i) => i !== index));
       return;
     }
     try {
-      await fetch(`http://localhost:9000/calendar/events/${event.id}`, {
+      const token = getAuthToken();
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${event.id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+          "Authorization": `Bearer ${token}`,
+          "X-User-Role": getUserRole(), // Add role in header as well
         },
         credentials: "include"
       });
       // Refetch events after deletion
-      const res = await fetch("http://localhost:9000/calendar/events", {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
-        },
-        credentials: "include"
-      });
-      const data = await res.json();
+      const data = await getAllEvents();
       // Normalize course_id to courseId for all events
-      const normalizedEvents = data.data.map(ev => ({
+      const normalizedEvents = data.map(ev => ({
         ...ev,
         courseId: ev.courseId || ev.course_id
       }));
@@ -154,20 +242,21 @@ const AddEvent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const newEvent = {
-      ...form,
-      startTime: form.startTime,
-      endTime: form.endTime,
-      timeZone: form.timeZone,
-      location: form.location || (form.zoomLink ? form.zoomLink : ""),
-      isRecurring: form.recurrence !== "none",
-      recurrence: form.recurrence !== "none" ? form.recurrence : undefined,
-      date: selectedDate,
-      courseId: form.courseId
-    };
-
+    
+    // Check if user has permission to create events
+    const currentRole = getUserRole();
+    if (!currentRole || (currentRole !== 'admin' && currentRole !== 'instructor')) {
+      console.error("User does not have permission to create events. Required role: admin or instructor. Current role:", currentRole);
+      alert("You don't have permission to create events. Only administrators and instructors can create events.");
+      return;
+    }
+    
+    // Decode and log the JWT token to see what's in it
+    const decodedToken = decodeToken();
+    console.log("Token contents:", decodedToken);
+    
     // Prepare payload for backend
-    const selectedCourse = dummyCourses.find(c => c.id === form.courseId);
+    const selectedCourse = courses.find(c => c.id === form.courseId);
     const toIsoUtc = (dateString) => {
       if (!dateString) return "";
       if (dateString.endsWith('Z')) return dateString;
@@ -186,36 +275,32 @@ const AddEvent = () => {
       isRecurring: form.recurrence !== "none",
       calendarType: "GROUP",
       visibility: "PRIVATE",
-      courseName: selectedCourse ? selectedCourse.title : ""
+      courseName: selectedCourse ? selectedCourse.title : "",
+      userRole: currentRole // Include user role in payload
     };
 
     console.log("Payload being sent:", payload);
+    console.log("User role:", currentRole);
+    console.log("JWT token role (if any):", decodedToken?.role || decodedToken?.userRole || "No role in token");
 
     if (editIndex !== null) {
       // Update event in backend
       try {
-        await fetch(`http://localhost:9000/calendar/events/${form.id}`, {
+        const token = getAuthToken();
+        await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${form.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+            "Authorization": `Bearer ${token}`,
+            "X-User-Role": currentRole, // Add role in header as well
           },
           body: JSON.stringify(payload),
           credentials: "include"
         });
         // Refetch events after updating
-        const res = await fetch("http://localhost:9000/calendar/events", {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
-          },
-          credentials: "include"
-        });
-        const data = await res.json();
-        console.log("Fetched events after update:", data); // <-- Add this
-        if (data && data.data) {
-          setEvents(data.data);
-        }
+        const data = await getAllEvents();
+        console.log("Fetched events after update:", data);
+        setEvents(data);
       } catch (err) {
         console.error("Failed to update event", err);
       }
@@ -223,40 +308,43 @@ const AddEvent = () => {
     } else {
       // Send to backend only on add
       try {
-        const postRes = await fetch("http://localhost:9000/calendar/events", {
+        const token = getAuthToken();
+        const postRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
+            "Authorization": `Bearer ${token}`,
+            "X-User-Role": currentRole, // Add role in header as well
           },
           body: JSON.stringify(payload),
           credentials: "include"
         });
         const postData = await postRes.json();
-        console.log("POST response:", postData); // <-- Add this
-        // Refetch events after adding
-        const res = await fetch("http://localhost:9000/calendar/events", {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFhN2Q5MmJjLTk5ZGMtNDVhMC05ZWNmLTA3ODA3MDA0YjdjYyIsImVtYWlsIjoia29tYWxAY3JlZGl0b3JhY2FkZW15LmNvbSIsImlhdCI6MTc1MzE4MDczNiwiZXhwIjoxNzU1NzcyNzM2fQ.KHZtfKXhKU29JlFiEgPmuGWCojSlJQzPrzteDdcACZ0"
-          },
-          credentials: "include"
-        });
-        const data = await res.json();
-        console.log("Fetched events after add:", data); // <-- Add this
-        if (data && data.data) {
-          // Normalize course_id to courseId for all events
-          const normalizedEvents = data.data.map(ev => ({
-            ...ev,
-            courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
-          }));
-          setEvents(normalizedEvents);
+        console.log("POST response:", postData);
+        
+        // Check if it's a role-related error
+        if (postRes.status === 403 && postData.message?.includes('Access restricted to admin, instructor roles')) {
+          console.error("Role verification failed. Backend expects role in JWT token but token doesn't contain role information.");
+          alert("Permission Error: Your account role cannot be verified by the server. Please contact support to ensure your instructor role is properly configured in the system.");
+          return;
         }
+        
+        // Refetch events after adding
+        const data = await getAllEvents();
+        console.log("Fetched events after add:", data);
+        // Normalize course_id to courseId for all events
+        const normalizedEvents = data.map(ev => ({
+          ...ev,
+          courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
+        }));
+        setEvents(normalizedEvents);
       } catch (err) {
         // Optionally handle error
         console.error("Failed to add event to backend", err);
+        alert("Failed to create event. Please try again or contact support if the issue persists.");
       }
     }
+    
     setShowModal(false);
   };
 
@@ -297,7 +385,54 @@ const AddEvent = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Calendar</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-semibold text-gray-800">Calendar</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Role:</span>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            userRole === 'admin' ? 'bg-red-100 text-red-800' :
+            userRole === 'instructor' ? 'bg-blue-100 text-blue-800' :
+            'bg-gray-100 text-gray-800'
+          }`}>
+            {userRole || 'Loading...'}
+          </span>
+          {userRole && userRole !== 'admin' && userRole !== 'instructor' && (
+            <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+              Read-only access
+            </span>
+          )}
+        </div>
+      </div>
+      
+      {/* Role Verification Warning */}
+      {(() => {
+        const token = decodeToken();
+        if (token && !token.role && !token.userRole && (userRole === 'admin' || userRole === 'instructor')) {
+          return (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Role Verification Issue
+                  </h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>
+                      Your account shows you have <strong>{userRole}</strong> permissions, but the server cannot verify this. 
+                      You may experience permission errors when creating events. Please contact support to resolve this issue.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
       
       {/* Calendar Header */}
       <div className="flex items-center justify-between mb-6">
@@ -319,9 +454,12 @@ const AddEvent = () => {
             onChange={handleYearChange} 
             className="px-3 py-1 border rounded-lg bg-white text-sm"
           >
-            {Array.from({length: 10}, (_, i) => calendarYear - 5 + i).map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
+            {(() => {
+              const thisYear = new Date().getFullYear();
+              return Array.from({ length: 10 }, (_, i) => thisYear + i).map(y => (
+                <option key={y} value={y}>{y}</option>
+              ));
+            })()}
           </select>
         </div>
         
@@ -389,7 +527,7 @@ const AddEvent = () => {
                   <div className="flex flex-col items-end gap-2">
                     {event.courseId && (
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full mb-1">
-                        {dummyCourses.find(c => c.id === event.courseId)?.title || event.courseId}
+                        {courses.find(c => c.id === event.courseId)?.title || event.courseId}
                       </span>
                     )}
                     <div className="flex gap-2">
@@ -468,16 +606,19 @@ const AddEvent = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description* <span className="text-xs text-gray-400">(Add meeting link here if needed)</span></label>
-                    <textarea
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Meeting Link* <span className="text-xs text-gray-400">(Enter the meeting URL)</span></label>
+                    <input
+                      type="url"
                       name="description"
                       value={form.description}
                       onChange={handleFormChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Describe the event and add any meeting link here"
-                      rows={4}
+                      placeholder="https://meet.google.com/abc-defg-hij or https://zoom.us/j/123456789"
                       required
                     />
+                    {form.description && !isValidUrl(form.description) && (
+                      <p className="text-xs text-red-500 mt-1">Please enter a valid URL (e.g., https://meet.google.com/...)</p>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -508,18 +649,17 @@ const AddEvent = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Time Zone*</label>
-                    <select
+                    <input
+                      type="text"
                       name="timeZone"
                       value={form.timeZone}
                       onChange={handleFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="EST">Eastern Standard Time (EST)</option>
-                      <option value="UTC">Coordinated Universal Time (UTC)</option>
-                      <option value="PST">Pacific Standard Time (PST)</option>
-                      <option value="CST">Central Standard Time (CST)</option>
-                      <option value="IST">India Standard Time (IST)</option>
-                    </select>
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 cursor-not-allowed"
+                      readOnly
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Timezone can be changed in your profile settings
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
@@ -540,7 +680,7 @@ const AddEvent = () => {
                       onChange={handleFormChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      {dummyCourses.map(course => (
+                      {courses.map(course => (
                         <option key={course.id} value={course.id}>{course.title}</option>
                       ))}
                     </select>
