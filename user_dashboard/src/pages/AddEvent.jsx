@@ -36,6 +36,8 @@ const AddEvent = () => {
   const [recurringDeleteEvent, setRecurringDeleteEvent] = useState(null);
   const [deletingOccurrence, setDeletingOccurrence] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [deleteIndex, setDeleteIndex] = useState(null);
 
   // Get authentication token from cookies
   const getAuthToken = () => {
@@ -218,9 +220,11 @@ const AddEvent = () => {
 
   // Edit handler: fetch event details and populate modal
   const handleEdit = async (index) => {
+    console.log('Edit clicked for index:', index, 'event:', events[index]);
     const event = events[index];
     // Fetch latest event details from backend
     const backendEvent = await fetchEventDetails(event.id);
+    console.log('Fetched backend event:', backendEvent);
     const e = backendEvent || event;
     setSelectedDate(e.date ? new Date(e.date) : (e.startTime ? new Date(e.startTime) : null));
     setForm({
@@ -238,6 +242,7 @@ const AddEvent = () => {
     });
     setEditIndex(index);
     setShowModal(true);
+    console.log('setShowModal(true) called, modal should now be open');
   };
 
   const handleDelete = async (index) => {
@@ -253,6 +258,15 @@ const AddEvent = () => {
       setEvents(events.filter((_, i) => i !== index));
       return;
     }
+    // Show confirmation modal for non-recurring event
+    setDeleteIndex(index);
+    setShowDeleteConfirmModal(true);
+  };
+
+  // Confirmed delete for non-recurring event
+  const confirmDelete = async () => {
+    if (deleteIndex === null) return;
+    const event = events[deleteIndex];
     try {
       const token = getAuthToken();
       // DELETE non-recurring event
@@ -275,6 +289,9 @@ const AddEvent = () => {
       setEvents(normalizedEvents);
     } catch (err) {
       console.error("Failed to delete event", err);
+    } finally {
+      setShowDeleteConfirmModal(false);
+      setDeleteIndex(null);
     }
   };
 
@@ -374,7 +391,7 @@ const AddEvent = () => {
     // Decode and log the JWT token to see what's in it
     const decodedToken = decodeToken();
     console.log("Token contents:", decodedToken);
-    
+
     // Prepare payload for backend
     const selectedCourse = courses.find(c => c.id === form.courseId);
     const toIsoUtc = (dateString) => {
@@ -385,6 +402,23 @@ const AddEvent = () => {
       return new Date(dateString).toISOString();
     };
 
+    // Map recurrence value to frequency
+    const recurrenceMap = {
+      daily: 'DAILY',
+      weekly: 'WEEKLY',
+      monthly: 'MONTHLY',
+      yearly: 'YEARLY',
+    };
+
+    const isRecurring = form.recurrence !== "none";
+    const recurrenceRule = isRecurring
+      ? {
+          frequency: recurrenceMap[form.recurrence] || 'DAILY',
+          interval: 1,
+          endDate: "2026-07-31T09:00:00.000Z"
+        }
+      : undefined;
+
     const payload = {
       title: form.title,
       description: form.description,
@@ -392,12 +426,15 @@ const AddEvent = () => {
       endTime: toIsoUtc(form.endTime),
       timeZone: form.timeZone,
       location: form.location || (form.zoomLink ? form.zoomLink : ""),
-      isRecurring: form.recurrence !== "none",
+      isRecurring,
       calendarType: "GROUP",
       visibility: "PRIVATE",
       courseName: selectedCourse ? selectedCourse.title : "",
       userRole: currentRole // Include user role in payload
     };
+    if (isRecurring) {
+      payload.recurrenceRule = recurrenceRule;
+    }
 
     console.log("Payload being sent:", payload);
     console.log("User role:", currentRole);
@@ -472,12 +509,12 @@ const AddEvent = () => {
         // Refetch events after adding
         const data = await getAllEvents();
         console.log("Fetched events after add:", data);
-        // Normalize course_id to courseId for all events
+          // Normalize course_id to courseId for all events
         const normalizedEvents = data.map(ev => ({
-          ...ev,
-          courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
-        }));
-        setEvents(normalizedEvents);
+            ...ev,
+            courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
+          }));
+          setEvents(normalizedEvents);
       } catch (err) {
         // Optionally handle error
         console.error("Failed to add event to backend", err);
@@ -980,6 +1017,36 @@ const AddEvent = () => {
                 })}
               </ul>
             </div>
+
+            {/* Deleted occurrences section */}
+            {recurringDeleteEvent.deletedOccurrences && recurringDeleteEvent.deletedOccurrences.length > 0 && (
+              <div className="mt-6">
+                <h3 className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 border-b">
+                  Deleted occurrences
+                </h3>
+                <ul className="divide-y divide-gray-200 max-h-40 overflow-y-auto">
+                  {recurringDeleteEvent.deletedOccurrences.map((deletedDate) => (
+                    <li key={deletedDate} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {new Date(deletedDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: userTimezone })}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(deletedDate).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: userTimezone })}
+                        </p>
+                      </div>
+                      <button
+                        className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrence ? 'bg-gray-100 text-gray-400' : 'text-green-600 hover:bg-green-50'}`}
+                        disabled={deletingOccurrence}
+                        onClick={() => handleRestoreOccurrence(recurringDeleteEvent.id, deletedDate)}
+                      >
+                        {deletingOccurrence ? 'Restoring...' : 'Restore'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             
             <div className="space-y-2 pt-2">
               <button
@@ -1002,6 +1069,46 @@ const AddEvent = () => {
                 onClick={() => setShowRecurringDeleteModal(false)}
               >
                 Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Modal for non-recurring event */}
+      {showDeleteConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative">
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+              onClick={() => { setShowDeleteConfirmModal(false); setDeleteIndex(null); }}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <div className="text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-900 mt-3">Confirm Delete</h3>
+              <div className="mt-2 text-sm text-gray-500">
+                <p>Are you sure you want to delete this event? This action cannot be undone.</p>
+              </div>
+              <div className="mt-4 flex justify-center gap-4">
+                <button
+                  type="button"
+                  className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  onClick={() => { setShowDeleteConfirmModal(false); setDeleteIndex(null); }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  onClick={confirmDelete}
+                >
+                  Delete
                 </button>
               </div>
             </div>
