@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import ProgressStats from "@/components/dashboard/ProgressStats";
 import CourseCard from "@/components/dashboard/CourseCard";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,52 @@ import DashboardTodo from "@/components/dashboard/DashboardTodo";
 import MonthlyProgress from "@/components/dashboard/MonthlyProgress";
 import DashboardAnnouncements from "@/components/dashboard/DashboardAnnouncements";
 import LiveClasses from "@/components/dashboard/LiveClasses";
+import axios from "axios";
 
 export function Dashboard() {
+  const [dashboardData, setDashboardData] = useState({
+    activeCourses: 0,
+    completedCourses: 0,
+    courseProgress: 0,
+    learningHours: 0,
+    averageProgress: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://creditor-backend-gvtd.onrender.com";
+  // Get userId from localStorage or set a placeholder for now
+  const userId = localStorage.getItem('userId') || 'test-user-id';
+
+  const fetchUserOverview = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      // Use the overview endpoint for now
+      const response = await axios.get(`${API_BASE}/api/user/${userId}/overview`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.data && response.data.data) {
+        setDashboardData(response.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching user overview:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserOverview();
+  }, []);
+
   const inProgressCourses = [
     {
       id: "1",
@@ -146,18 +190,22 @@ export function Dashboard() {
                   <div className="grid grid-cols-3 gap-4 mt-6">
                     <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
                       <div className="flex items-center gap-2">
-                        <Target className="text-blue-600" size={20} />
-                        <span className="text-blue-600 font-semibold">Current Goal</span>
+                        <CheckCircle className="text-blue-600" size={20} />
+                        <span className="text-blue-600 font-semibold">Completed</span>
                       </div>
-                      <p className="text-2xl font-bold text-blue-700 mt-1">62%</p>
-                      <p className="text-blue-600 text-sm">Course Completion</p>
+                      <p className="text-2xl font-bold text-blue-700 mt-1">
+                        {loading ? '...' : dashboardData.completedCourses}
+                      </p>
+                      <p className="text-blue-600 text-sm">Courses finished</p>
                     </div>
                     <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
                       <div className="flex items-center gap-2">
                         <Clock className="text-emerald-600" size={20} />
                         <span className="text-emerald-600 font-semibold">This Week</span>
                       </div>
-                      <p className="text-2xl font-bold text-emerald-700 mt-1">12h</p>
+                      <p className="text-2xl font-bold text-emerald-700 mt-1">
+                        {loading ? '...' : `${dashboardData.learningHours}h`}
+                      </p>
                       <p className="text-emerald-600 text-sm">Study Time</p>
                     </div>
                     <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
@@ -165,7 +213,9 @@ export function Dashboard() {
                         <BookOpen className="text-purple-600" size={20} />
                         <span className="text-purple-600 font-semibold">Active</span>
                       </div>
-                      <p className="text-2xl font-bold text-purple-700 mt-1">3</p>
+                      <p className="text-2xl font-bold text-purple-700 mt-1">
+                        {loading ? '...' : dashboardData.activeCourses}
+                      </p>
                       <p className="text-purple-600 text-sm">Courses</p>
                     </div>
                   </div>

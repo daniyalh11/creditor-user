@@ -49,8 +49,13 @@ export function CalendarPage() {
       setError(null);
       setLoading({ all: true });
       try {
-        const events = await getAllUpcomingEvents();
         const now = new Date();
+        const startDate = now.toISOString();
+        const end = new Date();
+        end.setDate(end.getDate() + 30); // next 30 days
+        end.setHours(23, 59, 59, 999);
+        const endDate = end.toISOString();
+        const events = await getAllUpcomingEvents({ startDate, endDate });
         const expanded = [];
         events.forEach(event => {
           if (event.isRecurring && Array.isArray(event.occurrences)) {

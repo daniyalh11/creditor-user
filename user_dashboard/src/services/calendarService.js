@@ -18,8 +18,9 @@ export async function getAllEvents(params = {}) {
   return data.data || [];
 }
 
-export async function getAllUpcomingEvents() {
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
+export async function getAllUpcomingEvents(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events${query ? `?${query}` : ''}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
