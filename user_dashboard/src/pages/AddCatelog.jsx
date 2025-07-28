@@ -30,6 +30,8 @@ const AddCatelog = () => {
   const [submitting, setSubmitting] = useState(false);
   const [lastUpdateRequest, setLastUpdateRequest] = useState(null);
   const [lastUpdateResponse, setLastUpdateResponse] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const catalogsPerPage = 4;
 
   // Fetch catalogs and courses on component mount
   useEffect(() => {
@@ -96,9 +98,10 @@ const AddCatelog = () => {
       const catalogData = {
         name: form.name,
         description: form.description,
-        thumbnail: form.thumbnail || '', // Always send thumbnail, even if empty
       };
-
+      if (form.thumbnail && form.thumbnail.trim() !== '') {
+        catalogData.thumbnail = form.thumbnail;
+      }
       setLastUpdateRequest({ editId, catalogData });
       let newCatalog;
       if (editId) {
@@ -169,6 +172,8 @@ const AddCatelog = () => {
 
   // Fallback to ensure catalogs is always an array
   const safeCatalogs = Array.isArray(catalogs) ? catalogs : [];
+  const totalPages = Math.ceil(safeCatalogs.length / catalogsPerPage);
+  const paginatedCatalogs = safeCatalogs.slice((currentPage - 1) * catalogsPerPage, currentPage * catalogsPerPage);
 
   if (loading) {
     return (
@@ -234,95 +239,115 @@ const AddCatelog = () => {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {safeCatalogs.map((catalog) => (
-            <div key={catalog.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white hover:shadow-md transition-shadow">
-              <div className="flex">
-                <div className="w-1/3">
-                  <img
-                    src={catalog.thumbnail || PLACEHOLDER_IMAGE}
-                    alt={catalog.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.src = PLACEHOLDER_IMAGE;
-                    }}
-                  />
-                </div>
-                <div className="w-2/3 p-5 flex flex-col">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-semibold text-gray-800">{catalog.name}</h3>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleEdit(catalog)}
-                        className="text-blue-600 hover:text-blue-800 transition-colors p-1 rounded hover:bg-blue-50"
-                        aria-label="Edit"
-                        title="Edit catalog"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(catalog.id)}
-                        className="text-red-600 hover:text-red-800 transition-colors p-1 rounded hover:bg-red-50"
-                        aria-label="Delete"
-                        title="Delete catalog"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {paginatedCatalogs.map((catalog) => (
+              <div key={catalog.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white hover:shadow-md transition-shadow">
+                <div className="flex">
+                  <div className="w-1/3">
+                    <img
+                      src={catalog.thumbnail || PLACEHOLDER_IMAGE}
+                      alt={catalog.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src = PLACEHOLDER_IMAGE;
+                      }}
+                    />
+                  </div>
+                  <div className="w-2/3 p-5 flex flex-col">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="text-lg font-semibold text-gray-800">{catalog.name}</h3>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleEdit(catalog)}
+                          className="text-blue-600 hover:text-blue-800 transition-colors p-1 rounded hover:bg-blue-50"
+                          aria-label="Edit"
+                          title="Edit catalog"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(catalog.id)}
+                          className="text-red-600 hover:text-red-800 transition-colors p-1 rounded hover:bg-red-50"
+                          aria-label="Delete"
+                          title="Delete catalog"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{catalog.description}</p>
-                  
-                  {/* Catalog metadata */}
-                  <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
-                    <span className="flex items-center gap-1">
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                      {catalog.courses?.length || 0} courses
-                    </span>
-                    {catalog.category && (
-                      <span className="bg-gray-100 px-2 py-1 rounded text-xs">
-                        {catalog.category}
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{catalog.description}</p>
+                    
+                    {/* Catalog metadata */}
+                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                      <span className="flex items-center gap-1">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        {catalog.courses?.length || 0} courses
                       </span>
-                    )}
-                  </div>
-                  
-                  <div className="mt-auto">
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Included Courses</div>
-                    <ul className="space-y-1 max-h-20 overflow-y-auto">
-                      {(!catalog.courses || catalog.courses.length === 0) ? (
-                        <li className="text-xs text-gray-400 italic">No courses added</li>
-                      ) : (
-                        catalog.courses.slice(0, 3).map(course => (
-                          <li key={course.id || course} className="text-sm text-gray-700 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-green-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                            <span className="truncate">{course.title || course.name || course.id || course}</span>
+                      {catalog.category && (
+                        <span className="bg-gray-100 px-2 py-1 rounded text-xs">
+                          {catalog.category}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="mt-auto">
+                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Included Courses</div>
+                      <ul className="space-y-1 max-h-20 overflow-y-auto">
+                        {(!catalog.courses || catalog.courses.length === 0) ? (
+                          <li className="text-xs text-gray-400 italic">No courses added</li>
+                        ) : (
+                          catalog.courses.slice(0, 3).map(course => (
+                            <li key={course.id || course} className="text-sm text-gray-700 flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-green-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              <span className="truncate">{course.title || course.name || course.id || course}</span>
+                            </li>
+                          ))
+                        )}
+                        {catalog.courses && catalog.courses.length > 3 && (
+                          <li className="text-xs text-gray-500 italic">
+                            +{catalog.courses.length - 3} more courses
                           </li>
-                        ))
-                      )}
-                      {catalog.courses && catalog.courses.length > 3 && (
-                        <li className="text-xs text-gray-500 italic">
-                          +{catalog.courses.length - 3} more courses
-                        </li>
-                      )}
-                    </ul>
+                        )}
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              className="px-4 py-2 rounded border bg-gray-100 text-gray-700 disabled:opacity-50"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
+            <button
+              className="px-4 py-2 rounded border bg-gray-100 text-gray-700 disabled:opacity-50"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </>
       )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl relative mx-4">
+          <div className="bg-white rounded-xl shadow-xl sm:max-w-2xl w-full relative mx-4">
             <button
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
               onClick={() => { setShowModal(false); setEditId(null); }}
@@ -332,7 +357,7 @@ const AddCatelog = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <div className="p-6">
+            <div className="p-6 max-h-[90vh] overflow-y-auto">
               <h2 className="text-2xl font-bold text-gray-800 mb-6">{editId ? "Edit Catalog" : "Create New Catalog"}</h2>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

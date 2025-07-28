@@ -160,25 +160,11 @@ const CatelogCourses = () => {
           {process.env.NODE_ENV === 'development' && filteredCourses.length > 0 && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <h3 className="text-sm font-medium text-yellow-800 mb-2">Debug Info (Development Only)</h3>
-              <details className="text-xs">
-                <summary className="cursor-pointer text-yellow-700">Show raw course data</summary>
+              <details className="text-xs" open>
+                <summary className="cursor-pointer text-yellow-700">First course object</summary>
                 <pre className="mt-2 p-2 bg-white rounded border text-xs overflow-auto max-h-40">
                   {JSON.stringify(filteredCourses[0], null, 2)}
                 </pre>
-              </details>
-              <details className="text-xs mt-2">
-                <summary className="cursor-pointer text-yellow-700">Show field mappings</summary>
-                <div className="mt-2 p-2 bg-white rounded border text-xs">
-                  <div><strong>Title:</strong> {filteredCourses[0]?.title || 'NOT FOUND'}</div>
-                  <div><strong>Description:</strong> {filteredCourses[0]?.description || 'NOT FOUND'}</div>
-                  <div><strong>Thumbnail:</strong> {filteredCourses[0]?.thumbnail || 'NOT FOUND'}</div>
-                  <div><strong>Level:</strong> {filteredCourses[0]?.course_level || 'NOT FOUND'}</div>
-                  <div><strong>Price:</strong> {filteredCourses[0]?.price || 'NOT FOUND'}</div>
-                  <div><strong>Category:</strong> {filteredCourses[0]?.category || 'NOT FOUND'}</div>
-                  <div><strong>Instructor:</strong> {filteredCourses[0]?.instructor || 'NOT FOUND'}</div>
-                  <div><strong>Duration:</strong> {filteredCourses[0]?.duration || 'NOT FOUND'}</div>
-                  <div><strong>Lessons:</strong> {filteredCourses[0]?.lessons?.length || 'NOT FOUND'}</div>
-                </div>
               </details>
             </div>
           )}
@@ -218,7 +204,7 @@ const CatelogCourses = () => {
                   <div className="relative h-48 overflow-hidden">
                     <img
                       src={course.thumbnail || course.image || course.coverImage || "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=1000"}
-                      alt={course.title || course.name}
+                      alt={course.title || course.name || course.courseName || 'Course image'}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) => {
                         e.target.src = "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=1000";
@@ -250,12 +236,12 @@ const CatelogCourses = () => {
                     <div className="flex-1">
                       {/* Course Title */}
                       <h2 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-                        {course.title || course.name || course.courseName || "Untitled Course"}
+                        {course.title || course.name || course.courseName || <span className="text-red-500">Missing title</span>}
                       </h2>
                       
                       {/* Course Description */}
                       <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                        {course.description || course.summary || course.shortDescription || "No description available"}
+                        {course.description || course.summary || course.shortDescription || <span className="text-red-500">No description available</span>}
                       </p>
                       
                       {/* Course Tags/Skills */}
