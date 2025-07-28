@@ -46,8 +46,8 @@ export function CourseDetail() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading course details...</p>
-        </div>
-      </div>
+            </div>
+          </div>
     );
   }
 
@@ -67,24 +67,24 @@ export function CourseDetail() {
       </div>
     );
   }
-
+      
   return (
-    <div className="container py-6 max-w-7xl mx-auto flex-1">
-      <Tabs defaultValue="content" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="content" onClick={() => setActiveTab("content")}>
-            Course Content
-          </TabsTrigger>
-          <TabsTrigger value="overview" onClick={() => setActiveTab("overview")}>
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="resources" onClick={() => setActiveTab("resources")}>
-            Resources
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="content" className="mt-0">
-          <div className="space-y-4">
+      <div className="container py-6 max-w-7xl mx-auto flex-1">
+        <Tabs defaultValue="content" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="content" onClick={() => setActiveTab("content")}>
+              Course Content
+            </TabsTrigger>
+            <TabsTrigger value="overview" onClick={() => setActiveTab("overview")}>
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="resources" onClick={() => setActiveTab("resources")}>
+              Resources
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="content" className="mt-0">
+            <div className="space-y-4">
             {modules.length === 0 ? (
               <div className="text-center py-12">
                 <BookOpen className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -105,7 +105,7 @@ export function CourseDetail() {
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">
                           {module.lessonCount || 0} Lessons
-                        </Badge>
+                      </Badge>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -155,10 +155,10 @@ export function CourseDetail() {
                 </div>
               ))
             )}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="overview" className="mt-0">
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="overview" className="mt-0">
           <Card>
             <CardHeader>
               <CardTitle>Course Overview</CardTitle>
@@ -171,7 +171,7 @@ export function CourseDetail() {
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">{modules.length}</div>
                   <div className="text-sm text-blue-600">Total Modules</div>
-                </div>
+            </div>
                 <div className="text-center p-4 bg-green-50 rounded-lg">
                   <div className="text-2xl font-bold text-green-600">
                     {modules.reduce((total, module) => total + (module.lessonCount || 0), 0)}
@@ -196,7 +196,7 @@ export function CourseDetail() {
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
                   <FileText className="h-4 w-4 text-blue-600" />
                   <span className="text-sm">Course Syllabus</span>
-                </div>
+                  </div>
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
                   <Video className="h-4 w-4 text-green-600" />
                   <span className="text-sm">Video Tutorials</span>
@@ -208,8 +208,8 @@ export function CourseDetail() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
     </div>
   );
 }

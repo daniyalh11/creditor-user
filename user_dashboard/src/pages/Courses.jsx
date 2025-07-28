@@ -4,9 +4,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
-import { BookOpen, Clock, Filter, Search, Award } from "lucide-react";
+import { BookOpen, Clock, Filter, Search, Award, ChevronDown, ChevronRight } from "lucide-react";
 import { Input } from "../components/ui/input";
-import { fetchUserCourses } from '../services/courseService';
+import { fetchUserCourses, fetchCourseModules } from '../services/courseService';
 
 export function Courses() {
   const [courses, setCourses] = useState([]);
@@ -18,6 +18,8 @@ export function Courses() {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedCourseId, setExpandedCourseId] = useState(null);
+  const [courseModules, setCourseModules] = useState({});
 
   // Helper to format seconds as HH:MM:SS
   function formatTime(secs) {
@@ -75,6 +77,32 @@ export function Courses() {
     fetchCourses();
   }, []);
 
+  const handleViewModules = async (courseId) => {
+    if (expandedCourseId === courseId) {
+      setExpandedCourseId(null);
+      return;
+    }
+
+    setExpandedCourseId(courseId);
+    
+    // Fetch modules if not already loaded
+    if (!courseModules[courseId]) {
+      try {
+        const modules = await fetchCourseModules(courseId);
+        setCourseModules(prev => ({
+          ...prev,
+          [courseId]: modules
+        }));
+      } catch (err) {
+        console.error('Error fetching modules:', err);
+        setCourseModules(prev => ({
+          ...prev,
+          [courseId]: []
+        }));
+      }
+    }
+  };
+
   useEffect(() => {
     let results = courses;
 
@@ -82,21 +110,25 @@ export function Courses() {
     if (searchTerm) {
       results = results.filter(course =>
         course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.instructor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.category.toLowerCase().includes(searchTerm.toLowerCase())
+        course.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Apply progress filter
     if (progressFilter !== "all") {
-      if (progressFilter === "completed") {
-        results = results.filter(course => course.progress === 100);
-      } else if (progressFilter === "in-progress") {
-        results = results.filter(course => course.progress > 0 && course.progress < 100);
-      } else if (progressFilter === "not-started") {
-        results = results.filter(course => course.progress === 0);
-      }
+      results = results.filter(course => {
+        const progress = course.progress || 0;
+        switch (progressFilter) {
+          case "not-started":
+            return progress === 0;
+          case "in-progress":
+            return progress > 0 && progress < 100;
+          case "completed":
+            return progress === 100;
+          default:
+            return true;
+        }
+      });
     }
 
     // Apply category filter
@@ -105,9 +137,48 @@ export function Courses() {
     }
 
     setFilteredCourses(results);
-  }, [searchTerm, progressFilter, categoryFilter]);
+  }, [courses, searchTerm, progressFilter, categoryFilter]);
 
-  const categories = [...new Set(courses.map(course => course.category))];
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <main className="flex-1">
+          <div className="container py-6 max-w-7xl">
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading courses...</p>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <main className="flex-1">
+          <div className="container py-6 max-w-7xl">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">Error loading courses</h3>
+                  <p className="text-sm text-red-700 mt-1">{error}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -138,134 +209,94 @@ export function Courses() {
             </div>
           </div>
 
+          {/* Filters */}
           {showFilters && (
-            <div className="mb-6 p-4 border rounded-lg bg-muted/50">
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Progress</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant={progressFilter === "all" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setProgressFilter("all")}
-                    >
-                      All
-                    </Button>
-                    <Button
-                      variant={progressFilter === "completed" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setProgressFilter("completed")}
-                    >
-                      Completed
-                    </Button>
-                    <Button
-                      variant={progressFilter === "in-progress" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setProgressFilter("in-progress")}
-                    >
-                      In Progress
-                    </Button>
-                    <Button
-                      variant={progressFilter === "not-started" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setProgressFilter("not-started")}
-                    >
-                      Not Started
-                    </Button>
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Progress</label>
+                  <select
+                    value={progressFilter}
+                    onChange={(e) => setProgressFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Progress</option>
+                    <option value="not-started">Not Started</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Category</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant={categoryFilter === "all" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCategoryFilter("all")}
-                    >
-                      All
-                    </Button>
-                    {categories.map(category => (
-                      <Button
-                        key={category}
-                        variant={categoryFilter === category ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCategoryFilter(category)}
-                      >
-                        {category}
-                      </Button>
-                    ))}
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Categories</option>
+                    <option value="Web Development">Web Development</option>
+                    <option value="Programming">Programming</option>
+                    <option value="Design">Design</option>
+                    <option value="Business Law">Business Law</option>
+                    <option value="Legal Skills">Legal Skills</option>
+                  </select>
                 </div>
               </div>
             </div>
           )}
-          
+
+          {/* Course Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {loading ? (
-              <div className="col-span-full text-center py-12">
-                <p>Loading courses...</p>
-              </div>
-            ) : error ? (
-              <div className="col-span-full text-center py-12 text-red-500">
-                {error}
-              </div>
-            ) : filteredCourses.length > 0 ? (
+            {filteredCourses.length > 0 ? (
               filteredCourses.map((course) => (
-                <div key={course.id} className="course-card opacity-0 transition-all duration-500 ease-in-out">
-                  <Card className="overflow-hidden hover:shadow-md transition-shadow">
+                <div key={course.id} className="course-card opacity-0">
+                  <Card className="overflow-hidden hover:shadow-lg transition-all duration-300">
                     <div className="aspect-video relative overflow-hidden">
                       <img 
-                        src={course.image} 
+                        src={course.image || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000"} 
                         alt={course.title}
-                        className="w-full h-full object-cover transition-transform hover:scale-105 duration-500"
+                        className="w-full h-full object-cover"
                       />
-                      <Badge className="absolute top-2 right-2 bg-black/70" variant="secondary">
-                        {course.category}
-                      </Badge>
+                      <div className="absolute top-3 right-3">
+                        <Badge variant={course.progress === 100 ? "default" : "outline"}>
+                          {course.progress || 0}% Complete
+                        </Badge>
+                      </div>
                     </div>
                     
-                    <CardHeader className="pb-2">
-                      <CardTitle>{course.title}</CardTitle>
-                      <CardDescription>{course.instructor}</CardDescription>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
+                      <CardDescription className="line-clamp-2">{course.description}</CardDescription>
                     </CardHeader>
                     
-                    <CardContent className="pb-2">
-                      <p className="text-sm text-muted-foreground mb-4">{course.description}</p>
-                      
-                      <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
-                        <div className="flex items-center gap-1">
-                          <BookOpen size={14} />
-                          <span>Course</span>
-                        </div>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Clock size={14} />
-                          <span>{course.duration}</span>
+                          <span>{course.duration || "Duration not specified"}</span>
                         </div>
-                      </div>
-                      {/* Time spent display */}
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                        <Clock size={12} />
-                        <span>Time spent:</span>
-                        <span className="font-mono">{formatTime(courseTimes[course.id] || 0)}</span>
+                        <div className="flex items-center gap-1">
+                          <BookOpen size={14} />
+                          <span>{course.lessonsCount || 0} lessons</span>
+                        </div>
                       </div>
                       
-                      {course.progress > 0 && (
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-muted-foreground">Progress</span>
-                            <span className="font-medium">{course.progress}%</span>
-                          </div>
-                          <Progress value={course.progress} className="h-2" />
-                        </div>
-                      )}
+                      <Progress value={course.progress || 0} className="h-2" />
+                      
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>Time spent: {formatTime(courseTimes[course.id] || 0)}</span>
+                        <span>{course.category || "Uncategorized"}</span>
+                      </div>
                     </CardContent>
                     
                     <CardFooter className="pt-2 flex flex-col gap-2">
-                      <Link to={`/dashboard/courses/${course.id}`} className="w-full">
-                        <Button variant="default" className="w-full">
-                          {course.progress > 0 ? "Continue Learning" : "Start Course"}
-                        </Button>
-                      </Link>
+                      <div className="flex gap-2 w-full">
+                        <Link to={`/dashboard/courses/${course.id}/modules`} className="flex-1">
+                          <Button variant="default" className="w-full">
+                            Continue Learning
+                          </Button>
+                        </Link>
+                      </div>
                       
                       {course.progress === 100 && (
                         <Link to={`/certificate/${course.id}`} className="w-full">

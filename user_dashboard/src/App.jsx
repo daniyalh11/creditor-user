@@ -83,6 +83,7 @@ import { WebsiteCreation } from './pages/WebsiteCreation';
 import MerchantProcessing from './pages/MerchantProcessing';
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "@/pages/Auth/Login";
+import ModuleView from "@/pages/ModuleView";
 
 function ProtectedScormRoute() {
   if (!allowedScormUserIds.includes(currentUserId)) {
@@ -137,6 +138,8 @@ function App() {
                   <CourseView />
                 </CourseTimerProvider>
               } />
+              <Route path="modules" element={<ModulesList />} />
+              <Route path="modules/:moduleId/view" element={<ModuleView />} />
               <Route path="module/:moduleId">
                 <Route index element={<ModuleDetail />} />
                 <Route path="lessons" element={<ModuleLessonsView />} />

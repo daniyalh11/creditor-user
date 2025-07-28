@@ -1,75 +1,117 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { allowedScormUserIds } from "@/data/allowedScormUsers";
 import { currentUserId } from "@/data/currentUser";
 import { fetchAllCourses, fetchCourseModules } from "@/services/courseService";
+import { CreateModuleDialog } from "@/components/courses/CreateModuleDialog";
+import ScormService from '@/services/scormService';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Search, Clock, ChevronLeft, Play, Eye, Upload } from "lucide-react";
+import { Input } from "@/components/ui/input";
+
+const COURSES_PER_PAGE = 5;
 
 const ScormPage = () => {
-  const fileInputRef = useRef(null);
-  const [expandedCourseId, setExpandedCourseId] = useState(null);
-  const [scormUploadState, setScormUploadState] = useState({});
-  const [activeModule, setActiveModule] = useState(null);
   const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedCourseId, setExpandedCourseId] = useState(null);
+  const [courseModules, setCourseModules] = useState({});
+  const [scormUploadState, setScormUploadState] = useState({});
+  const [showCreateModuleDialog, setShowCreateModuleDialog] = useState(false);
+  const [selectedCourseForModule, setSelectedCourseForModule] = useState(null);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [previewModule, setPreviewModule] = useState(null);
+  const fileInputRef = useRef();
 
   const isAllowed = allowedScormUserIds.includes(currentUserId);
 
-  // Fetch courses and their modules
   useEffect(() => {
+    if (!isAllowed) {
+      return;
+    }
     const fetchCoursesData = async () => {
-      setLoading(true);
       try {
         const coursesData = await fetchAllCourses();
-        
-        // Fetch modules for each course
         const coursesWithModules = await Promise.all(
           coursesData.map(async (course) => {
             try {
               const modules = await fetchCourseModules(course.id);
-              return {
-                ...course,
-                modules: modules || []
-              };
+              return { ...course, modules };
             } catch (err) {
               console.error(`Error fetching modules for course ${course.id}:`, err);
-              return {
-                ...course,
-                modules: []
-              };
+              return { ...course, modules: [] };
             }
           })
         );
-        
         setCourses(coursesWithModules);
       } catch (err) {
         console.error('Error fetching courses:', err);
-        setError("Failed to load courses");
-      } finally {
-        setLoading(false);
       }
     };
-
-    if (isAllowed) {
-      fetchCoursesData();
-    }
+    fetchCoursesData();
   }, [isAllowed]);
+
+  // Filtered and paginated courses
+  const filteredCourses = useMemo(() => {
+    if (!searchTerm.trim()) return courses;
+    const lower = searchTerm.toLowerCase();
+    return courses.filter(course =>
+      course.title.toLowerCase().includes(lower) ||
+      course.modules.some(mod => mod.title.toLowerCase().includes(lower))
+    );
+  }, [courses, searchTerm]);
+
+  const totalPages = Math.ceil(filteredCourses.length / COURSES_PER_PAGE) || 1;
+  const paginatedCourses = filteredCourses.slice(
+    (currentPage - 1) * COURSES_PER_PAGE,
+    currentPage * COURSES_PER_PAGE
+  );
+
+  // Reset to page 1 if search changes
+  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
   const handleExpandCourse = (courseId) => {
     setExpandedCourseId(expandedCourseId === courseId ? null : courseId);
-    setActiveModule(null);
+  };
+
+  const handleCreateModule = (courseId) => {
+    setSelectedCourseForModule(courseId);
+    setShowCreateModuleDialog(true);
+  };
+
+  const handleModuleCreated = async (newModule) => {
+    // Refresh modules for the specific course
+    if (selectedCourseForModule) {
+      try {
+        const updatedModules = await fetchCourseModules(selectedCourseForModule);
+        setCourses(prev => prev.map(course => 
+          course.id === selectedCourseForModule 
+            ? { ...course, modules: updatedModules }
+            : course
+        ));
+      } catch (err) {
+        console.error('Error refreshing modules:', err);
+      }
+    }
   };
 
   const handleAddScormClick = (courseId, moduleId) => {
-    setActiveModule({ courseId, moduleId });
-    setScormUploadState((prev) => ({ ...prev, [moduleId]: { file: null, uploading: false, uploaded: false, error: '' } }));
+    setScormUploadState(prev => ({
+      ...prev,
+      [moduleId]: { ...prev[moduleId], active: true }
+    }));
   };
 
   const handleFileChange = (moduleId, event) => {
     const file = event.target.files[0];
-    setScormUploadState((prev) => ({
-      ...prev,
-      [moduleId]: { ...prev[moduleId], file, previewUrl: null, error: '' }
-    }));
+    if (file) {
+      setScormUploadState(prev => ({
+        ...prev,
+        [moduleId]: { ...prev[moduleId], file, uploading: false, uploaded: false, error: '' }
+      }));
+    }
   };
 
   const handleUpload = async (moduleId) => {
@@ -81,31 +123,28 @@ const ScormPage = () => {
       [moduleId]: { ...prev[moduleId], uploading: true, error: '' }
     }));
 
-    const formData = new FormData();
-    formData.append('scormFile', uploadState.file);
-
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/scorm/upload_scorm`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
+      const description = 'Dummy SCORM test file';
+      const result = await ScormService.uploadScorm({
+        moduleId,
+        file: uploadState.file,
+        uploadedBy: currentUserId,
+        description,
       });
-
-      if (response.ok) {
-        const result = await response.json();
-        setScormUploadState((prev) => ({
-          ...prev,
-          [moduleId]: {
-            ...prev[moduleId],
-            uploading: false,
-            uploaded: true,
-            previewUrl: result.previewUrl || result.url,
-            error: ''
-          }
-        }));
-      } else {
-        throw new Error('Upload failed');
-      }
+      
+      const fullUrl = `${import.meta.env.VITE_API_BASE_URL}${result.data.url}`;
+      
+      setScormUploadState((prev) => ({
+        ...prev,
+        [moduleId]: {
+          ...prev[moduleId],
+          uploading: false,
+          uploaded: true,
+          previewUrl: fullUrl,
+          scormUrl: result.data.url,
+          error: ''
+        }
+      }));
     } catch (error) {
       setScormUploadState((prev) => ({
         ...prev,
@@ -118,80 +157,53 @@ const ScormPage = () => {
     }
   };
 
+  const handlePreviewModule = (module) => {
+    setPreviewModule(module);
+    setShowPreviewDialog(true);
+  };
+
   if (!isAllowed) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                This page is only accessible to authorized SCORM users.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading courses...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Error loading courses</h3>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
-            </div>
-          </div>
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+          <p className="text-gray-600">You do not have permission to access SCORM Content Management.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-5xl mx-auto py-8 px-4">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">SCORM Content Management</h1>
         <p className="text-gray-600">Upload and manage SCORM packages for your course modules</p>
       </div>
 
-      {courses.length === 0 ? (
+      {/* Search input */}
+      <div className="mb-6 flex items-center gap-2">
+        <Input
+          type="text"
+          placeholder="Search by course or module title..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="w-full max-w-md"
+        />
+      </div>
+
+      {paginatedCourses.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-gray-400 mb-4">
             <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No courses available</h3>
-          <p className="text-gray-500">Create some courses first to manage SCORM content</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
+          <p className="text-gray-500">Try a different search term.</p>
         </div>
       ) : (
         <div className="space-y-6">
-          {courses.map((course) => (
+          {paginatedCourses.map((course) => (
             <div key={course.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200">
                 <div className="flex justify-between items-center">
@@ -199,12 +211,14 @@ const ScormPage = () => {
                     <h3 className="text-lg font-semibold text-gray-900">{course.title}</h3>
                     <p className="text-sm text-gray-600 mt-1">{course.description}</p>
                   </div>
-                  <button
-                    onClick={() => handleExpandCourse(course.id)}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    {expandedCourseId === course.id ? 'Hide Modules' : 'View Modules'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleExpandCourse(course.id)}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      {expandedCourseId === course.id ? 'Hide Modules' : 'View Modules'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -218,25 +232,57 @@ const ScormPage = () => {
                     ) : (
                       course.modules.map((mod) => {
                         const uploadState = scormUploadState[mod.id] || {};
-                        const isActive = activeModule && activeModule.courseId === course.id && activeModule.moduleId === mod.id;
+                        const isActive = uploadState.active;
+                        const hasExistingContent = mod.resource_url;
+                        
                         return (
                           <div key={mod.id} className="bg-gray-50 rounded-md p-4 border border-gray-200">
                             <div className="flex justify-between items-center">
                               <div>
                                 <h3 className="font-medium text-gray-800">{mod.title}</h3>
-                                <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-600 rounded">
-                                  Module ID: {mod.id}
-                                </span>
+                                <p className="text-sm text-gray-600 mt-1">{mod.description}</p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <span className="inline-block px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-600 rounded">
+                                    Module ID: {mod.id}
+                                  </span>
+                                  <span className="text-xs text-gray-500">Order: {mod.order || 'N/A'}</span>
+                                  <span className="text-xs text-gray-500">Duration: {mod.estimated_duration || 0} min</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                    mod.module_status === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
+                                    mod.module_status === 'DRAFT' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {mod.module_status}
+                                  </span>
+                                  {hasExistingContent && (
+                                    <Badge variant="default" className="bg-green-100 text-green-800">
+                                      SCORM Uploaded
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
-                              <button
-                                onClick={() => handleAddScormClick(course.id, mod.id)}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                              >
-                                Add SCORM
-                              </button>
+                              <div className="flex gap-2">
+                                {hasExistingContent ? (
+                                  <Button
+                                    onClick={() => handlePreviewModule(mod)}
+                                    className="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 text-white rounded-md"
+                                  >
+                                    <Eye size={14} className="mr-1" />
+                                    Preview
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    onClick={() => handleAddScormClick(course.id, mod.id)}
+                                    className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+                                  >
+                                    <Upload size={14} className="mr-1" />
+                                    Add SCORM
+                                  </Button>
+                                )}
+                              </div>
                             </div>
 
-                            {isActive && (
+                            {isActive && !hasExistingContent && (
                               <div className="mt-4 p-4 bg-white rounded-md border border-gray-200">
                                 <div className="space-y-4">
                                   <div>
@@ -254,13 +300,13 @@ const ScormPage = () => {
 
                                   {uploadState.file && (
                                     <div className="flex items-center gap-2">
-                                      <button
+                                      <Button
                                         onClick={() => handleUpload(mod.id)}
                                         disabled={uploadState.uploading}
                                         className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                                       >
                                         {uploadState.uploading ? 'Uploading...' : 'Upload'}
-                                      </button>
+                                      </Button>
                                       <span className="text-sm text-gray-600">
                                         {uploadState.file.name}
                                       </span>
@@ -275,10 +321,27 @@ const ScormPage = () => {
                                     <div className="mt-4">
                                       <h4 className="text-sm font-medium text-gray-700 mb-2">Preview:</h4>
                                       <iframe
-                                        src={`${import.meta.env.VITE_API_BASE_URL}${uploadState.previewUrl}`}
+                                        src={uploadState.previewUrl}
                                         className="w-full h-64 border border-gray-300 rounded-md"
                                         title="SCORM Preview"
                                       />
+                                      <div className="mt-2">
+                                        <h5 className="text-sm font-medium text-gray-700 mb-1">SCORM URL:</h5>
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type="text"
+                                            value={uploadState.scormUrl || ''}
+                                            readOnly
+                                            className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-50"
+                                          />
+                                          <Button
+                                            onClick={() => navigator.clipboard.writeText(uploadState.scormUrl)}
+                                            className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+                                          >
+                                            Copy
+                                          </Button>
+                                        </div>
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -293,6 +356,64 @@ const ScormPage = () => {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-8">
+          <Button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            variant="outline"
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-gray-700">Page {currentPage} of {totalPages}</span>
+          <Button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            variant="outline"
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
+      {/* Create Module Dialog */}
+      <CreateModuleDialog
+        isOpen={showCreateModuleDialog}
+        onClose={() => setShowCreateModuleDialog(false)}
+        courseId={selectedCourseForModule}
+        onModuleCreated={handleModuleCreated}
+        existingModules={courses.find(c => c.id === selectedCourseForModule)?.modules || []}
+      />
+
+      {/* Preview Dialog */}
+      {showPreviewDialog && previewModule && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-5/6 flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-xl font-semibold">{previewModule.title}</h2>
+                <p className="text-sm text-gray-600">{previewModule.description}</p>
+              </div>
+              <Button
+                onClick={() => setShowPreviewDialog(false)}
+                variant="outline"
+              >
+                Close
+              </Button>
+            </div>
+            <div className="flex-1 p-6">
+              <iframe
+                src={`${import.meta.env.VITE_API_BASE_URL}${previewModule.resource_url}`}
+                className="w-full h-full border border-gray-300 rounded-md"
+                title={previewModule.title}
+                allowFullScreen
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

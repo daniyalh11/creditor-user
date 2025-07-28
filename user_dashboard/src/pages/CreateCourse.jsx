@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { fetchAllCourses, fetchCourseModules } from "../services/courseService";
+import { fetchAllCourses, fetchCourseModules, createModule, updateModule, deleteModule } from "../services/courseService";
+import { CreateModuleDialog } from "@/components/courses/CreateModuleDialog";
 
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=1000";
 
@@ -36,6 +37,12 @@ const CreateCourse = ({ onCourseCreated }) => {
   const [editError, setEditError] = useState("");
   const [expandedCourseId, setExpandedCourseId] = useState(null);
   const [courseModules, setCourseModules] = useState({});
+  const [showCreateModuleDialog, setShowCreateModuleDialog] = useState(false);
+  const [selectedCourseForModule, setSelectedCourseForModule] = useState(null);
+  const [editModuleData, setEditModuleData] = useState(null);
+  const [moduleDialogMode, setModuleDialogMode] = useState("create");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState(null);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -75,6 +82,79 @@ const CreateCourse = ({ onCourseCreated }) => {
           [courseId]: []
         }));
       }
+    }
+  };
+
+  const handleCreateModule = (courseId) => {
+    setSelectedCourseForModule(courseId);
+    setEditModuleData(null);
+    setModuleDialogMode("create");
+    setShowCreateModuleDialog(true);
+  };
+
+  const handleEditModule = (courseId, module) => {
+    setSelectedCourseForModule(courseId);
+    setEditModuleData(module);
+    setModuleDialogMode("edit");
+    setShowCreateModuleDialog(true);
+  };
+
+  const handleDeleteModule = (courseId, module) => {
+    setModuleToDelete({ courseId, module });
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteModule = async () => {
+    if (!moduleToDelete) return;
+    
+    try {
+      const { courseId, module } = moduleToDelete;
+      const moduleData = {
+        title: module.title,
+        description: module.description || "test description",
+        order: module.order || 1,
+        estimated_duration: module.estimated_duration || 60,
+        module_status: module.module_status || "DRAFT",
+        thumbnail: module.thumbnail || "test thumbnail"
+      };
+      
+      await deleteModule(courseId, module.id, moduleData);
+      
+      // Refresh modules for the course
+      const updatedModules = await fetchCourseModules(courseId);
+      setCourseModules(prev => ({
+        ...prev,
+        [courseId]: updatedModules
+      }));
+      
+      setShowDeleteConfirm(false);
+      setModuleToDelete(null);
+    } catch (err) {
+      console.error('Error deleting module:', err);
+      alert('Failed to delete module: ' + err.message);
+    }
+  };
+
+  const handleModuleCreated = async (newModule) => {
+    // Refresh modules for the specific course
+    try {
+      const updatedModules = await fetchCourseModules(selectedCourseForModule);
+      setCourseModules(prev => ({
+        ...prev,
+        [selectedCourseForModule]: updatedModules
+      }));
+    } catch (err) {
+      console.error('Error refreshing modules:', err);
+    }
+  };
+
+  const handleModuleSaved = async (moduleData) => {
+    if (moduleDialogMode === "edit" && editModuleData) {
+      await updateModule(selectedCourseForModule, editModuleData.id, moduleData);
+      await handleModuleCreated();
+    } else {
+      await createModule(selectedCourseForModule, moduleData);
+      await handleModuleCreated();
     }
   };
 
@@ -337,7 +417,15 @@ const CreateCourse = ({ onCourseCreated }) => {
               {/* Modules Section */}
               {expandedCourseId === course.id && (
                 <div className="border-t border-gray-200 pt-4 mt-4">
-                  <h4 className="font-medium text-gray-900 mb-3">Course Modules</h4>
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="font-medium text-gray-900">Course Modules</h4>
+                    <button
+                      onClick={() => handleCreateModule(course.id)}
+                      className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                    >
+                      + Add Module
+                    </button>
+                  </div>
                   {courseModules[course.id] ? (
                     courseModules[course.id].length > 0 ? (
                       <div className="space-y-2">
@@ -348,8 +436,35 @@ const CreateCourse = ({ onCourseCreated }) => {
                               {module.description && (
                                 <p className="text-sm text-gray-600 mt-1">{module.description}</p>
                               )}
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-gray-500">Order: {module.order || 'N/A'}</span>
+                                <span className="text-xs text-gray-500">Duration: {module.estimated_duration || 0} min</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  module.module_status === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
+                                  module.module_status === 'DRAFT' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {module.module_status}
+                                </span>
+                              </div>
                             </div>
-                            <span className="text-xs text-gray-500">ID: {module.id}</span>
+                            <div className="flex flex-col gap-2 items-end">
+                              <span className="text-xs text-gray-500">ID: {module.id}</span>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => handleEditModule(course.id, module)}
+                                  className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteModule(course.id, module)}
+                                  className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -679,6 +794,44 @@ const CreateCourse = ({ onCourseCreated }) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Module Dialog */}
+      <CreateModuleDialog
+        isOpen={showCreateModuleDialog}
+        onClose={() => setShowCreateModuleDialog(false)}
+        courseId={selectedCourseForModule}
+        onModuleCreated={handleModuleCreated}
+        existingModules={courseModules[selectedCourseForModule] || []}
+        initialData={editModuleData}
+        mode={moduleDialogMode}
+        onSave={handleModuleSaved}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && moduleToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Delete Module</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete the module "{moduleToDelete.module.title}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteModule}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Delete Module
+              </button>
+            </div>
           </div>
         </div>
       )}
