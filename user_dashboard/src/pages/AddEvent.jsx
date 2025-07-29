@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from "react";
 import { currentUserId } from "@/data/currentUser";
 import { getAllEvents } from "@/services/calendarService";
@@ -431,20 +429,11 @@ const AddEvent = () => {
     const selectedCourse = courses.find(c => c.id === form.courseId);
     const toIsoUtc = (dateString) => {
       if (!dateString) return "";
-      if (dateString.endsWith('Z')) return dateString;
-      
-      // Create a Date object from the local datetime string
-      const localDate = new Date(dateString);
-      
-      // Get the user's timezone
-      const userTimezone = localStorage.getItem('userTimezone') || 'America/New_York';
-      
-      // Convert the local time to the user's timezone, then to UTC
-      const userTime = new Date(localDate.toLocaleString('en-US', { timeZone: userTimezone }));
-      
-      console.log(`Converting ${dateString} (local) to ${userTimezone}:`, userTime.toISOString());
-      
-      return userTime.toISOString();
+      // Always treat the input as PST
+      const pstDate = new Date(
+        new Date(dateString).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })
+      );
+      return pstDate.toISOString();
     };
 
     // Map recurrence value to frequency
