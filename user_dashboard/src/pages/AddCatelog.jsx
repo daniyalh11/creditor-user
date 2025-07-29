@@ -35,10 +35,11 @@ const AddCatelog = () => {
   const [lastUpdateResponse, setLastUpdateResponse] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const catalogsPerPage = 4;
+  const [courseCounts, setCourseCounts] = useState({});
 
-  // Fetch catalogs and courses on component mount
+  // Fetch catalogs and course counts on component mount
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDataAndCounts = async () => {
       try {
         setLoading(true);
         const [catalogsData, coursesData] = await Promise.all([
@@ -55,6 +56,15 @@ const AddCatelog = () => {
         
         setCatalogs(catalogsArray);
         setAvailableCourses(Array.isArray(coursesData) ? coursesData : []);
+        // Fetch course counts for each catalog
+        const counts = {};
+        await Promise.all(
+          (catalogsArray || []).map(async (catalog) => {
+            const courses = await getCatalogCourses(catalog.id);
+            counts[catalog.id] = courses.length;
+          })
+        );
+        setCourseCounts(counts);
       } catch (err) {
         console.error("Failed to fetch data:", err);
         setError("Failed to load catalogs and courses. Please try again later.\n" + (err.message || ''));
@@ -62,7 +72,7 @@ const AddCatelog = () => {
         setLoading(false);
       }
     };
-    fetchData();
+    fetchDataAndCounts();
   }, []);
 
   const handleFormChange = (e) => {
@@ -443,37 +453,11 @@ const AddCatelog = () => {
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                         </svg>
-                        {catalog.courses?.length || 0} courses
+                        {courseCounts[catalog.id] || 0} courses
                       </span>
-                      {catalog.category && (
-                        <span className="bg-gray-100 px-2 py-1 rounded text-xs">
-                          {catalog.category}
-                        </span>
-                      )}
                     </div>
                     
-                    <div className="mt-auto">
-                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Included Courses</div>
-                      <ul className="space-y-1 max-h-20 overflow-y-auto">
-                        {(!catalog.courses || catalog.courses.length === 0) ? (
-                          <li className="text-xs text-gray-400 italic">No courses added</li>
-                        ) : (
-                          catalog.courses.slice(0, 3).map(course => (
-                            <li key={course.id || course} className="text-sm text-gray-700 flex items-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-green-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                              <span className="truncate">{course.title || course.name || course.id || course}</span>
-                            </li>
-                          ))
-                        )}
-                        {catalog.courses && catalog.courses.length > 3 && (
-                          <li className="text-xs text-gray-500 italic">
-                            +{catalog.courses.length - 3} more courses
-                          </li>
-                        )}
-                      </ul>
-                    </div>
+
                   </div>
                 </div>
               </div>
@@ -615,11 +599,6 @@ const AddCatelog = () => {
                               {course.description && (
                                 <div className="text-xs text-gray-500 mt-1 line-clamp-2">
                                   {course.description}
-                                </div>
-                              )}
-                              {course.category && (
-                                <div className="text-xs text-blue-600 mt-1">
-                                  {course.category}
                                 </div>
                               )}
                             </div>

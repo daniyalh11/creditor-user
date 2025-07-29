@@ -465,6 +465,16 @@ export async function removeCoursesFromCatalog(catalogId, courseIds) {
   }
 }
 
+// Add a single course to a catalog
+export async function addCourseToCatalog(catalogId, courseId) {
+  return addCoursesToCatalog(catalogId, [courseId]);
+}
+
+// Remove a single course from a catalog
+export async function removeCourseFromCatalog(catalogId, courseId) {
+  return removeCoursesFromCatalog(catalogId, [courseId]);
+}
+
 // Get courses for a specific catalog
 export async function getCatalogCourses(catalogId) {
   try {

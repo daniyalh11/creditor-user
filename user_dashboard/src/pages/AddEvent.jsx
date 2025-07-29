@@ -7,6 +7,7 @@ import { fetchUserProfile } from "@/services/userService";
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 
+
 const DEFAULT_TIMEZONE = "America/New_York";
 const AddEvent = () => {
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
@@ -86,6 +87,23 @@ const AddEvent = () => {
       return true;
     } catch (_) {
       return false;
+    }
+  };
+
+  // Helper to format time in a given timezone
+  const formatInTimezone = (dateString, tz, label) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return `${label}: ${date.toLocaleString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: tz
+      })}`;
+    } catch (error) {
+      console.error('Error formatting timezone:', error);
+      return `${label}: Error`;
     }
   };
 
@@ -172,12 +190,29 @@ const AddEvent = () => {
     }
 
     setSelectedDate(date);
+    
+    // Create a proper datetime string for the selected date in user's timezone
+    const createDateTimeString = (date, hour = 9, minute = 0) => {
+      // Create a date object for the selected date
+      const selectedDate = new Date(date);
+      selectedDate.setHours(hour, minute, 0, 0);
+      
+      // Format as YYYY-MM-DDTHH:MM for datetime-local input
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const hours = String(hour).padStart(2, '0');
+      const minutes = String(minute).padStart(2, '0');
+      
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
     setForm({
       id: "",
       title: "",
       description: "",
-      startTime: date ? date.toISOString().slice(0, 16) : "",
-      endTime: date ? date.toISOString().slice(0, 16) : "",
+      startTime: date ? createDateTimeString(date, 9, 0) : "", // 9:00 AM
+      endTime: date ? createDateTimeString(date, 10, 0) : "",  // 10:00 AM (1 hour later)
       timeZone: userTimezone, // Use user's timezone
       location: "",
       isRecurring: false,
@@ -255,7 +290,7 @@ const AddEvent = () => {
     }
     if (!event.id) {
       // If no id, just remove from local state
-      setEvents(events.filter((_, i) => i !== index));
+    setEvents(events.filter((_, i) => i !== index));
       return;
     }
     // Show confirmation modal for non-recurring event
@@ -397,9 +432,19 @@ const AddEvent = () => {
     const toIsoUtc = (dateString) => {
       if (!dateString) return "";
       if (dateString.endsWith('Z')) return dateString;
-      if (dateString.length === 19) return dateString + 'Z';
-      if (dateString.length === 16) return dateString + ':00Z';
-      return new Date(dateString).toISOString();
+      
+      // Create a Date object from the local datetime string
+      const localDate = new Date(dateString);
+      
+      // Get the user's timezone
+      const userTimezone = localStorage.getItem('userTimezone') || 'America/New_York';
+      
+      // Convert the local time to the user's timezone, then to UTC
+      const userTime = new Date(localDate.toLocaleString('en-US', { timeZone: userTimezone }));
+      
+      console.log(`Converting ${dateString} (local) to ${userTimezone}:`, userTime.toISOString());
+      
+      return userTime.toISOString();
     };
 
     // Map recurrence value to frequency
@@ -424,7 +469,6 @@ const AddEvent = () => {
       description: form.description,
       startTime: toIsoUtc(form.startTime),
       endTime: toIsoUtc(form.endTime),
-      timeZone: form.timeZone,
       location: form.location || (form.zoomLink ? form.zoomLink : ""),
       isRecurring,
       calendarType: "GROUP",
@@ -432,10 +476,16 @@ const AddEvent = () => {
       courseName: selectedCourse ? selectedCourse.title : "",
       userRole: currentRole // Include user role in payload
     };
+    // Only include timeZone for non-recurring events
+    if (!isRecurring) {
+      payload.timeZone = form.timeZone;
+    }
     if (isRecurring) {
       payload.recurrenceRule = recurrenceRule;
     }
 
+    console.log("Form startTime:", form.startTime);
+    console.log("Form endTime:", form.endTime);
     console.log("Payload being sent:", payload);
     console.log("User role:", currentRole);
     console.log("JWT token role (if any):", decodedToken?.role || decodedToken?.userRole || "No role in token");
@@ -731,7 +781,25 @@ const AddEvent = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {new Date(event.startTime).toLocaleString()} - {new Date(event.endTime).toLocaleTimeString()}
+                    {(() => {
+                      try {
+                        const userTz = localStorage.getItem('userTimezone') || 'America/New_York';
+                        return `${new Date(event.startTime).toLocaleString('en-US', { 
+                          hour: '2-digit', 
+                          minute: '2-digit',
+                          hour12: true,
+                          timeZone: userTz 
+                        })} - ${new Date(event.endTime).toLocaleTimeString('en-US', { 
+                          hour: '2-digit', 
+                          minute: '2-digit',
+                          hour12: true,
+                          timeZone: userTz 
+                        })}`;
+                      } catch (error) {
+                        console.error('Error formatting event time:', error);
+                        return `${new Date(event.startTime).toLocaleString()} - ${new Date(event.endTime).toLocaleTimeString()}`;
+                      }
+                    })()}
                   </span>
                   {event.recurrence && (
                     <span>
@@ -759,106 +827,122 @@ const AddEvent = () => {
       
       {/* Add Event Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl relative transform transition-all duration-300 scale-100 opacity-100">
             <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors duration-200 p-1 rounded-full hover:bg-gray-100"
               onClick={() => setShowModal(false)}
               aria-label="Close"
             >
-              &times;
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
-            <h2 className="text-2xl font-semibold mb-6 text-gray-800">Schedule New Event</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">Schedule New Event</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Left Column */}
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Event Title*</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Event Title*</label>
                     <input
                       type="text"
                       name="title"
                       value={form.title}
                       onChange={handleFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       placeholder="Enter event title"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Meeting Link* <span className="text-xs text-gray-400">(Enter the meeting URL)</span></label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Meeting Link* <span className="text-xs text-gray-500">(Enter the meeting URL)</span></label>
                     <input
                       type="url"
                       name="description"
                       value={form.description}
                       onChange={handleFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       placeholder="https://meet.google.com/abc-defg-hij or https://zoom.us/j/123456789"
                       required
                     />
                     {form.description && !isValidUrl(form.description) && (
-                      <p className="text-xs text-red-500 mt-1">Please enter a valid URL (e.g., https://meet.google.com/...)</p>
+                      <p className="text-xs text-red-500 mt-2">Please enter a valid URL (e.g., https://meet.google.com/...)</p>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Start Time*</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Start Time*</label>
                       <input
                         type="datetime-local"
                         name="startTime"
                         value={form.startTime}
                         onChange={handleFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">End Time*</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">End Time*</label>
                       <input
                         type="datetime-local"
                         name="endTime"
                         value={form.endTime}
                         onChange={handleFormChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                         required
                       />
                     </div>
                   </div>
+                  {/* Timezone preview for start/end time */}
+                  {form.startTime && form.endTime && (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="text-xs text-gray-600 space-y-1.5">
+                        <div className="font-medium text-gray-700 mb-1">Time Zone Preview:</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><span className="font-medium">PST:</span> {formatInTimezone(form.startTime, 'America/Los_Angeles', 'PST')}</div>
+                          <div><span className="font-medium">EST:</span> {formatInTimezone(form.startTime, 'America/New_York', 'EST')}</div>
+                          <div><span className="font-medium">MST:</span> {formatInTimezone(form.startTime, 'America/Denver', 'MST')}</div>
+                          <div><span className="font-medium">GMT:</span> {formatInTimezone(form.startTime, 'Europe/London', 'GMT')}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {/* Right Column */}
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Time Zone*</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Time Zone*</label>
                     <input
                       type="text"
                       name="timeZone"
                       value={form.timeZone}
                       onChange={handleFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 cursor-not-allowed"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none bg-gray-100 cursor-not-allowed transition-all duration-200"
                       readOnly
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 mt-2">
                       Timezone can be changed in your profile settings
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
                     <input
                       type="text"
                       name="location"
                       value={form.location}
                       onChange={handleFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                       placeholder="Physical location or meeting platform"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Related Course</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Related Course</label>
                     <select
                       name="courseId"
                       value={form.courseId}
                       onChange={handleFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 appearance-none bg-white bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWNoZXZyb24tZG93biI+PHBhdGggZD0ibTYgOSA2IDYgNi02Ii8+PC9zdmc+')] bg-no-repeat bg-[center_right_1rem]"
                     >
                       {courses.map(course => (
                         <option key={course.id} value={course.id}>{course.title}</option>
@@ -866,7 +950,7 @@ const AddEvent = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Recurrence</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Recurrence</label>
                     <select
                       name="recurrence"
                       value={form.recurrence}
@@ -877,7 +961,7 @@ const AddEvent = () => {
                           isRecurring: e.target.value !== "none"
                         }));
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 appearance-none bg-white bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWNoZXZyb24tZG93biI+PHBhdGggZD0ibTYgOSA2IDYgNi02Ii8+PC9zdmc+')] bg-no-repeat bg-[center_right_1rem]"
                     >
                       <option value="none">Does not repeat</option>
                       <option value="daily">Daily</option>
@@ -888,17 +972,17 @@ const AddEvent = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-5 py-2.5 border border-gray-300 text-sm font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
                 >
                   Schedule Event
                 </button>
@@ -907,7 +991,6 @@ const AddEvent = () => {
           </div>
         </div>
       )}
-
       {/* Past Date Warning Modal */}
       {showPastDateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
