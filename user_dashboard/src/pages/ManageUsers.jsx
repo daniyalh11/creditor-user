@@ -104,11 +104,11 @@ const ManageUsers = () => {
       });
       
       if (!token) {
-        console.warn('⚠️ No token found for courses API call');
+        console.warn(' No token found for courses API call');
         // Still try to fetch courses without token
       }
       
-      console.log('📡 Making courses API call to:', `${API_BASE}/api/course/getAllCourses`);
+      console.log(' Making courses API call to:', `${API_BASE}/api/course/getAllCourses`);
       
       const response = await axios.get(`${API_BASE}/api/course/getAllCourses`, {
         headers: {
