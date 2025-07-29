@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Clock, ArrowLeft, Loader2 } from "lucide-react";
-import { getCatalogCourses } from "@/services/instructorCatalogService";
+import { getCatalogCourses, testIndividualCourseAPI } from "@/services/instructorCatalogService";
 
 const CatelogCourses = () => {
   const { catalogId } = useParams();
@@ -11,6 +11,54 @@ const CatelogCourses = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Helper function to format course level
+  const formatCourseLevel = (level) => {
+    if (!level) return "BEGINNER";
+    
+    // Convert to uppercase and handle different formats
+    const upperLevel = level.toUpperCase();
+    switch (upperLevel) {
+      case 'BEGINNER':
+      case 'B':
+        return 'BEGINNER';
+      case 'INTERMEDIATE':
+      case 'I':
+        return 'INTERMEDIATE';
+      case 'ADVANCE':
+      case 'ADVANCED':
+      case 'A':
+        return 'ADVANCED';
+      default:
+        return upperLevel;
+    }
+  };
+
+  // Helper function to format duration
+  const formatDuration = (duration) => {
+    if (!duration) return "N/A";
+    
+    // If it's already a string with units, return as is
+    if (typeof duration === 'string' && (duration.includes('hour') || duration.includes('min') || duration.includes(':'))) {
+      return duration;
+    }
+    
+    // If it's a number, assume it's in minutes and format accordingly
+    const numDuration = parseInt(duration);
+    if (isNaN(numDuration)) return duration;
+    
+    if (numDuration >= 60) {
+      const hours = Math.floor(numDuration / 60);
+      const minutes = numDuration % 60;
+      if (minutes === 0) {
+        return `${hours}h`;
+      } else {
+        return `${hours}h ${minutes}m`;
+      }
+    } else {
+      return `${numDuration}m`;
+    }
+  };
 
   
   // Fetch catalog courses from backend
@@ -34,37 +82,72 @@ const CatelogCourses = () => {
         }
         
         // Fetch the courses in this catalog using the instructor service
+        console.log('🔄 Starting to fetch courses for catalog:', catalogId);
         let coursesData = await getCatalogCourses(catalogId);
-        console.log('Courses data from API:', coursesData);
+        console.log('📊 Raw courses data from API:', coursesData);
+        console.log('📊 Data type:', typeof coursesData);
+        console.log('📊 Is array:', Array.isArray(coursesData));
+        console.log('📊 Length:', coursesData?.length);
         
         // If API returns empty and we have catalog data from state, try to use that
         if ((!coursesData || coursesData.length === 0) && catalogFromState?.courses) {
-          console.log('Using courses from catalog state:', catalogFromState.courses);
+          console.log('⚠️ Using courses from catalog state:', catalogFromState.courses);
           coursesData = catalogFromState.courses;
         }
         
         // Handle nested course structure - extract course objects if they're nested
         let processedCourses = [];
         if (Array.isArray(coursesData)) {
-          processedCourses = coursesData.map(item => {
+          console.log('🔄 Processing courses array...');
+          processedCourses = coursesData.map((item, index) => {
+            console.log(`📋 Processing item ${index}:`, item);
+            
             // If the item has a nested 'course' property, extract it
             if (item && typeof item === 'object' && item.course) {
+              console.log(`📦 Extracting nested course from item ${index}:`, item.course);
               return item.course;
             }
             // If the item is already a course object, use it as is
+            console.log(`✅ Using item ${index} as course object:`, item);
             return item;
           });
+        } else {
+          console.warn('⚠️ Courses data is not an array:', coursesData);
         }
         
-        console.log('Processed courses data:', processedCourses);
-        console.log('First course structure:', processedCourses?.[0]);
+        console.log('✅ Final processed courses data:', processedCourses);
+        console.log('📊 Number of processed courses:', processedCourses.length);
         
-        // Log all available fields in the first course
         if (processedCourses?.[0]) {
-          console.log('Available fields in first course:', Object.keys(processedCourses[0]));
-          console.log('Course title field value:', processedCourses[0].title);
-          console.log('Course description field value:', processedCourses[0].description);
-          console.log('Course instructor field value:', processedCourses[0].instructor);
+          console.log('🔍 First course structure:', processedCourses[0]);
+          console.log('🔍 Available fields in first course:', Object.keys(processedCourses[0]));
+          console.log('📝 Course title field value:', processedCourses[0].title);
+          console.log('📝 Course description field value:', processedCourses[0].description);
+          console.log('💰 Course price field value:', processedCourses[0].price);
+          console.log('⏱️ Course estimated_duration field value:', processedCourses[0].estimated_duration);
+          console.log('📊 Course course_level field value:', processedCourses[0].course_level);
+          console.log('🎯 Course learning_objectives field value:', processedCourses[0].learning_objectives);
+          console.log('📈 Course course_status field value:', processedCourses[0].course_status);
+          console.log('👥 Course max_students field value:', processedCourses[0].max_students);
+          console.log('📚 Course modules field value:', processedCourses[0].modules);
+          console.log('🖼️ Course thumbnail field value:', processedCourses[0].thumbnail);
+          console.log('📅 Course created_at field value:', processedCourses[0].created_at);
+          console.log('📅 Course updated_at field value:', processedCourses[0].updated_at);
+          console.log('📋 Full course object:', processedCourses[0]);
+          
+          // Test individual course API if we have minimal data
+          if (processedCourses[0].id && processedCourses[0].title && !processedCourses[0].description) {
+            console.log('🧪 Testing individual course API for first course...');
+            const testResult = await testIndividualCourseAPI(processedCourses[0].id);
+            if (testResult) {
+              console.log('✅ Individual course API test successful!');
+              console.log('📊 Test result fields:', Object.keys(testResult));
+            } else {
+              console.log('❌ Individual course API test failed');
+            }
+          }
+        } else {
+          console.warn('⚠️ No courses found in processed data');
         }
         
         setCourses(processedCourses);
@@ -232,7 +315,7 @@ const CatelogCourses = () => {
                     {/* Course Level and Price Badges */}
                     <div className="absolute bottom-3 left-3 flex gap-2">
                       <Badge key={`${course.id}-level`} variant="secondary" className="bg-white/90 backdrop-blur-sm text-gray-800 shadow-sm">
-                        {course.course_level || course.level || course.difficulty || "Beginner"}
+                        {formatCourseLevel(course.course_level || course.level || course.difficulty)}
                       </Badge>
                       <Badge key={`${course.id}-price`} variant="secondary" className="bg-white/90 backdrop-blur-sm text-gray-800 shadow-sm">
                         ${course.price || course.cost || 0}
@@ -262,6 +345,26 @@ const CatelogCourses = () => {
                         {course.description || course.summary || course.shortDescription || course.course_description || course.desc || course.content || course.overview || course.synopsis || course.details || course.about || <span className="text-red-500">No description available</span>}
                       </p>
                       
+                      {/* Learning Objectives */}
+                      {course.learning_objectives && course.learning_objectives.length > 0 && (
+                        <div className="mb-3">
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">Learning Objectives:</h4>
+                          <ul className="text-xs text-gray-600 space-y-1">
+                            {course.learning_objectives.slice(0, 2).map((objective, index) => (
+                              <li key={index} className="flex items-start">
+                                <span className="text-blue-500 mr-1">•</span>
+                                <span className="line-clamp-2">{objective}</span>
+                              </li>
+                            ))}
+                            {course.learning_objectives.length > 2 && (
+                              <li className="text-gray-500 italic">
+                                +{course.learning_objectives.length - 2} more objectives
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                      
                       {/* Course Tags/Skills */}
                       {course.tags && course.tags.length > 0 && (
                         <div className="mb-3">
@@ -284,32 +387,48 @@ const CatelogCourses = () => {
                       )}
                     </div>
                     
-                    {/* Course Details */}
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                                             {/* Duration and Lessons */}
-                       <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-3">
-                         <span key={`${course.id}-duration`} className="flex items-center gap-1.5">
-                           <Clock size={14} className="text-gray-400 shrink-0" />
-                           {course.estimated_duration || course.duration || course.timeEstimate || course.timeRequired || course.duration_hours || course.hours || course.time || course.length || course.course_duration || "N/A"}
-                         </span>
-                         <span key={`${course.id}-lessons`} className="flex items-center gap-1.5">
-                           <BookOpen size={14} className="text-gray-400 shrink-0" />
-                           {course.modules?.length || course.lessons?.length || course.lessonCount || course.totalLessons || course.lesson_count || course.total_lessons || course.numberOfLessons || course.lessons_count || (course.lessons && Array.isArray(course.lessons) ? course.lessons.length : 0) || 0} lessons
-                         </span>
-                        {course.rating && (
-                          <span key={`${course.id}-rating`} className="flex items-center gap-1.5">
-                            <svg className="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292z" />
-                            </svg>
-                            {course.rating}
-                          </span>
-                        )}
-                      </div>
-                      
-                                             {/* Instructor */}
-                       <div className="text-sm text-gray-700 mb-2">
-                         <span className="font-medium">Instructor:</span> {course.instructor || course.createdBy || course.author || course.teacher || course.instructorName || course.instructor_name || course.created_by || course.creator || course.owner || course.user || course.userName || course.username || "N/A"}
-                       </div>
+                                                                  {/* Course Details */}
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          {/* Duration and Modules */}
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-3">
+                            <span key={`${course.id}-duration`} className="flex items-center gap-1.5">
+                              <Clock size={14} className="text-gray-400 shrink-0" />
+                              {formatDuration(course.estimated_duration || course.duration || course.timeEstimate || course.timeRequired || course.duration_hours || course.hours || course.time || course.length || course.course_duration)}
+                            </span>
+                            <span key={`${course.id}-modules`} className="flex items-center gap-1.5">
+                              <BookOpen size={14} className="text-gray-400 shrink-0" />
+                              {course.modules?.length || course.moduleCount || course.totalModules || course.module_count || course.total_modules || course.numberOfModules || course.modules_count || 0} modules
+                            </span>
+                            {course.rating && (
+                              <span key={`${course.id}-rating`} className="flex items-center gap-1.5">
+                                <svg className="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292z" />
+                                </svg>
+                                {course.rating}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Course Status */}
+                          {course.course_status && (
+                            <div className="text-xs text-gray-500 mb-2">
+                              <span className="font-medium">Status:</span> 
+                              <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
+                                course.course_status === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
+                                course.course_status === 'DRAFT' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {course.course_status}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Max Students */}
+                          {course.max_students && (
+                            <div className="text-xs text-gray-500 mb-2">
+                              <span className="font-medium">Max Students:</span> {course.max_students}
+                            </div>
+                          )}
                       
                       {/* Language */}
                       {course.language && (

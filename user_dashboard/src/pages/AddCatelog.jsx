@@ -273,9 +273,17 @@ const AddCatelog = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this catalog?")) {
       try {
-        await deleteCatalog(id);
+        const result = await deleteCatalog(id);
+        
+        // Remove from state
         setCatalogs(catalogs => catalogs.filter(cat => cat.id !== id));
-        setFormSuccess("Catalog deleted successfully!");
+        
+        // Show appropriate message
+        if (result.warning) {
+          setFormSuccess(`${result.message} (${result.warning})`);
+        } else {
+          setFormSuccess(result.message || "Catalog deleted successfully!");
+        }
       } catch (err) {
         console.error("Failed to delete catalog:", err);
         setFormError(err.message || "Failed to delete catalog. Please try again.");
@@ -332,6 +340,9 @@ const AddCatelog = () => {
                 You are logged in as a <strong>{userRole}</strong>. Catalog changes will be saved locally only. 
                 Contact an administrator to get instructor or admin permissions for full functionality.
               </p>
+              <p className="text-sm text-yellow-600 mt-2">
+                <strong>Note:</strong> When you try to delete or update catalogs, they will be removed/updated from your local storage instead of the server.
+              </p>
             </div>
           </div>
         </div>
@@ -355,7 +366,20 @@ const AddCatelog = () => {
 
       {formSuccess && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800">{formSuccess}</p>
+          <div className="flex items-start">
+            <svg className="h-5 w-5 text-green-400 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="text-green-800">{formSuccess}</p>
+              {formSuccess.includes('locally') && (
+                <p className="text-green-700 text-sm mt-1">
+                  Your changes have been saved to your browser's local storage. 
+                  They will persist until you clear your browser data.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -372,8 +396,8 @@ const AddCatelog = () => {
       ) : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {paginatedCatalogs.map((catalog) => (
-              <div key={catalog.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white hover:shadow-md transition-shadow">
+            {paginatedCatalogs.map((catalog, index) => (
+              <div key={`${catalog.id}-${index}`} className="border border-gray-200 rounded-xl overflow-hidden bg-white hover:shadow-md transition-shadow">
                 <div className="flex">
                   <div className="w-1/3">
                     <img
@@ -617,8 +641,21 @@ const AddCatelog = () => {
                 </div>
                 
                 {formError && (
-                  <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-                    {formError}
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-start">
+                      <svg className="h-4 w-4 text-red-400 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="text-red-800 text-sm">{formError}</p>
+                        {!isInstructorOrAdmin() && formError.includes('403') && (
+                          <p className="text-red-700 text-xs mt-1">
+                            This error occurs because you don't have admin/instructor permissions. 
+                            Your changes are being saved locally instead.
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
                 
