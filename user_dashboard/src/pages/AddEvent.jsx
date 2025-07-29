@@ -251,6 +251,29 @@ const AddEvent = () => {
     }
   };
 
+  // Fetch deleted occurrences for a recurring event
+  const fetchDeletedOccurrences = async (eventId) => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'X-User-Role': getUserRole(),
+        },
+        credentials: 'include',
+      });
+      const data = await res.json();
+      console.log('API /recurrence-exception GET response:', data);
+      // Expecting data.data to be an array of ISO strings (deleted occurrence startTimes)
+      return data.data || [];
+    } catch (err) {
+      console.error('Failed to fetch deleted occurrences', err);
+      return [];
+    }
+  };
+
   // Edit handler: fetch event details and populate modal
   const handleEdit = async (index) => {
     console.log('Edit clicked for index:', index, 'event:', events[index]);
@@ -276,13 +299,21 @@ const AddEvent = () => {
     setEditIndex(index);
     setShowModal(true);
     console.log('setShowModal(true) called, modal should now be open');
+    // If recurring, fetch deleted occurrences
+    let deletedOccurrences = [];
+    if ((e.isRecurring || e.recurrence !== 'none') && e.id) {
+      deletedOccurrences = await fetchDeletedOccurrences(e.id);
+    }
+    setRecurringDeleteEvent({ ...e, index, deletedOccurrences });
   };
 
   const handleDelete = async (index) => {
     const event = events[index];
     // For non-recurring events, use DELETE /calendar/events/:eventId
     if (event.isRecurring && event.occurrences && event.occurrences.length > 0) {
-      setRecurringDeleteEvent({ ...event, index });
+      // Fetch deleted occurrences for this recurring event
+      const deletedOccurrences = await fetchDeletedOccurrences(event.id);
+      setRecurringDeleteEvent({ ...event, index, deletedOccurrences });
       setShowRecurringDeleteModal(true);
       return;
     }

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { motion, useAnimation, useInView } from "framer-motion";
 import LiveClassBanner from "../assets/LiveClassBanner.png";
 
@@ -11,6 +11,12 @@ const ClassLC = () => {
 
   const bannerInView = useInView(bannerRef, { threshold: 0.3, once: false });
   const ctaInView = useInView(ctaRef, { threshold: 0.3, once: false });
+
+  // Live class logic
+  const [loading, setLoading] = useState(true);
+  const [todayEvents, setTodayEvents] = useState([]);
+  const [liveEvents, setLiveEvents] = useState([]);
+  const [nextEvent, setNextEvent] = useState(null);
 
   useEffect(() => {
     if (bannerInView) {
@@ -25,6 +31,76 @@ const ClassLC = () => {
       ctaControls.start("hidden");
     }
   }, [bannerInView, ctaInView]);
+
+  useEffect(() => {
+    // Fetch today's live classes from backend
+    const fetchLiveClasses = async () => {
+      setLoading(true);
+      try {
+        const today = new Date();
+        const start = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+        const end = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+        const params = new URLSearchParams({ startDate: start, endDate: end });
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events?${params.toString()}`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (data && data.data && data.data.length > 0) {
+          // Filter events to only show classes for the current date
+          const events = data.data.filter(event => {
+            if (!event.startTime) return false;
+            const eventDate = new Date(event.startTime);
+            const currentDate = new Date();
+            return (
+              eventDate.getFullYear() === currentDate.getFullYear() &&
+              eventDate.getMonth() === currentDate.getMonth() &&
+              eventDate.getDate() === currentDate.getDate()
+            );
+          });
+          setTodayEvents(events);
+
+          // Find live events (current time between start and end)
+          const now = new Date();
+          const live = events.filter(event => {
+            const start = new Date(event.startTime);
+            const end = new Date(event.endTime);
+            return now >= start && now <= end;
+          });
+          setLiveEvents(live);
+
+          // Find the next upcoming event (start time in the future)
+          const upcoming = events
+            .filter(event => new Date(event.startTime) > now)
+            .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+          setNextEvent(upcoming[0] || null);
+        } else {
+          setTodayEvents([]);
+          setLiveEvents([]);
+          setNextEvent(null);
+        }
+      } catch (err) {
+        setTodayEvents([]);
+        setLiveEvents([]);
+        setNextEvent(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLiveClasses();
+  }, []);
+
+  // Get user's timezone from localStorage, default to EST if not set
+  const userTimezone = localStorage.getItem('userTimezone') || 'America/New_York';
+  // Format time for display
+  const formatTimeInUserTimezone = (utcTime) => {
+    if (!utcTime) return '';
+    const date = new Date(utcTime);
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: userTimezone
+    });
+  };
 
   return (
     <div className="w-full font-[Poppins]">
@@ -75,7 +151,8 @@ const ClassLC = () => {
         }}
       >
         <h2 style={{ fontSize: "24px", marginBottom: "20px" }}>
-          Don't Miss Out on the Next Live Class!
+          {loading ? "Checking for live classes..." :
+            (liveEvents.length > 0 ? "Live Class is in Session!" : "Don't Miss Out on the Next Live Class!")}
         </h2>
 
         <div
@@ -86,25 +163,17 @@ const ClassLC = () => {
             gap: "20px",
           }}
         >
-          {[
-            {
-              label: "Join Live Session on Tuesday",
-              url: "https://meet.google.com/vmz-atgi-rpo",
-            },
-            {
-              label: "Join Live Session on Thursday",
-              url: "https://meet.google.com/rvq-bhqr-kxv",
-            },
-          ].map((btn, idx) => (
+          {/* Show Join Now for each live event */}
+          {liveEvents.length > 0 && liveEvents.map((event, idx) => (
             <motion.a
-              key={idx}
-              href={btn.url}
+              key={event.id || idx}
+              href={event.description || event.zoomLink || "#"}
               target="_blank"
               rel="noopener noreferrer"
               whileHover={{ scale: 1.07 }}
               whileTap={{ scale: 0.98 }}
               style={{
-                backgroundColor: "#5dade2",
+                backgroundColor: "#27ae60",
                 color: "white",
                 textDecoration: "none",
                 border: "none",
@@ -113,11 +182,48 @@ const ClassLC = () => {
                 borderRadius: "30px",
                 cursor: "pointer",
                 transition: "all 0.3s ease",
+                fontWeight: 600,
               }}
             >
-              <strong>{btn.label}</strong>
+              Join Now: {event.title} ({formatTimeInUserTimezone(event.startTime)} - {formatTimeInUserTimezone(event.endTime)})
             </motion.a>
           ))}
+
+          {/* If no live event, show next upcoming */}
+          {liveEvents.length === 0 && nextEvent && (
+            <div
+              style={{
+                backgroundColor: "#5dade2",
+                color: "white",
+                border: "none",
+                padding: "12px 24px",
+                fontSize: "16px",
+                borderRadius: "30px",
+                fontWeight: 600,
+                display: "inline-block",
+              }}
+            >
+              Next Class: {nextEvent.title} at {formatTimeInUserTimezone(nextEvent.startTime)}
+            </div>
+          )}
+
+          {/* If no events at all */}
+          {liveEvents.length === 0 && !nextEvent && !loading && (
+            <div
+              style={{
+                backgroundColor: "#aaa",
+                color: "white",
+                border: "none",
+                padding: "12px 24px",
+                fontSize: "16px",
+                borderRadius: "30px",
+                fontWeight: 600,
+                display: "inline-block",
+              }}
+            >
+              No live or upcoming classes for today.
+            </div>
+          )}
         </div>
       </motion.section>
     </div>
