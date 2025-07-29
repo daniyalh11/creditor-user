@@ -35,10 +35,11 @@ const AddCatelog = () => {
   const [lastUpdateResponse, setLastUpdateResponse] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const catalogsPerPage = 4;
+  const [courseCounts, setCourseCounts] = useState({});
 
-  // Fetch catalogs and courses on component mount
+  // Fetch catalogs and course counts on component mount
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDataAndCounts = async () => {
       try {
         setLoading(true);
         const [catalogsData, coursesData] = await Promise.all([
@@ -55,6 +56,15 @@ const AddCatelog = () => {
         
         setCatalogs(catalogsArray);
         setAvailableCourses(Array.isArray(coursesData) ? coursesData : []);
+        // Fetch course counts for each catalog
+        const counts = {};
+        await Promise.all(
+          (catalogsArray || []).map(async (catalog) => {
+            const courses = await getCatalogCourses(catalog.id);
+            counts[catalog.id] = courses.length;
+          })
+        );
+        setCourseCounts(counts);
       } catch (err) {
         console.error("Failed to fetch data:", err);
         setError("Failed to load catalogs and courses. Please try again later.\n" + (err.message || ''));
@@ -62,7 +72,7 @@ const AddCatelog = () => {
         setLoading(false);
       }
     };
-    fetchData();
+    fetchDataAndCounts();
   }, []);
 
   const handleFormChange = (e) => {
@@ -273,9 +283,17 @@ const AddCatelog = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this catalog?")) {
       try {
-        await deleteCatalog(id);
+        const result = await deleteCatalog(id);
+        
+        // Remove from state
         setCatalogs(catalogs => catalogs.filter(cat => cat.id !== id));
-        setFormSuccess("Catalog deleted successfully!");
+        
+        // Show appropriate message
+        if (result.warning) {
+          setFormSuccess(`${result.message} (${result.warning})`);
+        } else {
+          setFormSuccess(result.message || "Catalog deleted successfully!");
+        }
       } catch (err) {
         console.error("Failed to delete catalog:", err);
         setFormError(err.message || "Failed to delete catalog. Please try again.");
@@ -332,6 +350,9 @@ const AddCatelog = () => {
                 You are logged in as a <strong>{userRole}</strong>. Catalog changes will be saved locally only. 
                 Contact an administrator to get instructor or admin permissions for full functionality.
               </p>
+              <p className="text-sm text-yellow-600 mt-2">
+                <strong>Note:</strong> When you try to delete or update catalogs, they will be removed/updated from your local storage instead of the server.
+              </p>
             </div>
           </div>
         </div>
@@ -355,7 +376,20 @@ const AddCatelog = () => {
 
       {formSuccess && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800">{formSuccess}</p>
+          <div className="flex items-start">
+            <svg className="h-5 w-5 text-green-400 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="text-green-800">{formSuccess}</p>
+              {formSuccess.includes('locally') && (
+                <p className="text-green-700 text-sm mt-1">
+                  Your changes have been saved to your browser's local storage. 
+                  They will persist until you clear your browser data.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -372,8 +406,8 @@ const AddCatelog = () => {
       ) : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {paginatedCatalogs.map((catalog) => (
-              <div key={catalog.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white hover:shadow-md transition-shadow">
+            {paginatedCatalogs.map((catalog, index) => (
+              <div key={`${catalog.id}-${index}`} className="border border-gray-200 rounded-xl overflow-hidden bg-white hover:shadow-md transition-shadow">
                 <div className="flex">
                   <div className="w-1/3">
                     <img
@@ -419,37 +453,11 @@ const AddCatelog = () => {
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                         </svg>
-                        {catalog.courses?.length || 0} courses
+                        {courseCounts[catalog.id] || 0} courses
                       </span>
-                      {catalog.category && (
-                        <span className="bg-gray-100 px-2 py-1 rounded text-xs">
-                          {catalog.category}
-                        </span>
-                      )}
                     </div>
                     
-                    <div className="mt-auto">
-                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Included Courses</div>
-                      <ul className="space-y-1 max-h-20 overflow-y-auto">
-                        {(!catalog.courses || catalog.courses.length === 0) ? (
-                          <li className="text-xs text-gray-400 italic">No courses added</li>
-                        ) : (
-                          catalog.courses.slice(0, 3).map(course => (
-                            <li key={course.id || course} className="text-sm text-gray-700 flex items-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-green-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                              <span className="truncate">{course.title || course.name || course.id || course}</span>
-                            </li>
-                          ))
-                        )}
-                        {catalog.courses && catalog.courses.length > 3 && (
-                          <li className="text-xs text-gray-500 italic">
-                            +{catalog.courses.length - 3} more courses
-                          </li>
-                        )}
-                      </ul>
-                    </div>
+
                   </div>
                 </div>
               </div>
@@ -593,11 +601,6 @@ const AddCatelog = () => {
                                   {course.description}
                                 </div>
                               )}
-                              {course.category && (
-                                <div className="text-xs text-blue-600 mt-1">
-                                  {course.category}
-                                </div>
-                              )}
                             </div>
                             {isSelected && (
                               <div className="text-blue-600 text-xs font-medium">
@@ -617,8 +620,21 @@ const AddCatelog = () => {
                 </div>
                 
                 {formError && (
-                  <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-                    {formError}
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-start">
+                      <svg className="h-4 w-4 text-red-400 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="text-red-800 text-sm">{formError}</p>
+                        {!isInstructorOrAdmin() && formError.includes('403') && (
+                          <p className="text-red-700 text-xs mt-1">
+                            This error occurs because you don't have admin/instructor permissions. 
+                            Your changes are being saved locally instead.
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
                 

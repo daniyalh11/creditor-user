@@ -11,19 +11,20 @@ import {
 } from "@/components/ui/select";
 import { BookOpen, Clock, Search, Loader2, FolderOpen } from "lucide-react";
 import { Link } from "react-router-dom";
-import { fetchAllCatalogs, searchCatalogs } from "@/services/catalogService";
+import { fetchAllCatalogs, searchCatalogs, fetchCatalogCourses } from "@/services/catalogService";
 
 export function CatalogPage() {
   const [catalogs, setCatalogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [courseCounts, setCourseCounts] = useState({});
   const [selectedCategory, setSelectedCategory] = useState("all");
 
   
   // Fetch catalogs from backend
   useEffect(() => {
-    const fetchCatalogs = async () => {
+    const fetchCatalogsAndCounts = async () => {
       try {
         setLoading(true);
         const data = await fetchAllCatalogs();
@@ -31,6 +32,15 @@ export function CatalogPage() {
         console.log('Data type:', typeof data);
         console.log('Is array:', Array.isArray(data));
         setCatalogs(data || []);
+        // Fetch course counts for each catalog
+        const counts = {};
+        await Promise.all(
+          (data || []).map(async (catalog) => {
+            const courses = await fetchCatalogCourses(catalog.id);
+            counts[catalog.id] = courses.length;
+          })
+        );
+        setCourseCounts(counts);
       } catch (err) {
         console.error("Failed to fetch catalogs:", err);
         setError("Failed to load catalogs. Please try again later.");
@@ -39,7 +49,7 @@ export function CatalogPage() {
       }
     };
 
-    fetchCatalogs();
+    fetchCatalogsAndCounts();
   }, []);
 
   // Extract categories from fetched catalogs
@@ -103,21 +113,11 @@ export function CatalogPage() {
                   placeholder="Search catalogs..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-[200px]"
+                  className="w-[360px]"
                 />
               </div>
               
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map(category => (
-                    <SelectItem key={category} value={category}>{category}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Remove Select for All Categories and category filter logic */}
             </div>
           </div>
           
@@ -144,12 +144,7 @@ export function CatalogPage() {
                     >
                       <FolderOpen className="h-16 w-16 text-blue-500" />
                     </div>
-                    <Badge 
-                      className="absolute top-2 right-2"
-                      variant="secondary"
-                    >
-                      {catalog.category || "General"}
-                    </Badge>
+                    {/* Remove all Badge components that display catalog.category or 'General' in catalog cards */}
                   </div>
 
                   <div className="p-4 space-y-2">
@@ -159,14 +154,12 @@ export function CatalogPage() {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <BookOpen className="h-4 w-4" />
-                        {catalog.courses?.length || 0} courses
+                        {courseCounts[catalog.id] || 0} courses
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <Badge variant="outline">
-                        {catalog.category || "General"}
-                      </Badge>
+                      {/* Remove all Badge components that display catalog.category or 'General' in catalog cards */}
                       <span className="text-sm text-muted-foreground">
                         Created: {new Date(catalog.created_at || Date.now()).toLocaleDateString()}
                       </span>
@@ -177,7 +170,7 @@ export function CatalogPage() {
                         to={`/dashboard/catalog/${catalog.id}`}
                         state={{ catalog: catalog }}
                       >
-                        View Catalog
+                        View Courses
                       </Link>
                     </Button>
                   </div>
