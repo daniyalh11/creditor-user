@@ -21,6 +21,7 @@ const ManageUsers = () => {
   const [error, setError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState({ courseTitle: "", addedUsers: [] });
+  const [makingInstructor, setMakingInstructor] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -341,6 +342,85 @@ const ManageUsers = () => {
     }
   };
 
+  const handleMakeInstructor = async () => {
+    if (selectedUsers.length === 0) return;
+    
+    try {
+      setMakingInstructor(true);
+      setError("");
+      
+      const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      console.log('🔄 Making users instructors:', { userIds: selectedUsers });
+      
+      // Make API call to update user roles to instructor
+      const response = await axios.put(`${API_BASE}/api/user/updateRole`, {
+        userIds: selectedUsers,
+        role: 'instructor'
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        withCredentials: true,
+      });
+
+      console.log('✅ Make Instructor API Response:', response.data);
+
+      if (response.data && (response.data.success || response.data.code === 200 || response.data.code === 201)) {
+        // Get the selected users data
+        const updatedUsers = users.filter(user => selectedUsers.includes(user.id));
+        
+        // Set success data and show success modal
+        setSuccessData({
+          courseTitle: "Role Update",
+          addedUsers: updatedUsers
+        });
+        setShowSuccessModal(true);
+        
+        // Reset selection
+        setSelectedUsers([]);
+        
+        // Refresh users list to get updated role information
+        await fetchUsers();
+        
+        console.log('Users successfully made instructors');
+      } else {
+        throw new Error(response.data?.message || 'Failed to update user roles');
+      }
+    } catch (error) {
+      console.error('Error making users instructors:', error);
+      console.error('❌ Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method,
+        payload: error.config?.data
+      });
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        setError('Invalid request. Please check your selection and try again.');
+      } else if (error.response?.status === 401) {
+        setError('Authentication failed. Please log in again.');
+      } else if (error.response?.status === 403) {
+        setError('You do not have permission to perform this action.');
+      } else if (error.response?.status === 500) {
+        setError(`Server error: ${error.response?.data?.message || 'Internal server error occurred. Please try again.'}`);
+      } else {
+        setError('Failed to update user roles. Please try again.');
+      }
+    } finally {
+      setMakingInstructor(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -425,15 +505,29 @@ const ManageUsers = () => {
             <span className="text-sm font-medium text-blue-800">
               {selectedUsers.length} {filterRole}(s) selected
             </span>
-            <button
-              onClick={() => setShowCourseModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add to Course
-            </button>
+            <div className="flex gap-2">
+              {filterRole === "user" && (
+                <button
+                  onClick={handleMakeInstructor}
+                  disabled={makingInstructor}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  {makingInstructor ? 'Updating...' : 'Make Instructor'}
+                </button>
+              )}
+              <button
+                onClick={() => setShowCourseModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add to Course
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -516,14 +610,21 @@ const ManageUsers = () => {
             
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-3">
-                You have successfully added <span className="font-semibold text-gray-800">{successData.addedUsers.length} {filterRole}(s)</span> to the course:
+                {successData.courseTitle === "Role Update" 
+                  ? `You have successfully updated <span className="font-semibold text-gray-800">${successData.addedUsers.length} user(s)</span> to instructor role.`
+                  : `You have successfully added <span className="font-semibold text-gray-800">${successData.addedUsers.length} ${filterRole}(s)</span> to the course:`
+                }
               </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                <p className="text-sm font-medium text-blue-800">{successData.courseTitle}</p>
-              </div>
+              {successData.courseTitle !== "Role Update" && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm font-medium text-blue-800">{successData.courseTitle}</p>
+                </div>
+              )}
               
               <div className="max-h-48 overflow-y-auto">
-                <p className="text-sm font-medium text-gray-700 mb-2">Added {filterRole}s:</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  {successData.courseTitle === "Role Update" ? "Updated users:" : `Added ${filterRole}s:`}
+                </p>
                 <div className="space-y-2">
                   {successData.addedUsers.map((user) => (
                     <div key={user.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
