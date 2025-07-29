@@ -8,6 +8,11 @@ const ManageUsers = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("user");
+  
+  // Clear selected users when filter role changes
+  useEffect(() => {
+    setSelectedUsers([]);
+  }, [filterRole]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [showCourseModal, setShowCourseModal] = useState(false);
@@ -204,6 +209,16 @@ const ManageUsers = () => {
       // Different API endpoints based on the current filter role
       if (filterRole === "user") {
         // Add learners to course
+        console.log('🔄 Adding learners to course:', { course_id: selectedCourse, learnerIds: selectedUsers });
+        console.log('📋 Available courses:', courses.map(c => ({ id: c.id, title: c.title })));
+        console.log('🎯 Selected course details:', courses.find(c => c.id === selectedCourse));
+        
+        // Check if the selected course actually exists
+        const selectedCourseData = courses.find(c => c.id === selectedCourse);
+        if (!selectedCourseData) {
+          throw new Error(`Course with ID "${selectedCourse}" not found. Available courses: ${courses.map(c => c.id).join(', ')}`);
+        }
+        
         response = await axios.post(`${API_BASE}/api/course/addLearnerToCourse`, {
           course_id: selectedCourse,
           learnerIds: selectedUsers
@@ -216,6 +231,26 @@ const ManageUsers = () => {
         });
       } else if (filterRole === "instructor") {
         // Add instructors to course
+        console.log('🔄 Adding instructors to course:', { courseId: selectedCourse, instructorIds: selectedUsers });
+        console.log('📋 Available courses:', courses.map(c => ({ id: c.id, title: c.title })));
+        console.log('🎯 Selected course details:', courses.find(c => c.id === selectedCourse));
+        
+        // Check if selectedUsers is an array and not empty
+        if (!Array.isArray(selectedUsers) || selectedUsers.length === 0) {
+          throw new Error('No instructors selected or invalid selection format');
+        }
+        
+        // Check if courseId is valid
+        if (!selectedCourse || typeof selectedCourse !== 'string') {
+          throw new Error('Invalid course ID');
+        }
+        
+        // Check if the selected course actually exists
+        const selectedCourseData = courses.find(c => c.id === selectedCourse);
+        if (!selectedCourseData) {
+          throw new Error(`Course with ID "${selectedCourse}" not found. Available courses: ${courses.map(c => c.id).join(', ')}`);
+        }
+        
         response = await axios.post(`${API_BASE}/api/course/addInstructor/${selectedCourse}`, {
           instructorIds: selectedUsers
         }, {
@@ -227,6 +262,16 @@ const ManageUsers = () => {
         });
       } else if (filterRole === "admin") {
         // Add admins to course
+        console.log('🔄 Adding admins to course:', { courseId: selectedCourse, adminIds: selectedUsers });
+        console.log('📋 Available courses:', courses.map(c => ({ id: c.id, title: c.title })));
+        console.log('🎯 Selected course details:', courses.find(c => c.id === selectedCourse));
+        
+        // Check if the selected course actually exists
+        const selectedCourseData = courses.find(c => c.id === selectedCourse);
+        if (!selectedCourseData) {
+          throw new Error(`Course with ID "${selectedCourse}" not found. Available courses: ${courses.map(c => c.id).join(', ')}`);
+        }
+        
         response = await axios.post(`${API_BASE}/api/course/addAdmin/${selectedCourse}`, {
           adminIds: selectedUsers
         }, {
@@ -259,6 +304,10 @@ const ManageUsers = () => {
         setShowCourseModal(false);
         setSelectedCourse("");
         setSelectedUsers([]);
+        
+        // Refresh users list to get updated course information
+        await fetchUsers();
+        
         console.log(`${filterRole}s added to course successfully`);
       } else {
         throw new Error(response.data?.message || `Failed to add ${filterRole}s to course`);
@@ -269,7 +318,10 @@ const ManageUsers = () => {
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
-        message: error.message
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method,
+        payload: error.config?.data
       });
       
       // Handle specific error cases

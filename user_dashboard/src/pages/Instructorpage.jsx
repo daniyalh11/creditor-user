@@ -94,25 +94,25 @@ const InstructorPage = () => {
         >
           <div className="max-w-7xl mx-auto w-full">
             <DashboardHeader sidebarCollapsed={collapsed} />
-          </div>
+        </div>
         </header>
         {/* Scrollable content with padding top to avoid overlap */}
         <div className="flex-1 overflow-y-auto pt-16">
           <div className="max-w-7xl mx-auto w-full px-6 pb-14 space-y-12 pt-6">
-            {/* Dashboard Title */}
-            <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          {/* Dashboard Title */}
+          <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h1 className="text-3xl font-bold text-gray-800 mb-2">
                 Instructor Dashboard
               </h1>
               <p className="text-gray-600">
                 Manage your courses, content, and events
               </p>
-            </section>
+          </section>
 
-            {/* Course Creation */}
-            <section className="bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+          {/* Course Creation */}
+          <section className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                   <svg
                     className="w-5 h-5 text-blue-500"
                     fill="none"
@@ -125,25 +125,25 @@ const InstructorPage = () => {
                       strokeWidth={2}
                       d="M12 6v6m0 0v6m0-6h6m-6 0H6"
                     />
-                  </svg>
-                  Course Management
-                </h2>
-              </div>
-              <div className="p-6">
-                <CreateCourse />
-              </div>
-            </section>
+                </svg>
+                Course Management
+              </h2>
+            </div>
+            <div className="p-6">
+              <CreateCourse />
+            </div>
+          </section>
 
           {/* User Management */}
           <section className="bg-white rounded-xl shadow-sm border border-gray-100">
             <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                  </svg>
-                  User Management
-                </h2>
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+                User Management
+              </h2>
                 <div className="relative">
                   <select
                     value={userManagementView}
@@ -166,10 +166,10 @@ const InstructorPage = () => {
             </div>
           </section>
 
-            {/* Course Catalog */}
-            <section className="bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+          {/* Course Catalog */}
+          <section className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                   <svg
                     className="w-5 h-5 text-purple-500"
                     fill="none"
@@ -182,19 +182,19 @@ const InstructorPage = () => {
                       strokeWidth={2}
                       d="M4 6h16M4 10h16M4 14h16M4 18h16"
                     />
-                  </svg>
-                  Course Catalogs
-                </h2>
-              </div>
-              <div className="p-6">
-                <AddCatelog />
-              </div>
-            </section>
+                </svg>
+                Course Catalogs
+              </h2>
+            </div>
+            <div className="p-6">
+              <AddCatelog />
+            </div>
+          </section>
 
-            {/* SCORM Content */}
-            <section className="bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+          {/* SCORM Content */}
+          <section className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                   <svg
                     className="w-5 h-5 text-green-500"
                     fill="none"
@@ -207,19 +207,19 @@ const InstructorPage = () => {
                       strokeWidth={2}
                       d="M4 6h16M4 10h16M4 14h16M4 18h16"
                     />
-                  </svg>
-                  SCORM Content
-                </h2>
-              </div>
-              <div className="p-6">
-                <ScormPage />
-              </div>
-            </section>
+                </svg>
+                SCORM Content
+              </h2>
+            </div>
+            <div className="p-6">
+              <ScormPage />
+            </div>
+          </section>
 
-            {/* Event Management */}
-            <section className="bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+          {/* Event Management */}
+          <section className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                   <svg
                     className="w-5 h-5 text-red-500"
                     fill="none"
@@ -232,14 +232,14 @@ const InstructorPage = () => {
                       strokeWidth={2}
                       d="M4 6h16M4 10h16M4 14h16M4 18h16"
                     />
-                  </svg>
-                  Event Management
-                </h2>
-              </div>
-              <div className="p-6">
-                <AddEvent />
-              </div>
-            </section>
+                </svg>
+                Event Management
+              </h2>
+            </div>
+            <div className="p-6">
+              <AddEvent />
+            </div>
+          </section>
           </div>
         </div>
       </div>
