@@ -187,11 +187,10 @@ const CreateCourse = ({ onCourseCreated }) => {
     const formData = new FormData();
     formData.append("title", form.title);
     formData.append("description", form.description);
-    formData.append("learning_objectives", JSON.stringify(
-      form.learning_objectives
-        ? form.learning_objectives.split("\n").map((s) => s.trim()).filter(Boolean)
-        : []
-    ));
+    const learningObjectivesArray = form.learning_objectives
+      ? form.learning_objectives.split("\n").map((s) => s.trim()).filter(Boolean)
+      : [];
+    learningObjectivesArray.forEach(obj => formData.append("learning_objectives", obj));
     formData.append("isHidden", form.isHidden);
     formData.append("course_status", form.course_status);
     formData.append("estimated_duration", form.estimated_duration);
@@ -261,23 +260,21 @@ const CreateCourse = ({ onCourseCreated }) => {
     setEditLoading(true);
     setEditError("");
     try {
-      const formData = new FormData();
-      formData.append("title", editCourseData.title);
-      formData.append("description", editCourseData.description || '');
-      formData.append("estimated_duration", editCourseData.estimated_duration);
-      formData.append("price", editCourseData.price);
-      if (editCourseData.max_students) formData.append("max_students", Number(editCourseData.max_students));
-      formData.append("course_status", editCourseData.course_status);
-      formData.append("isHidden", editCourseData.isHidden);
-      formData.append("requireFinalQuiz", editCourseData.requireFinalQuiz);
+      const payload = { ...editCourseData };
+      delete payload.id;
+      // Remove any fields not needed by backend (like created_at, updated_at, etc.)
+      ["created_at", "updated_at", "createdBy", "updatedBy", "deleted_at"].forEach(f => delete payload[f]);
+      // Ensure thumbnail is included as a string
       if (editCourseData.thumbnail) {
-        formData.append("thumbnail", editCourseData.thumbnail);
+        payload.thumbnail = editCourseData.thumbnail;
       }
-      
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/editCourse/${editCourseData.id}`, {
         method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
-        body: formData,
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const errData = await res.json();
