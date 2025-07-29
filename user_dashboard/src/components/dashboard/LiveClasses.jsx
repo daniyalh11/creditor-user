@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { AttendanceViewerModal } from "./AttendanceViewerModal";
 import { UpcomingLiveClasses } from "./UpcomingLiveClasses";
 
+
 // Mock data for attendance and recordings
 const attendanceData = [
   { date: "2025-06-08", status: "present", topic: "Constitutional Rights" },
@@ -75,8 +76,49 @@ export function LiveClasses() {
                    eventDate.getDate() === currentDate.getDate();
           });
           
+          console.log('Today events:', todayEvents);
+          const userTimezone = localStorage.getItem('userTimezone') || 'America/New_York';
+          console.log('User timezone:', userTimezone);
+          const now = new Date();
+          const nowInUserTz = now;
+          const nowInUserTimezone = nowInUserTz.toLocaleString('en-US', { 
+            timeZone: userTimezone,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          });
+          console.log('Now in user tz:', nowInUserTimezone, '(', nowInUserTz, ')');
+                      todayEvents.forEach(event => {
+              const startInUserTz = new Date(event.startTime);
+              const endInUserTz = new Date(event.endTime);
+              console.log('Event:', event.title, 'Start:', startInUserTz, 'End:', endInUserTz);
+            });
+
           if (todayEvents.length > 0) {
-            setLiveClass(todayEvents[0]); // Take the first event for today
+            // Find the closest upcoming event (start time is in the future)
+            const upcomingEvents = todayEvents.filter(event => {
+              const startInUserTz = new Date(event.startTime);
+              const isUpcoming = startInUserTz > nowInUserTz;
+              
+              // Convert to user's timezone for display
+              const startInUserTimezone = startInUserTz.toLocaleString('en-US', { 
+                timeZone: userTimezone,
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              });
+              
+              console.log(`Event "${event.title}": Start time in user tz: ${startInUserTimezone} (${startInUserTz}), Now in user tz: ${nowInUserTz}, Is upcoming: ${isUpcoming}`);
+              return isUpcoming;
+            });
+            
+            // Sort by start time and get the closest one
+            upcomingEvents.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+            const nextEvent = upcomingEvents[0];
+            
+            console.log('Upcoming events:', upcomingEvents.map(e => e.title));
+            console.log('Selected live class:', nextEvent?.title || 'None (no upcoming events)');
+            setLiveClass(nextEvent || null);
           } else {
             setLiveClass(null);
           }
@@ -91,24 +133,7 @@ export function LiveClasses() {
     };
     fetchLiveClass();
 
-    // POST request for debugging
-    const postDebug = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({ debug: true }) // Example body, adjust as needed
-        });
-        const postData = await response.json();
-        console.log('POST /calendar/events response:', postData);
-      } catch (err) {
-        console.error('POST /calendar/events error:', err);
-      }
-    };
-    postDebug();
+    // Removed debug POST request - it was causing 500 errors
   }, []);
 
   const isClassActive = !!liveClass;
@@ -137,13 +162,7 @@ export function LiveClasses() {
     const now = new Date();
     const startTime = new Date(liveClass.startTime);
     const endTime = new Date(liveClass.endTime);
-    
-    // Convert current time to user's timezone for comparison
-    const nowInUserTz = new Date(now.toLocaleString("en-US", {timeZone: userTimezone}));
-    const startInUserTz = new Date(startTime.toLocaleString("en-US", {timeZone: userTimezone}));
-    const endInUserTz = new Date(endTime.toLocaleString("en-US", {timeZone: userTimezone}));
-    
-    return nowInUserTz >= startInUserTz && nowInUserTz <= endInUserTz;
+    return now >= startTime && now <= endTime;
   };
 
   const isCurrentlyActive = isClassInSession();
