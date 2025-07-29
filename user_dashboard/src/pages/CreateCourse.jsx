@@ -43,6 +43,10 @@ const CreateCourse = ({ onCourseCreated }) => {
   const [moduleDialogMode, setModuleDialogMode] = useState("create");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [moduleToDelete, setModuleToDelete] = useState(null);
+  const [showUsersModal, setShowUsersModal] = useState(false);
+  const [courseUsers, setCourseUsers] = useState([]);
+  const [selectedCourseForUsers, setSelectedCourseForUsers] = useState(null);
+  const [usersLoading, setUsersLoading] = useState(false);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -159,9 +163,9 @@ const CreateCourse = ({ onCourseCreated }) => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value, files, type, checked } = e.target;
-    if (name === "thumbnail" && files && files[0]) {
-      setForm((prev) => ({ ...prev, thumbnail: files[0] }));
+    const { name, value, type, checked } = e.target;
+    if (name === "thumbnail" && type === "url") {
+      setForm((prev) => ({ ...prev, thumbnail: value }));
     } else if (type === "checkbox") {
       setForm((prev) => ({ ...prev, [name]: checked }));
     } else {
@@ -171,7 +175,6 @@ const CreateCourse = ({ onCourseCreated }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Required fields check
     if (!form.title || !form.estimated_duration || !form.price) {
       setFormError("Title, duration, and price are required.");
       setSuccess(false);
@@ -181,38 +184,33 @@ const CreateCourse = ({ onCourseCreated }) => {
     setSuccess(false);
     setApiResponse(null);
 
-    // Prepare payload
-    const payload = {
-      title: form.title,
-      description: form.description,
-      learning_objectives: form.learning_objectives
+    const formData = new FormData();
+    formData.append("title", form.title);
+    formData.append("description", form.description);
+    formData.append("learning_objectives", JSON.stringify(
+      form.learning_objectives
         ? form.learning_objectives.split("\n").map((s) => s.trim()).filter(Boolean)
-        : [],
-      isHidden: form.isHidden,
-      course_status: form.course_status,
-      estimated_duration: form.estimated_duration,
-      max_students: form.max_students ? Number(form.max_students) : undefined,
-      course_level: "BEGINNER",
-      courseType: "OPEN",
-      lockModules: "UNLOCKED",
-      price: form.price,
-      requireFinalQuiz: form.requireFinalQuiz,
-      // created_at, updated_at, createdBy, updatedBy will be set by backend
-    };
-
-    // If thumbnail is a file, handle file upload (not implemented here)
-    // If you want to support file upload, use FormData and adjust backend accordingly
+        : []
+    ));
+    formData.append("isHidden", form.isHidden);
+    formData.append("course_status", form.course_status);
+    formData.append("estimated_duration", form.estimated_duration);
+    if (form.max_students) formData.append("max_students", Number(form.max_students));
+    formData.append("course_level", "BEGINNER");
+    formData.append("courseType", "OPEN");
+    formData.append("lockModules", "UNLOCKED");
+    formData.append("price", form.price);
+    formData.append("requireFinalQuiz", form.requireFinalQuiz);
+    if (form.thumbnail) {
+      formData.append("thumbnail", form.thumbnail);
+    }
 
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/createCourse`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
         credentials: "include",
-        body: JSON.stringify(payload),
+        body: formData,
       });
-    
       const data = await res.json();
       console.log(data);
       if (res.ok && data.success) {
@@ -263,29 +261,63 @@ const CreateCourse = ({ onCourseCreated }) => {
     setEditLoading(true);
     setEditError("");
     try {
-      const payload = { ...editCourseData };
-      delete payload.id; // id is in the URL, not in the body
-      // Remove any fields not needed by backend (like created_at, updated_at, etc.)
-      ["created_at", "updated_at", "createdBy", "updatedBy", "deleted_at", "thumbnail"].forEach(f => delete payload[f]);
+      const formData = new FormData();
+      formData.append("title", editCourseData.title);
+      formData.append("description", editCourseData.description || '');
+      formData.append("estimated_duration", editCourseData.estimated_duration);
+      formData.append("price", editCourseData.price);
+      if (editCourseData.max_students) formData.append("max_students", Number(editCourseData.max_students));
+      formData.append("course_status", editCourseData.course_status);
+      formData.append("isHidden", editCourseData.isHidden);
+      formData.append("requireFinalQuiz", editCourseData.requireFinalQuiz);
+      if (editCourseData.thumbnail) {
+        formData.append("thumbnail", editCourseData.thumbnail);
+      }
+      
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/editCourse/${editCourseData.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
         credentials: "include",
-        body: JSON.stringify(payload),
+        body: formData,
       });
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.message || "Failed to update course");
       }
       // Update course in local state
-      setCourses(prev => prev.map(c => c.id === editCourseData.id ? { ...c, ...payload } : c));
+      setCourses(prev => prev.map(c => c.id === editCourseData.id ? { ...c, ...editCourseData } : c));
       setEditModalOpen(false);
     } catch (err) {
       setEditError(err.message || "Failed to update course");
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleViewUsers = async (courseId) => {
+    setSelectedCourseForUsers(courseId);
+    setShowUsersModal(true);
+    setUsersLoading(true);
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/${courseId}/getAllUsersByCourseId`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch course users');
+      }
+      
+      const data = await response.json();
+      setCourseUsers(data.data || []);
+    } catch (error) {
+      console.error('Error fetching course users:', error);
+      setCourseUsers([]);
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -404,6 +436,12 @@ const CreateCourse = ({ onCourseCreated }) => {
                     className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
                   >
                     {expandedCourseId === course.id ? 'Hide' : 'View'} Modules
+                  </button>
+                  <button
+                    onClick={() => handleViewUsers(course.id)}
+                    className="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                  >
+                    View Users
                   </button>
                   <button
                     onClick={() => handleEditClick(course)}
@@ -633,21 +671,18 @@ const CreateCourse = ({ onCourseCreated }) => {
                 </label>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail Image (not implemented)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail Image URL</label>
                 <input
-                  type="file"
+                  type="url"
                   name="thumbnail"
-                  accept="image/*"
+                  value={form.thumbnail}
                   onChange={handleInputChange}
-                  className="w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100"
-                  disabled
+                  placeholder="https://example.com/image.jpg"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
-                <span className="text-xs text-gray-400">(File upload not supported in this demo)</span>
+                {form.thumbnail && (
+                  <img src={form.thumbnail} alt="Preview" className="mt-2 h-24 rounded shadow" onError={(e) => e.target.style.display = 'none'} />
+                )}
               </div>
               {formError && <div className="text-sm text-red-600 py-2">{formError}</div>}
               <div className="flex gap-3 pt-4">
@@ -776,6 +811,20 @@ const CreateCourse = ({ onCourseCreated }) => {
                   <span className="text-sm">Require Final Quiz</span>
                 </label>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail Image URL</label>
+                <input
+                  type="url"
+                  name="thumbnail"
+                  value={editCourseData.thumbnail || ''}
+                  onChange={handleEditInputChange}
+                  placeholder="https://example.com/image.jpg"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+                {editCourseData.thumbnail && (
+                  <img src={editCourseData.thumbnail} alt="Preview" className="mt-2 h-24 rounded shadow" onError={(e) => e.target.style.display = 'none'} />
+                )}
+              </div>
               {editError && <div className="text-sm text-red-600 py-2">{editError}</div>}
               <div className="flex gap-3 pt-4">
                 <button
@@ -832,6 +881,65 @@ const CreateCourse = ({ onCourseCreated }) => {
                 Delete Module
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Course Users Modal */}
+      {showUsersModal && selectedCourseForUsers && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+              onClick={() => setShowUsersModal(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Course Users</h2>
+            
+            {usersLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-2 text-gray-600">Loading users...</span>
+              </div>
+            ) : courseUsers.length > 0 ? (
+              <div className="space-y-3">
+                {courseUsers.map((userData, index) => (
+                  <div key={userData.user_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        {userData.user.image ? (
+                          <img src={userData.user.image} alt="User" className="w-10 h-10 rounded-full" />
+                        ) : (
+                          <span className="text-blue-600 font-medium">
+                            {userData.user.first_name?.[0]}{userData.user.last_name?.[0]}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-900">
+                          {userData.user.first_name} {userData.user.last_name}
+                        </h3>
+                        <p className="text-sm text-gray-600">{userData.user.email}</p>
+                        <div className="flex gap-1 mt-1">
+                          {userData.user.user_roles?.map((role, roleIndex) => (
+                            <span key={roleIndex} className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                              {role.role}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-500">ID: {userData.user_id}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No users enrolled in this course yet.</p>
+              </div>
+            )}
           </div>
         </div>
       )}

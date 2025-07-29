@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Clock, ArrowLeft, Loader2 } from "lucide-react";
-import { getCatalogCourses } from "@/services/instructorCatalogService";
+import { getCatalogCourses, fetchAllCourses, addCourseToCatalog, removeCourseFromCatalog } from "@/services/instructorCatalogService";
 
 const CatelogCourses = () => {
   const { catalogId } = useParams();
@@ -11,6 +11,10 @@ const CatelogCourses = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  const [allCourses, setAllCourses] = useState([]);
+  const [selectedCourseIds, setSelectedCourseIds] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
 
   
   // Fetch catalog courses from backend
@@ -82,6 +86,36 @@ const CatelogCourses = () => {
       fetchCatalogData();
     }
   }, [catalogId, location.state]);
+
+  // Fetch all courses and catalog courses when modal opens
+  useEffect(() => {
+    if (showCourseModal) {
+      setModalLoading(true);
+      Promise.all([
+        fetchAllCourses(),
+        getCatalogCourses(catalogId)
+      ]).then(([all, catalogCourses]) => {
+        setAllCourses(all);
+        setSelectedCourseIds((catalogCourses || []).map(c => c.id));
+        setModalLoading(false);
+      });
+    }
+  }, [showCourseModal, catalogId]);
+
+  // Handle checkbox toggle in modal
+  const handleCourseToggle = async (courseId, checked) => {
+    setModalLoading(true);
+    if (checked) {
+      await addCourseToCatalog(catalogId, courseId);
+      setSelectedCourseIds(prev => [...prev, courseId]);
+    } else {
+      await removeCourseFromCatalog(catalogId, courseId);
+      setSelectedCourseIds(prev => prev.filter(id => id !== courseId));
+    }
+    setModalLoading(false);
+    // Optionally, refresh catalog courses in main view
+    fetchCatalogData();
+  };
 
   // Use the fetched courses directly since they're already filtered by catalog
   const filteredCourses = courses || [];
@@ -178,6 +212,12 @@ const CatelogCourses = () => {
                         <Badge key="count" variant="outline" className="px-3 py-1 text-sm">
                           {filteredCourses.length} {filteredCourses.length === 1 ? 'Course' : 'Courses'}
                         </Badge>
+                        <button
+                          className="ml-4 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium shadow hover:bg-blue-700 transition"
+                          onClick={() => setShowCourseModal(true)}
+                        >
+                          Add/Remove Courses
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -185,6 +225,44 @@ const CatelogCourses = () => {
               </div>
             </div>
           </div>
+
+          {/* Modal for adding/removing courses */}
+          {showCourseModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+              <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl w-full relative">
+                <button
+                  onClick={() => setShowCourseModal(false)}
+                  className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
+                  aria-label="Close"
+                >
+                  &times;
+                </button>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Select Courses for Catalog</h3>
+                {modalLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto">
+                    {allCourses.map(course => (
+                      <label key={course.id} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-blue-50 transition">
+                        <input
+                          type="checkbox"
+                          checked={selectedCourseIds.includes(course.id)}
+                          onChange={e => handleCourseToggle(course.id, e.target.checked)}
+                          className="form-checkbox h-5 w-5 text-blue-600"
+                        />
+                        <div>
+                          <div className="font-medium text-gray-900">{course.title || course.name}</div>
+                          <div className="text-xs text-gray-500">{course.description || course.summary}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
 
 
