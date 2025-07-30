@@ -10,6 +10,8 @@ export async function fetchAllCourses() {
       throw new Error('Failed to fetch courses');
     }
     const data = await response.json();
+    console.log(data);
+    
     return data.data;
   }
 

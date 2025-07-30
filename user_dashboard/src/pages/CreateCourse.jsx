@@ -198,7 +198,7 @@ const CreateCourse = ({ onCourseCreated }) => {
       {apiResponse && (
         <div className={`border rounded-lg p-4 ${apiResponse.type === "success" ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
           <p className={`text-sm ${apiResponse.type === "success" ? "text-green-800" : "text-red-800"}`}>
-            {apiResponse.message}
+          {apiResponse.message}
           </p>
         </div>
       )}
@@ -232,24 +232,24 @@ const CreateCourse = ({ onCourseCreated }) => {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2">
-          <button
-            onClick={() => setPage(page - 1)}
-            disabled={!hasPrev}
+              <button
+                onClick={() => setPage(page - 1)}
+                disabled={!hasPrev}
             className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
+              >
+                Previous
+              </button>
           <span className="px-3 py-2 text-sm text-gray-700">
             Page {page + 1} of {totalPages}
           </span>
-          <button
-            onClick={() => setPage(page + 1)}
-            disabled={!hasNext}
+              <button
+                onClick={() => setPage(page + 1)}
+                disabled={!hasNext}
             className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
+              >
+                Next
+              </button>
+            </div>
       )}
 
       {/* Modals */}
