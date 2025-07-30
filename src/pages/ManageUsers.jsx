@@ -23,6 +23,10 @@ const ManageUsers = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState({ courseTitle: "", addedUsers: [] });
   const [makingInstructor, setMakingInstructor] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   useEffect(() => {
     fetchUsers();
@@ -40,6 +44,14 @@ const ManageUsers = () => {
 
     return () => clearInterval(interval);
   }, [apiCallTime]);
+
+  // Force refresh when forceUpdate changes
+  useEffect(() => {
+    if (forceUpdate > 0) {
+      console.log('🔄 Force update triggered, refreshing users...');
+      fetchUsers();
+    }
+  }, [forceUpdate]);
 
   const fetchUsers = async () => {
     try {
@@ -81,7 +93,14 @@ const ManageUsers = () => {
       console.log('✅ API Response:', response.data);
 
       if (response.data && response.data.code === 200) {
-        setUsers(response.data.data || []);
+        const fetchedUsers = response.data.data || [];
+        console.log('📋 Fetched users with roles:', fetchedUsers.map(user => ({
+          id: user.id,
+          name: `${user.first_name} ${user.last_name}`,
+          role: getUserRole(user),
+          user_roles: user.user_roles
+        })));
+        setUsers(fetchedUsers);
       } else {
         throw new Error('Failed to fetch users');
       }
@@ -164,9 +183,31 @@ const ManageUsers = () => {
 
   // Helper function to get user role from user_roles array
   const getUserRole = (user) => {
+    console.log('🔍 Getting role for user:', {
+      id: user.id,
+      name: `${user.first_name} ${user.last_name}`,
+      user_roles: user.user_roles,
+      hasRoles: !!user.user_roles,
+      rolesLength: user.user_roles?.length
+    });
+    
     if (user.user_roles && user.user_roles.length > 0) {
-      return user.user_roles[0].role;
+      // Priority order: admin > instructor > user
+      const roles = user.user_roles.map(r => r.role);
+      
+      if (roles.includes('admin')) {
+        console.log('✅ User role found: admin');
+        return 'admin';
+      } else if (roles.includes('instructor')) {
+        console.log('✅ User role found: instructor');
+        return 'instructor';
+      } else {
+        const role = roles[0];
+        console.log('✅ User role found:', role);
+        return role;
+      }
     }
+    console.log('⚠️ No user roles found, defaulting to "user"');
     return 'user'; // default role when no role is assigned in backend
   };
 
@@ -227,6 +268,18 @@ const ManageUsers = () => {
     
     const userRole = getUserRole(user);
     const matchesRole = userRole === filterRole;
+    
+    // Debug logging for filtering
+    if (user.first_name && user.last_name) {
+      console.log(`🔍 Filtering user: ${user.first_name} ${user.last_name}`, {
+        id: user.id,
+        userRole,
+        filterRole,
+        matchesRole,
+        matchesSearch,
+        user_roles: user.user_roles
+      });
+    }
     
     return matchesSearch && matchesRole;
   });
@@ -316,7 +369,10 @@ const ManageUsers = () => {
           },
           withCredentials: true,
         });
-      } else if (filterRole === "admin") {
+        console.log('🔄 Response:', response);
+      }
+    
+       else if (filterRole === "admin") {
         // Add admins to course
         console.log('🔄 Adding admins to course:', { courseId: selectedCourse, adminIds: selectedUsers });
         console.log('📋 Available courses:', courses.map(c => ({ id: c.id, title: c.title })));
@@ -340,6 +396,8 @@ const ManageUsers = () => {
       }
 
       console.log('✅ API Response:', response.data);
+      console.log('✅ Response status:', response.status);
+      console.log('✅ Response headers:', response.headers);
 
       if (response.data && (response.data.success || response.data.code === 200 || response.data.code === 201)) {
         // Get the selected course title
@@ -360,6 +418,41 @@ const ManageUsers = () => {
         setShowCourseModal(false);
         setSelectedCourse("");
         setSelectedUsers([]);
+        
+        // After successful addition, verify the users are actually in the course
+        console.log('🔄 Verifying course users after addition...');
+        try {
+          const verifyResponse = await axios.get(`${API_BASE}/api/course/${selectedCourse}/getAllUsersByCourseId`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            withCredentials: true,
+          });
+          
+          console.log('✅ Course users verification response:', verifyResponse.data);
+          console.log('📋 Users in course after addition:', verifyResponse.data?.data || []);
+          
+          // Check if our added users are actually in the course
+          const courseUsers = verifyResponse.data?.data || [];
+          const addedUserIds = selectedUsers;
+          const foundUsers = courseUsers.filter(cu => addedUserIds.includes(cu.user_id));
+          
+          console.log('🔍 Verification results:', {
+            expectedUsers: addedUserIds,
+            foundUsers: foundUsers.map(fu => fu.user_id),
+            missingUsers: addedUserIds.filter(id => !foundUsers.some(fu => fu.user_id === id))
+          });
+          
+          if (foundUsers.length !== addedUserIds.length) {
+            console.warn('⚠️ Some users were not found in course after addition!');
+            console.warn('📋 Missing users:', addedUserIds.filter(id => !foundUsers.some(fu => fu.user_id === id)));
+          } else {
+            console.log('✅ All users successfully verified in course!');
+          }
+        } catch (verifyError) {
+          console.error('❌ Error verifying course users:', verifyError);
+        }
         
         // Refresh users list to get updated course information
         await fetchUsers();
@@ -382,7 +475,116 @@ const ManageUsers = () => {
       
       // Handle specific error cases
       if (error.response?.status === 409) {
-        setError(`Some ${filterRole}s are already assigned to this course. This is normal and won't affect their access.`);
+        // 409 means some users are already assigned, but this is not a complete failure
+        console.log('⚠️ 409 Conflict - Some users already assigned to course:', error.response.data);
+        console.log('🔍 Full 409 response analysis:', {
+          status: error.response.status,
+          data: error.response.data,
+          error: error.response.data?.error,
+          message: error.response.data?.message
+        });
+        
+        // Get the selected course title
+        const selectedCourseData = courses.find(course => course.id === selectedCourse);
+        const courseTitle = selectedCourseData ? selectedCourseData.title : selectedCourse;
+        
+        // Extract error message from backend response
+        const errorMessage = error.response.data?.error || error.response.data?.message || 'Unknown error';
+        
+        console.log('📋 Backend error message:', errorMessage);
+        
+        // Parse the error message to extract user IDs if present
+        // Backend returns: "Users fc78ddd2-d389-4844-a387-53d257fb04a0 are already instructors for this course"
+        const userMatch = errorMessage.match(/Users\s+([^,\s]+(?:\s*,\s*[^,\s]+)*)\s+are already/);
+        
+        if (userMatch) {
+          const existingUserIds = userMatch[1].split(',').map(id => id.trim());
+          console.log('🔍 Found existing user IDs in error message:', existingUserIds);
+          
+          // Check which users are already assigned vs. which are new
+          const alreadyAssignedIds = existingUserIds;
+          const newUserIds = selectedUsers.filter(id => !alreadyAssignedIds.includes(id));
+          
+          console.log('📋 User analysis:', {
+            selectedUsers,
+            alreadyAssignedIds,
+            newUserIds
+          });
+          
+          if (newUserIds.length > 0) {
+            // Some users are new and should be added
+            console.log('✅ Some users are new, attempting to add them individually...');
+            
+            // Try to add each new user individually
+            const successfulAdds = [];
+            const failedAdds = [];
+            
+            for (const userId of newUserIds) {
+              try {
+                console.log(`🔄 Attempting to add user ${userId} individually...`);
+                
+                const individualResponse = await axios.post(`${API_BASE}/api/course/addInstructor/${selectedCourse}`, {
+                  instructorIds: [userId]
+                }, {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                  },
+                  withCredentials: true,
+                });
+                
+                if (individualResponse.status >= 200 && individualResponse.status < 300) {
+                  successfulAdds.push(userId);
+                  console.log(`✅ Successfully added user ${userId}`);
+                }
+              } catch (individualError) {
+                console.log(`❌ Failed to add user ${userId}:`, individualError.response?.data);
+                failedAdds.push(userId);
+              }
+            }
+            
+            // Show results
+            if (successfulAdds.length > 0) {
+              const addedUsersData = users.filter(user => successfulAdds.includes(user.id));
+              
+              console.log('✅ Showing success modal for individually added users:', addedUsersData);
+              
+              setSuccessData({
+                courseTitle: courseTitle,
+                addedUsers: addedUsersData
+              });
+              setShowSuccessModal(true);
+              
+              // Close course selection modal and reset
+              setShowCourseModal(false);
+              setSelectedCourse("");
+              setSelectedUsers([]);
+              
+              // Refresh users list to get updated course information
+              await fetchUsers();
+            } else {
+              // All users failed to be added individually
+              setError(`All selected ${filterRole}s are already assigned to the course "${courseTitle}".`);
+              setShowCourseModal(false);
+              setSelectedCourse("");
+              setSelectedUsers([]);
+            }
+          } else {
+            // All users are already assigned
+            console.log('ℹ️ All users already assigned, showing info message');
+            setError(`All selected ${filterRole}s are already assigned to the course "${courseTitle}".`);
+            setShowCourseModal(false);
+            setSelectedCourse("");
+            setSelectedUsers([]);
+          }
+        } else {
+          // Generic 409 message - couldn't parse user IDs
+          console.log('⚠️ Generic 409 response, showing default message');
+          setError(`Some ${filterRole}s are already assigned to this course. This is normal and won't affect their access.`);
+          setShowCourseModal(false);
+          setSelectedCourse("");
+          setSelectedUsers([]);
+        }
       } else if (error.response?.status === 400) {
         setError('Invalid request. Please check your selection and try again.');
       } else if (error.response?.status === 401) {
@@ -410,12 +612,15 @@ const ManageUsers = () => {
         throw new Error('No authentication token found. Please log in again.');
       }
       
-      console.log('🔄 Making users instructors:', { userIds: selectedUsers });
+      console.log('🔄 Making instructor API call:', {
+        url: `${API_BASE}/api/user/make-instructors`,
+        payload: { user_ids: selectedUsers },
+        selectedUsers
+      });
       
-      // Make API call to update user roles to instructor
-      const response = await axios.put(`${API_BASE}/api/user/updateRole`, {
-        userIds: selectedUsers,
-        role: 'instructor'
+      // Make API call to make users instructors using the correct endpoint and payload
+      const response = await axios.post(`${API_BASE}/api/user/make-instructors`, {
+        user_ids: selectedUsers
       }, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -424,31 +629,115 @@ const ManageUsers = () => {
         withCredentials: true,
       });
 
-      console.log('✅ Make Instructor API Response:', response.data);
+      console.log('✅ Make instructor API response:', response.data);
+      console.log('✅ Response status:', response.status);
+      console.log('✅ Response headers:', response.headers);
+      
+      // Detailed analysis of the response
+      console.log('🔍 Detailed response analysis:', {
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        dataKeys: response.data ? Object.keys(response.data) : [],
+        success: response.data?.success,
+        code: response.data?.code,
+        message: response.data?.message,
+        updatedUsers: response.data?.updatedUsers || response.data?.data,
+        fullResponse: response.data
+      });
 
-      if (response.data && (response.data.success || response.data.code === 200 || response.data.code === 201)) {
+      // Check if the request was successful (HTTP 200-299)
+      if (response.status >= 200 && response.status < 300) {
         // Get the selected users data
         const updatedUsers = users.filter(user => selectedUsers.includes(user.id));
         
-        // Set success data and show success modal
+        console.log('✅ Success! Users to be updated:', updatedUsers.map(u => ({ id: u.id, name: `${u.first_name} ${u.last_name}`, currentRole: getUserRole(u) })));
+        
+        // Since backend doesn't return updated user data, we need to manually update local state
+        console.log('🎯 Backend response:', response.data);
+        console.log('📋 Backend updated users count:', response.data?.message);
+        
+        // Manually update the local state to reflect the role change
+        setUsers(prevUsers => {
+          const newUsers = prevUsers.map(user => {
+            if (selectedUsers.includes(user.id)) {
+              // Check if user already has instructor role
+              const hasInstructorRole = user.user_roles?.some(role => role.role === 'instructor');
+              
+              if (!hasInstructorRole) {
+                // Add instructor role to existing roles
+                const updatedUser = {
+                  ...user,
+                  user_roles: [
+                    ...(user.user_roles || []),
+                    { role: 'instructor' }
+                  ]
+                };
+                
+                console.log('🔄 Manually updating user role to instructor:', {
+                  id: user.id,
+                  name: `${user.first_name} ${user.last_name}`,
+                  oldRoles: user.user_roles,
+                  newRoles: updatedUser.user_roles
+                });
+                
+                return updatedUser;
+              } else {
+                console.log('ℹ️ User already has instructor role:', {
+                  id: user.id,
+                  name: `${user.first_name} ${user.last_name}`,
+                  roles: user.user_roles
+                });
+                return user;
+              }
+            }
+            return user;
+          });
+          
+          console.log('🔄 Updated users state after manual update:', newUsers.map(u => ({
+            id: u.id,
+            name: `${u.first_name} ${u.last_name}`,
+            role: getUserRole(u),
+            user_roles: u.user_roles
+          })));
+          
+          return newUsers;
+        });
+        
+        // Reset selection first
+        setSelectedUsers([]);
+        
+        // Show success message immediately
         setSuccessData({
           courseTitle: "Role Update",
           addedUsers: updatedUsers
         });
         setShowSuccessModal(true);
         
-        // Reset selection
-        setSelectedUsers([]);
+        // Wait a moment for backend to process, then refresh
+        console.log('🔄 Waiting for backend to process role update...');
         
-        // Refresh users list to get updated role information
-        await fetchUsers();
-        
-        console.log('Users successfully made instructors');
+        setTimeout(async () => {
+          console.log('🔄 Refreshing users list to get updated roles...');
+          await fetchUsers();
+          
+          // Check if the roles were actually updated
+          const refreshedUsers = await fetchUsers();
+          console.log('🔄 Checking if roles were updated in backend...');
+          
+          // Log the current state of users after refresh
+          console.log('📋 Current users after refresh:', users.map(user => ({
+            id: user.id,
+            name: `${user.first_name} ${user.last_name}`,
+            role: getUserRole(user),
+            user_roles: user.user_roles
+          })));
+        }, 2000);
       } else {
-        throw new Error(response.data?.message || 'Failed to update user roles');
+        console.error('❌ API returned non-success status:', response.status);
+        throw new Error(response.data?.message || `API returned status ${response.status}`);
       }
     } catch (error) {
-      console.error('Error making users instructors:', error);
+      console.error('❌ Error making users instructors:', error);
       console.error('❌ Error details:', {
         status: error.response?.status,
         statusText: error.response?.statusText,
@@ -473,6 +762,116 @@ const ManageUsers = () => {
       }
     } finally {
       setMakingInstructor(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    try {
+      setDeletingUser(true);
+      setError("");
+      
+      const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      // Make API call to delete user using the correct endpoint format
+      const response = await axios.delete(`${API_BASE}/api/user/${userToDelete.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        withCredentials: true,
+      });
+
+      if (response.data && (response.data.success || response.data.code === 200 || response.data.code === 201)) {
+        // Close delete modal
+        setShowDeleteModal(false);
+        setUserToDelete(null);
+        
+        // Show success message
+        setSuccessData({
+          courseTitle: "User Deleted",
+          addedUsers: [userToDelete]
+        });
+        setShowSuccessModal(true);
+        
+        // Refresh users list to get updated data
+        await fetchUsers();
+      } else {
+        throw new Error(response.data?.message || 'Failed to delete user');
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      console.error('❌ Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method
+      });
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        setError('Invalid request. Please check your selection and try again.');
+      } else if (error.response?.status === 401) {
+        setError('Authentication failed. Please log in again.');
+      } else if (error.response?.status === 403) {
+        setError('You do not have permission to perform this action.');
+      } else if (error.response?.status === 404) {
+        setError('User not found or already deleted.');
+      } else if (error.response?.status === 500) {
+        setError(`Server error: ${error.response?.data?.message || 'Internal server error occurred. Please try again.'}`);
+      } else {
+        setError('Failed to delete user. Please try again.');
+      }
+    } finally {
+      setDeletingUser(false);
+    }
+  };
+
+  const handleDeleteClick = (user) => {
+    setUserToDelete(user);
+    setShowDeleteModal(true);
+  };
+
+  // Function to manually check course users
+  const checkCourseUsers = async (courseId) => {
+    try {
+      console.log('🔍 Manually checking course users for course:', courseId);
+      
+      const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      const response = await axios.get(`${API_BASE}/api/course/${courseId}/getAllUsersByCourseId`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        withCredentials: true,
+      });
+      
+      console.log('✅ Course users check response:', response.data);
+      console.log('📋 All users in course:', response.data?.data || []);
+      
+      // Show the results in an alert for easy viewing
+      const courseUsers = response.data?.data || [];
+      const userList = courseUsers.map(cu => 
+        `${cu.user?.first_name} ${cu.user?.last_name} (${cu.user?.email}) - Roles: ${cu.user?.user_roles?.map(r => r.role).join(', ')}`
+      ).join('\n');
+      
+      alert(`Course Users for ${courseId}:\n\n${userList || 'No users found'}`);
+      
+    } catch (error) {
+      console.error('❌ Error checking course users:', error);
+      alert(`Error checking course users: ${error.message}`);
     }
   };
 
@@ -683,11 +1082,13 @@ const ManageUsers = () => {
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-3">
                 {successData.courseTitle === "Role Update" 
-                  ? <>You have successfully updated <span className="font-semibold text-gray-800">{successData.addedUsers.length} user(s)</span> to instructor role.</>
+                  ? <>You have successfully updated <span className="font-semibold text-gray-800">{successData.addedUsers.length} user(s)</span> to instructor role. They will now appear in the Instructor section.</>
+                  : successData.courseTitle === "User Deleted"
+                  ? <>You have successfully deleted user <span className="font-semibold text-gray-800">{successData.addedUsers[0]?.first_name} {successData.addedUsers[0]?.last_name}</span> from the system.</>
                   : <>You have successfully added <span className="font-semibold text-gray-800">{successData.addedUsers.length} {filterRole}(s)</span> to the course:</>
                 }
               </p>
-              {successData.courseTitle !== "Role Update" && (
+              {successData.courseTitle !== "Role Update" && successData.courseTitle !== "User Deleted" && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                   <p className="text-sm font-medium text-blue-800">{successData.courseTitle}</p>
                 </div>
@@ -695,7 +1096,9 @@ const ManageUsers = () => {
               
               <div className="max-h-48 overflow-y-auto">
                 <p className="text-sm font-medium text-gray-700 mb-2">
-                  {successData.courseTitle === "Role Update" ? "Updated users:" : `Added ${filterRole}s:`}
+                  {successData.courseTitle === "Role Update" ? "Updated users:" : 
+                   successData.courseTitle === "User Deleted" ? "Deleted user:" : 
+                   `Added ${filterRole}s:`}
                 </p>
                 <div className="space-y-2">
                   {successData.addedUsers.map((user) => (
@@ -717,7 +1120,21 @@ const ManageUsers = () => {
               </div>
             </div>
             
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              {successData.courseTitle === "Role Update" && (
+                <button
+                  onClick={async () => {
+                    console.log('🔄 Manual refresh triggered from success modal');
+                    await fetchUsers();
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh Data
+                </button>
+              )}
               <button
                 onClick={() => setShowSuccessModal(false)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -751,6 +1168,9 @@ const ManageUsers = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Last Visited
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -792,6 +1212,19 @@ const ManageUsers = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {getLastVisited(user) || 'Never'}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {getUserRole(user) === 'user' && (
+                      <button
+                        onClick={() => handleDeleteClick(user)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete User"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -812,6 +1245,49 @@ const ManageUsers = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Confirm Deletion</h3>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setUserToDelete(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+              >
+                &times;
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to delete user <span className="font-semibold text-gray-800">{userToDelete.first_name} {userToDelete.last_name}</span>? This action cannot be undone.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setUserToDelete(null);
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                disabled={deletingUser}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deletingUser ? 'Deleting...' : 'Delete User'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { currentUserId } from "@/data/currentUser";
 import { getAllEvents } from "@/services/calendarService";
 import { fetchUserProfile } from "@/services/userService";
 import Cookies from "js-cookie";
@@ -316,50 +317,19 @@ const AddEvent = () => {
 
   const handleDelete = async (index) => {
     const event = events[index];
-    console.log('Deleting event:', event);
-    console.log('Event isRecurring:', event.isRecurring);
-    console.log('Event recurrenceRule:', event.recurrenceRule);
-    console.log('Event recurrence:', event.recurrence);
-    
-    // Check if this is a recurring event
-    if (event.isRecurring || event.recurrenceRule || event.recurrence !== 'none') {
-      console.log('This is a recurring event, fetching occurrences...');
-      
-      try {
-        // Fetch event details to get occurrences
-        const eventDetails = await fetchEventDetails(event.id);
-        console.log('Event details:', eventDetails);
-        
-        if (eventDetails && eventDetails.occurrences && eventDetails.occurrences.length > 0) {
-          console.log('Found occurrences:', eventDetails.occurrences.length);
-          // Fetch deleted occurrences for this recurring event
-          const deletedOccurrences = await fetchDeletedOccurrences(event.id);
-          console.log('Deleted occurrences:', deletedOccurrences);
-          setRecurringDeleteEvent({ 
-            ...event, 
-            ...eventDetails,
-            index, 
-            deletedOccurrences 
-          });
-          setShowRecurringDeleteModal(true);
-          return;
-        } else {
-          console.log('No occurrences found, treating as non-recurring');
-        }
-      } catch (err) {
-        console.error('Error fetching event details:', err);
-        // Fall back to non-recurring deletion
-      }
-    } else {
-      console.log('This is not a recurring event');
+    // For non-recurring events, use DELETE /calendar/events/:eventId
+    if (event.isRecurring && event.occurrences && event.occurrences.length > 0) {
+      // Fetch deleted occurrences for this recurring event
+      const deletedOccurrences = await fetchDeletedOccurrences(event.id);
+      setRecurringDeleteEvent({ ...event, index, deletedOccurrences });
+      setShowRecurringDeleteModal(true);
+      return;
     }
-    
     if (!event.id) {
       // If no id, just remove from local state
     setEvents(events.filter((_, i) => i !== index));
       return;
     }
-    
     // Show confirmation modal for non-recurring event
     setDeleteIndex(index);
     setShowDeleteConfirmModal(true);
@@ -397,15 +367,14 @@ const AddEvent = () => {
     }
   };
 
-  // Delete a single occurrence of a recurring event
+  // Delete a single occurrence of a recurring event (now POST)
   const handleDeleteOccurrence = async (eventId, occurrenceStartTime) => {
     setDeletingOccurrenceKey(occurrenceStartTime);
     try {
       const token = getAuthToken();
       console.log('Deleting occurrence:', { eventId, occurrenceDate: occurrenceStartTime });
-      
-      // DELETE a single occurrence in a recurring event
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception`, {
+      // DELETE a single occurrence in a recurring event (POST)
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -415,28 +384,13 @@ const AddEvent = () => {
         credentials: "include",
         body: JSON.stringify({ occurrenceDate: occurrenceStartTime })
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || `Failed to delete occurrence (${response.status})`);
-      }
-      
-      console.log('Successfully deleted occurrence');
-      
-      // Refresh the recurring event data to show updated occurrences
-      const eventDetails = await fetchEventDetails(eventId);
-      const deletedOccurrences = await fetchDeletedOccurrences(eventId);
-      
-      setRecurringDeleteEvent(prev => ({
-        ...prev,
-        ...eventDetails,
-        deletedOccurrences
-      }));
-      
-      setModalMessage("Event occurrence deleted successfully");
+      // Refetch events after deletion
+      const data = await getAllEvents();
+      setEvents(data);
+      setShowRecurringDeleteModal(false);
+      setModalMessage("Event deleted");
     } catch (err) {
       console.error("Failed to delete occurrence", err);
-      setModalMessage(`Error: ${err.message}`);
     } finally {
       setDeletingOccurrenceKey(null);
     }
@@ -447,10 +401,8 @@ const AddEvent = () => {
     setDeletingAll(true);
     try {
       const token = getAuthToken();
-      console.log('Deleting entire recurring event series:', eventId);
-      
       // DELETE recurring event series
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/recurring/${eventId}`, {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/recurring/${eventId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -459,27 +411,12 @@ const AddEvent = () => {
         },
         credentials: "include"
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || `Failed to delete recurring event (${response.status})`);
-      }
-      
-      console.log('Successfully deleted recurring event series');
-      
       // Refetch events after deletion
       const data = await getAllEvents();
-      // Normalize course_id to courseId for all events
-      const normalizedEvents = data.map(ev => ({
-        ...ev,
-        courseId: ev.courseId || ev.course_id
-      }));
-      setEvents(normalizedEvents);
+      setEvents(data);
       setShowRecurringDeleteModal(false);
-      setModalMessage("Entire event series deleted successfully");
     } catch (err) {
       console.error("Failed to delete all occurrences", err);
-      setModalMessage(`Error: ${err.message}`);
     } finally {
       setDeletingAll(false);
     }
@@ -491,7 +428,6 @@ const AddEvent = () => {
     try {
       const token = getAuthToken();
       console.log('Restoring occurrence:', { eventId, occurrenceDate });
-      
       // RESTORE a single occurrence in a recurring event (GET)
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception/restore?occurrenceDate=${encodeURIComponent(occurrenceDate)}`,
@@ -504,28 +440,13 @@ const AddEvent = () => {
           credentials: "include",
         }
       );
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || `Failed to restore occurrence (${res.status})`);
-      }
-      
-      console.log('Successfully restored occurrence');
-      
-      // Refresh the recurring event data to show updated occurrences
-      const eventDetails = await fetchEventDetails(eventId);
-      const deletedOccurrences = await fetchDeletedOccurrences(eventId);
-      
-      setRecurringDeleteEvent(prev => ({
-        ...prev,
-        ...eventDetails,
-        deletedOccurrences
-      }));
-      
-      setModalMessage("Event occurrence restored successfully");
+      // Refetch events after restore
+      const data = await getAllEvents();
+      setEvents(data);
+      setShowRecurringDeleteModal(false);
+      setModalMessage("Event restored");
     } catch (err) {
       console.error("Failed to restore occurrence", err);
-      setModalMessage(`Error: ${err.message}`);
     } finally {
       setDeletingOccurrenceKey(null);
     }
@@ -607,29 +528,30 @@ const AddEvent = () => {
         }
       : undefined;
 
-    // Create a minimal payload first to test
     const payload = {
       title: form.title,
       description: form.description,
       startTime: toIsoUtc(form.startTime),
       endTime: toIsoUtc(form.endTime),
-      location: form.location || "",
-      isRecurring: false, // Temporarily set to false to test basic creation
+      location: form.location || (form.zoomLink ? form.zoomLink : ""),
+      isRecurring,
       calendarType: "GROUP",
-      visibility: "PRIVATE"
+      visibility: "PRIVATE",
+      courseName: selectedCourse ? selectedCourse.title : "",
+      userRole: currentRole // Include user role in payload
     };
+    // Set timezone to PST for backend compatibility
+    payload.timeZone = "America/Los_Angeles";
     
-    // Only add recurrence rule if it's a recurring event and basic creation works
-    if (isRecurring && recurrenceRule) {
-      payload.isRecurring = true;
+    // Add timezone offset information for clarity
+    payload.timezoneOffset = -480; // PST is UTC-8 (480 minutes)
+    if (isRecurring) {
       payload.recurrenceRule = recurrenceRule;
     }
 
     console.log("Form startTime:", form.startTime);
     console.log("Form endTime:", form.endTime);
-    console.log("Is recurring:", isRecurring);
-    console.log("Recurrence rule:", recurrenceRule);
-    console.log("Final payload being sent:", JSON.stringify(payload, null, 2));
+    console.log("Payload being sent:", payload);
     console.log("User role:", currentRole);
     console.log("JWT token role (if any):", decodedToken?.role || decodedToken?.userRole || "No role in token");
 
@@ -679,11 +601,6 @@ const AddEvent = () => {
       // Send to backend only on add
       try {
         const token = getAuthToken();
-        console.log("Making POST request to:", `${import.meta.env.VITE_API_BASE_URL}/calendar/events`);
-        console.log("Request payload:", payload);
-        console.log("Auth token:", token ? "Present" : "Missing");
-        console.log("User role:", currentRole);
-        
         const postRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           method: "POST",
           headers: {
@@ -694,12 +611,8 @@ const AddEvent = () => {
           body: JSON.stringify(payload),
           credentials: "include"
         });
-        console.log("Response status:", postRes.status);
-        console.log("Response headers:", Object.fromEntries(postRes.headers.entries()));
-        
         const postData = await postRes.json();
         console.log("POST response:", postData);
-        console.log("POST response status:", postRes.status);
         
         // Check if it's a role-related error
         if (postRes.status === 403 && postData.message?.includes('Access restricted to admin, instructor roles')) {
@@ -708,74 +621,19 @@ const AddEvent = () => {
           return;
         }
         
-        // Check if the request was successful
-        if (!postRes.ok) {
-          console.error("Failed to create event:", postData);
-          alert(`Failed to create event: ${postData.message || 'Unknown error'}`);
-          return;
-        }
-        
         // Refetch events after adding
         const data = await getAllEvents();
         console.log("Fetched events after add:", data);
-        
-        // Check if the created event is in the response
-        if (postData.success && postData.data) {
-          console.log("Created event data:", postData.data);
-          // If the created event is not in the fetched data, add it manually
-          const createdEvent = postData.data;
-          const eventExists = data.some(ev => ev.id === createdEvent.id);
-          
-          if (!eventExists) {
-            console.log("Created event not found in fetched data, adding manually");
-            const normalizedCreatedEvent = {
-              ...createdEvent,
-              courseId: createdEvent.courseId || createdEvent.course_id
-            };
-            setEvents(prev => [normalizedCreatedEvent, ...prev]);
-          } else {
           // Normalize course_id to courseId for all events
-            const normalizedEvents = data.map(ev => ({
+        const normalizedEvents = data.map(ev => ({
             ...ev,
             courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
           }));
           setEvents(normalizedEvents);
-          }
-        } else {
-          // Normalize course_id to courseId for all events
-          const normalizedEvents = data.map(ev => ({
-            ...ev,
-            courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
-          }));
-          setEvents(normalizedEvents);
-        }
-        
-        // Show success message
-        if (isRecurring) {
-          setModalMessage("Recurring event created successfully!");
-        } else {
-          setModalMessage("Event created successfully!");
-        }
       } catch (err) {
-        // Enhanced error logging
+        // Optionally handle error
         console.error("Failed to add event to backend", err);
-        console.error("Error details:", {
-          message: err.message,
-          stack: err.stack,
-          name: err.name
-        });
-        
-        // More specific error message
-        let errorMessage = "Failed to create event. ";
-        if (err.message) {
-          errorMessage += err.message;
-        } else if (err.name === 'TypeError' && err.message.includes('fetch')) {
-          errorMessage += "Network error - please check your connection.";
-        } else {
-          errorMessage += "Please try again or contact support if the issue persists.";
-        }
-        
-        alert(errorMessage);
+        alert("Failed to create event. Please try again or contact support if the issue persists.");
       }
     }
     
@@ -890,7 +748,7 @@ const AddEvent = () => {
             {(() => {
               const thisYear = new Date().getFullYear();
               return Array.from({ length: 10 }, (_, i) => thisYear + i).map(y => (
-              <option key={y} value={y}>{y}</option>
+                <option key={y} value={y}>{y}</option>
               ));
             })()}
           </select>
@@ -1429,3 +1287,4 @@ const AddEvent = () => {
 };
 
 export default AddEvent;
+n

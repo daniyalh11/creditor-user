@@ -282,54 +282,68 @@ const CatelogCourses = () => {
     <div className="flex flex-col min-h-screen bg-gray-50">
       <main className="flex-1">
         <div className="container py-8 max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Enhanced Header Section */}
-          <div className="mb-8">
-            <div className="flex flex-col">
-              <div className="flex flex-col">
-                <Link 
-                  to="/dashboard/catalog" 
-                  className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors mb-4"
-                >
-                  <ArrowLeft size={16} className="shrink-0" />
-                  Back to Catalogs
-                </Link>
-                <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-                  {/* Catalog Thumbnail */}
-                  {catalog?.thumbnail && (
-                    <div className="flex-shrink-0">
-                      <img
-                        src={catalog.thumbnail}
-                        alt={catalog.name}
-                        className="w-32 h-32 object-cover rounded-lg shadow-sm border border-gray-200"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
+          {/* Enhanced Catalog Header */}
+          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl shadow-lg border border-blue-100 p-8 mb-8">
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
+              {/* Catalog Thumbnail */}
+              <div className="flex-shrink-0">
+                {catalog?.thumbnail ? (
+                  <div className="relative">
+                    <img
+                      src={catalog.thumbnail}
+                      alt={catalog.name}
+                      className="w-40 h-40 object-cover rounded-2xl shadow-xl border-4 border-white"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                    <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-3 shadow-lg border-2 border-blue-100">
+                      <BookOpen className="h-6 w-6 text-blue-600" />
                     </div>
-                  )}
+                  </div>
+                ) : (
+                  <div className="w-40 h-40 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-xl border-4 border-white flex items-center justify-center">
+                    <BookOpen className="h-16 w-16 text-white" />
+                  </div>
+                )}
+              </div>
                   
-                  {/* Catalog Info */}
-                  <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div>
-                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                          {catalog?.name || "Catalog"}
-                        </h1>
-                        <p className="mt-2 text-gray-600">
-                          {catalog?.description || "Course catalog"}
-                        </p>
-                        <p className="mt-1 text-sm text-gray-500">
-                          {filteredCourses.length === 0 
-                            ? "No courses available in this catalog" 
-                            : `${filteredCourses.length} ${filteredCourses.length === 1 ? 'course' : 'courses'} available`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge key="count" variant="outline" className="px-3 py-1 text-sm">
-                          {filteredCourses.length} {filteredCourses.length === 1 ? 'Course' : 'Courses'}
-                        </Badge>
-                      </div>
+              {/* Catalog Info */}
+              <div className="flex-1 min-w-0">
+                <div className="space-y-4">
+                  {/* Back Button */}
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to="/dashboard/catalog"
+                      className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Back to Catalogs
+                    </Link>
+                  </div>
+                  
+                  {/* Catalog Title */}
+                  <div>
+                    <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-3">
+                      {catalog?.name || "Catalog"}
+                    </h1>
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <span className="flex items-center gap-2 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200">
+                        <BookOpen className="h-4 w-4 text-blue-600" />
+                        {filteredCourses.length} {filteredCourses.length === 1 ? 'Course' : 'Courses'}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-gray-400" />
+                        Last updated {new Date(catalog?.updated_at || Date.now()).toLocaleDateString()}
+                      </span>
                     </div>
+                  </div>
+                  
+                  {/* Catalog Description */}
+                  <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-white/50">
+                    <p className="text-lg text-gray-700 leading-relaxed">
+                      {catalog?.description || "Explore our comprehensive collection of courses designed to help you achieve your learning goals."}
+                    </p>
                   </div>
                 </div>
               </div>

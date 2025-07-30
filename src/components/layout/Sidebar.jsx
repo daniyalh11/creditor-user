@@ -111,7 +111,7 @@ const SidebarItem = ({ icon: Icon, label, href, active, collapsed, dropdownConte
 export function Sidebar({ collapsed, setCollapsed }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { userRole } = useAuth();
+  const { userRole, isInstructorOrAdmin } = useAuth();
 
   const isActive = (path) => {
     if (path === "/dashboard") {
@@ -349,7 +349,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
           </motion.div> */}
 
           {/* Instructor Portal - only for admin or instructor */}
-          {(userRole === "admin" || userRole === "instructor") && (
+          {isInstructorOrAdmin() && (
             <motion.div variants={itemVariants}>
               <SidebarItem
                 icon={GraduationCap}
