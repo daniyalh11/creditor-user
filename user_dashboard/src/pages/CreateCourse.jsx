@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { fetchAllCourses, fetchCourseModules, createModule, updateModule, deleteModule } from "../services/courseService";
+import { fetchAllCourses, fetchCourseModules, createModule, updateModule, deleteModule, deleteCourse } from "../services/courseService";
 import { CreateModuleDialog } from "@/components/courses/CreateModuleDialog";
 
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=1000";
@@ -47,6 +47,8 @@ const CreateCourse = ({ onCourseCreated }) => {
   const [courseUsers, setCourseUsers] = useState([]);
   const [selectedCourseForUsers, setSelectedCourseForUsers] = useState(null);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState(null);
+  const [showDeleteCourseConfirm, setShowDeleteCourseConfirm] = useState(false);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -322,6 +324,27 @@ const CreateCourse = ({ onCourseCreated }) => {
     }
   };
 
+  const handleDeleteCourse = (course) => {
+    setCourseToDelete(course);
+    setShowDeleteCourseConfirm(true);
+  };
+
+  const confirmDeleteCourse = async () => {
+    if (!courseToDelete) return;
+
+    try {
+      await deleteCourse(courseToDelete.id);
+      setCourses(prev => prev.filter(c => c.id !== courseToDelete.id));
+      setShowDeleteCourseConfirm(false);
+      setCourseToDelete(null);
+      setApiResponse({ type: "success", message: "Course deleted successfully" });
+      setTimeout(() => setApiResponse(null), 3000);
+    } catch (err) {
+      console.error('Error deleting course:', err);
+      setApiResponse({ type: "error", message: err.message || "Failed to delete course" });
+    }
+  };
+
   const filteredCourses = courses.filter(course =>
     course.title.toLowerCase().includes(search.toLowerCase()) ||
     (course.description || "").toLowerCase().includes(search.toLowerCase())
@@ -449,6 +472,12 @@ const CreateCourse = ({ onCourseCreated }) => {
                     className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                   >
                     Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCourse(course)}
+                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                  >
+                    Delete
                   </button>
                 </div>
               </div>
@@ -880,6 +909,32 @@ const CreateCourse = ({ onCourseCreated }) => {
                 className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
               >
                 Delete Module
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Course Confirmation Dialog */}
+      {showDeleteCourseConfirm && courseToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md relative">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Delete Course</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete the course "{courseToDelete.title}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteCourseConfirm(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteCourse}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Delete Course
               </button>
             </div>
           </div>

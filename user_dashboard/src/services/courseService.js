@@ -102,3 +102,27 @@ export async function deleteModule(courseId, moduleId, moduleData) {
   const data = await response.json();
   return data.data || data;
 }
+
+export async function deleteCourse(courseId) {
+  console.log('Deleting course:', courseId);
+  
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/${courseId}/delete`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  });
+  
+  console.log('Delete course response status:', response.status);
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    console.error('Error response:', errorData);
+    throw new Error(errorData.message || `Failed to delete course (${response.status})`);
+  }
+  
+  const data = await response.json();
+  console.log('Success response:', data);
+  return data.data || data;
+}
