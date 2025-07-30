@@ -32,20 +32,17 @@ const recordedSessions = [
   },
 ];
 
-// Helper function to convert UTC time to user's timezone
-const convertUTCToUserTimezone = (utcTime, userTimezone) => {
-  if (!utcTime) return null;
-  const date = new Date(utcTime);
+// Helper: convert UTC string to user timezone Date
+const convertUTCToUserTimezone = (dateString, userTimezone) => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
   return new Date(date.toLocaleString("en-US", { timeZone: userTimezone }));
 };
 
-// Helper function to check if a date is today in user's timezone
+// Helper: is today in user's timezone
 const isTodayInUserTimezone = (dateString, userTimezone) => {
   const eventDate = convertUTCToUserTimezone(dateString, userTimezone);
   const now = convertUTCToUserTimezone(new Date().toISOString(), userTimezone);
-  
-  if (!eventDate || !now) return false;
-  
   return (
     eventDate.getFullYear() === now.getFullYear() &&
     eventDate.getMonth() === now.getMonth() &&
@@ -53,7 +50,7 @@ const isTodayInUserTimezone = (dateString, userTimezone) => {
   );
 };
 
-// Helper function to format time in user's timezone
+// Helper: format time in user's timezone
 const formatTimeInUserTimezone = (utcTime, userTimezone) => {
   if (!utcTime) return '';
   const date = new Date(utcTime);
@@ -76,12 +73,23 @@ export function LiveClasses() {
     const fetchLiveClass = async () => {
       setLoading(true);
       try {
-        const today = new Date();
-        const start = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-        const end = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+        // Get today's date in user's timezone
+        const now = new Date();
+        const userTzToday = convertUTCToUserTimezone(now.toISOString(), userTimezone);
+        
+        // Create start and end of day in user's timezone, then convert to UTC for API
+        const startOfDay = new Date(userTzToday);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(userTzToday);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        // Convert to UTC for API call
+        const start = startOfDay.toISOString();
+        const end = endOfDay.toISOString();
+        
+        console.log('Fetching events for date range:', { start, end, userTimezone });
+        
         const params = new URLSearchParams({ startDate: start, endDate: end });
-
-        console.log('Fetching events with params:', { start, end });
 
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events?${params}`, {
           credentials: 'include',
@@ -91,26 +99,17 @@ export function LiveClasses() {
         console.log('API Response:', data);
 
         if (data?.data?.length > 0) {
-          // Filter events for today in user's timezone
+          const nowUserTz = convertUTCToUserTimezone(new Date().toISOString(), userTimezone);
+          // Only show if today in user's timezone AND not ended
           const todayEvents = data.data.filter(event => {
-            if (!event.startTime || !event.endTime) {
-              console.log('Event missing start/end time:', event);
-              return false;
-            }
-
+            if (!event.startTime || !event.endTime) return false;
             const isToday = isTodayInUserTimezone(event.startTime, userTimezone);
-            console.log('Event date check:', {
-              eventTitle: event.title,
-              startTime: event.startTime,
-              isToday,
-              userTimezone
-            });
-
-            return isToday;
+            const eventEnd = convertUTCToUserTimezone(event.endTime, userTimezone);
+            return isToday && eventEnd > nowUserTz;
           });
-
-          console.log('Today events after filtering:', todayEvents);
-
+          
+          console.log('Filtered today events:', todayEvents);
+          
           // Sort events by start time
           todayEvents.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
           setTodayEvents(todayEvents);
@@ -125,48 +124,31 @@ export function LiveClasses() {
         setLoading(false);
       }
     };
-
     fetchLiveClass();
   }, [userTimezone]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      // Update the live status of events and remove ended events every 30 seconds
       setTodayEvents(prevEvents => {
-        const now = new Date(); // Use current UTC time
-        
+        const now = convertUTCToUserTimezone(new Date().toISOString(), userTimezone);
         return prevEvents.filter(event => {
-          const endTime = new Date(event.endTime);
-          const isEnded = now > endTime;
-          
-          // Remove ended events
-          if (isEnded) {
-            console.log('Removing ended event:', event.title);
-            return false;
-          }
-          
-          return true;
+          const endTime = convertUTCToUserTimezone(event.endTime, userTimezone);
+          return now <= endTime; // Remove ended events
         }).map(event => {
-          const startTime = new Date(event.startTime);
-          const endTime = new Date(event.endTime);
+          const startTime = convertUTCToUserTimezone(event.startTime, userTimezone);
+          const endTime = convertUTCToUserTimezone(event.endTime, userTimezone);
           const isLive = now >= startTime && now <= endTime;
-          
-          return {
-            ...event,
-            isLive
-          };
+          return { ...event, isLive };
         });
       });
-    }, 30 * 1000); // refresh every 30s
-
+    }, 30 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [userTimezone]);
 
   const getEventStatus = (event) => {
-    const now = new Date(); // Use current UTC time
-    const start = new Date(event.startTime);
-    const end = new Date(event.endTime);
-    
+    const now = convertUTCToUserTimezone(new Date().toISOString(), userTimezone);
+    const start = convertUTCToUserTimezone(event.startTime, userTimezone);
+    const end = convertUTCToUserTimezone(event.endTime, userTimezone);
     if (now >= start && now <= end) {
       return { status: 'live', text: 'LIVE NOW', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-200' };
     } else if (now < start) {
@@ -188,18 +170,11 @@ export function LiveClasses() {
   };
 
   const liveEventsCount = todayEvents.filter(event => {
-    const now = new Date();
-    const start = new Date(event.startTime);
-    const end = new Date(event.endTime);
+    const now = convertUTCToUserTimezone(new Date().toISOString(), userTimezone);
+    const start = convertUTCToUserTimezone(event.startTime, userTimezone);
+    const end = convertUTCToUserTimezone(event.endTime, userTimezone);
     return now >= start && now <= end;
   }).length;
-
-  console.log('Render state:', {
-    loading,
-    todayEventsCount: todayEvents.length,
-    liveEventsCount,
-    userTimezone
-  });
 
   return (
     <div className="space-y-6">
@@ -241,7 +216,6 @@ export function LiveClasses() {
                 const eventStatus = getEventStatus(event);
                 const isLive = eventStatus.status === 'live';
                 const isUpcoming = eventStatus.status === 'upcoming';
-                
                 return (
                   <div
                     key={event.id || index}
@@ -264,7 +238,6 @@ export function LiveClasses() {
                             {eventStatus.text}
                           </span>
                         </div>
-                        
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
@@ -279,14 +252,12 @@ export function LiveClasses() {
                             </div>
                           )}
                         </div>
-                        
                         {event.description && (
                           <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
                             {event.description}
                           </p>
                         )}
                       </div>
-                      
                       <div className="flex flex-col gap-2">
                         <Button
                           onClick={() => handleJoinClass(event)}
@@ -302,10 +273,9 @@ export function LiveClasses() {
                           {isLive ? 'Join Now' : 'Class Not Started'}
                           {isLive && <ExternalLink className="w-3 h-3 ml-1" />}
                         </Button>
-                        
                         {isUpcoming && (
                           <div className="text-xs text-blue-600 text-center">
-                            Starts in {Math.max(0, Math.floor((new Date(event.startTime).getTime() - new Date().getTime()) / (1000 * 60)))}m
+                            Starts in {Math.max(0, Math.floor((convertUTCToUserTimezone(event.startTime, userTimezone).getTime() - convertUTCToUserTimezone(new Date().toISOString(), userTimezone).getTime()) / (1000 * 60)))}m
                           </div>
                         )}
                       </div>
@@ -317,7 +287,6 @@ export function LiveClasses() {
           )}
         </CardContent>
       </Card>
-
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -369,7 +338,6 @@ export function LiveClasses() {
           </div>
         </CardContent>
       </Card>
-
       <AttendanceViewerModal
         isOpen={isAttendanceModalOpen}
         onClose={() => setIsAttendanceModalOpen(false)}
