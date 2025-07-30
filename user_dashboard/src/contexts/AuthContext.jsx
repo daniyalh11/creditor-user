@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getUserRole, setUserRole as setUserRoleUtil, clearUserData } from '@/services/userService';
+import { getUserRole, getUserRoles, setUserRole as setUserRoleUtil, setUserRoles as setUserRolesUtil, clearUserData, isInstructorOrAdmin as checkInstructorOrAdmin } from '@/services/userService';
 
 const AuthContext = createContext();
 
@@ -13,18 +13,23 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [userRole, setUserRoleState] = useState('user');
+  const [userRoles, setUserRolesState] = useState(['user']);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize user role on mount
+    // Initialize user roles on mount
     const role = getUserRole();
+    const roles = getUserRoles();
     setUserRoleState(role);
+    setUserRolesState(roles);
     setIsLoading(false);
 
     // Listen for role changes
     const handleRoleChange = () => {
       const newRole = getUserRole();
+      const newRoles = getUserRoles();
       setUserRoleState(newRole);
+      setUserRolesState(newRoles);
     };
 
     window.addEventListener('userRoleChanged', handleRoleChange);
@@ -39,20 +44,37 @@ export const AuthProvider = ({ children }) => {
     setUserRoleState(role);
   };
 
+  const setUserRoles = (roles) => {
+    setUserRolesUtil(roles);
+    setUserRolesState(roles);
+    // Update primary role as well
+    if (Array.isArray(roles) && roles.length > 0) {
+      setUserRoleState(roles[0]);
+    }
+  };
+
   const logout = () => {
     clearUserData();
     setUserRoleState('user');
+    setUserRolesState(['user']);
   };
 
   const isInstructorOrAdmin = () => {
-    return userRole === 'instructor' || userRole === 'admin';
+    return checkInstructorOrAdmin();
+  };
+
+  const hasRole = (roleToCheck) => {
+    return userRoles.includes(roleToCheck);
   };
 
   const value = {
     userRole,
+    userRoles,
     setUserRole,
+    setUserRoles,
     logout,
     isInstructorOrAdmin,
+    hasRole,
     isLoading
   };
 

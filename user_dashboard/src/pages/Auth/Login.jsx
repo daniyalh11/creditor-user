@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Gavel } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
-import { fetchUserProfile, setUserRole } from "@/services/userService";
+import { fetchUserProfile, setUserRole, setUserRoles } from "@/services/userService";
 import { Eye, EyeOff } from "lucide-react";
 
 export function Login() {
@@ -45,17 +45,23 @@ export function Login() {
         // Set default role first
         setUserRole('user');
         
-        // Fetch user profile and set userRole in localStorage
+        // Fetch user profile and set all user roles in localStorage
         try {
           const profile = await fetchUserProfile();
           console.log('Fetched user profile after login:', profile);
           if (profile && Array.isArray(profile.user_roles) && profile.user_roles.length > 0) {
-            setUserRole(profile.user_roles[0].role);
-            console.log('Set user role to:', profile.user_roles[0].role);
+            // Extract all role names from the user_roles array
+            const roles = profile.user_roles.map(roleObj => roleObj.role);
+            setUserRoles(roles);
+            console.log('Set user roles to:', roles);
+          } else {
+            // If no roles found, set default user role
+            setUserRoles(['user']);
           }
         } catch (profileErr) {
           console.warn("Could not fetch user profile:", profileErr);
           // Keep default 'user' role
+          setUserRoles(['user']);
         }
         
         toast.success("Login successful!");

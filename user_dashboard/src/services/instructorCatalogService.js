@@ -4,7 +4,6 @@ import Cookies from 'js-cookie';
 // Helper function to get auth headers
 const getAuthHeaders = () => {
   const token = Cookies.get('token');
-  console.log('Token from cookies:', token ? 'Present' : 'Missing');
   
   // Try both Authorization header and cookie-based auth
   const headers = {
@@ -46,12 +45,10 @@ export async function fetchAllCatalogs() {
 
     if (response.ok) {
       const data = await response.json();
-      console.log('Catalogs API response:', data);
       // Handle the nested structure: data.data.catalogs or data.data
       catalogs = data.data?.catalogs || data.data || [];
     } else {
       // If that fails, try the course endpoint as fallback
-      console.log('Catalog endpoint failed, trying course endpoint as fallback...');
       const courseResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/getAllCourses`, {
         method: 'GET',
         headers: getAuthHeaders(),
@@ -105,7 +102,6 @@ export async function fetchAllCatalogs() {
     // Final cleanup to remove any remaining duplicates
     catalogs = cleanupDuplicateCatalogs(catalogs);
 
-    console.log('Final catalogs array:', catalogs);
     return catalogs;
   } catch (error) {
     console.error('Error fetching catalogs:', error);
@@ -118,43 +114,113 @@ export async function fetchAllCatalogs() {
 // Create a new catalog
 export async function createCatalog(catalogData) {
   try {
-    console.log('Creating catalog with data:', catalogData);
-    console.log('API URL:', `${import.meta.env.VITE_API_BASE_URL}/api/catalog/createcatalog`);
+    // Validate input data
+    if (!catalogData || typeof catalogData !== 'object') {
+      throw new Error('Invalid catalog data provided');
+    }
+    
+    if (!catalogData.name || !catalogData.description) {
+      throw new Error('Name and description are required');
+    }
+    
+    // Sanitize the data before sending
+    const sanitizedData = {
+      name: catalogData.name.trim(),
+      description: catalogData.description.trim(),
+      ...(catalogData.thumbnail && { thumbnail: catalogData.thumbnail.trim() }),
+      ...(catalogData.courses && Array.isArray(catalogData.courses) && catalogData.courses.length > 0 && { courses: catalogData.courses })
+    };
+    
+    // Additional validation for data length and content
+    if (sanitizedData.name.length < 1 || sanitizedData.name.length > 255) {
+      throw new Error('Catalog name must be between 1 and 255 characters');
+    }
+    if (sanitizedData.description.length < 1 || sanitizedData.description.length > 1000) {
+      throw new Error('Catalog description must be between 1 and 1000 characters');
+    }
+    if (sanitizedData.thumbnail && sanitizedData.thumbnail.length > 500) {
+      throw new Error('Thumbnail URL is too long');
+    }
+    if (sanitizedData.courses && (!Array.isArray(sanitizedData.courses) || sanitizedData.courses.some(courseId => typeof courseId !== 'string'))) {
+      throw new Error('Courses must be an array of valid course IDs');
+    }
     
     const headers = getAuthHeaders();
-    console.log('Request headers:', headers);
     
     // Log the exact request body being sent
-    const requestBody = JSON.stringify(catalogData);
-    console.log('Request body:', requestBody);
+    const requestBody = JSON.stringify(sanitizedData);
     
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/createcatalog`, {
-      method: 'POST',
-      headers: headers,
-      credentials: 'include',
-      body: requestBody,
-    });
-
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+    // Retry mechanism for transient errors
+    let response;
+    let lastError;
+    const maxRetries = 2;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/createcatalog`, {
+          method: 'POST',
+          headers: headers,
+          credentials: 'include',
+          body: requestBody,
+        });
+        
+        // If successful, break out of retry loop
+        if (response.ok) {
+          break;
+        }
+        
+        // If it's a 500 error and not the last attempt, retry
+        if (response.status === 500 && attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        
+        // For other errors or last attempt, break
+        break;
+        
+      } catch (fetchError) {
+        lastError = fetchError;
+        
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    }
+    
+    // If all retries failed with fetch errors
+    if (!response && lastError) {
+      throw lastError;
+    }
 
     if (response.ok) {
       const data = await response.json();
-      console.log('Success response:', data);
       return data;
     }
 
-    // If the catalog endpoint fails, create a local catalog structure
+    // Enhanced error handling with detailed logging
+    let errorData = {};
+    let responseText = '';
+    try {
+      responseText = await response.text();
+      if (responseText) {
+        errorData = JSON.parse(responseText);
+      } else {
+        errorData = { message: `Server error: ${response.status} ${response.statusText}` };
+      }
+    } catch (parseError) {
+      errorData = { message: `Server error: ${response.status} ${response.statusText}` };
+    }
+
+    // If the catalog endpoint fails with specific statuses, create a local catalog structure
     if (response.status === 403 || response.status === 404 || response.status === 500) {
-      console.log(`Catalog endpoint failed with status ${response.status}, creating local catalog structure...`);
       
       // Create a local catalog object
       const localCatalog = {
         id: `local-${Date.now()}`,
-        name: catalogData.name,
-        description: catalogData.description,
-        thumbnail: catalogData.thumbnail, // Include thumbnail
-        courses: [],
+        name: sanitizedData.name,
+        description: sanitizedData.description,
+        thumbnail: sanitizedData.thumbnail,
+        courses: sanitizedData.courses || [],
         createdAt: new Date().toISOString(),
         isLocal: true // Flag to indicate this is a local catalog
       };
@@ -167,18 +233,9 @@ export async function createCatalog(catalogData) {
       return {
         success: true,
         message: `Catalog created locally (backend returned ${response.status} error)`,
+        warning: `Backend error: ${errorData.message || errorData.errorMessage || 'Unknown server error'}`,
         data: localCatalog
       };
-    }
-
-    // For 500 errors, try to get more detailed error info
-    let errorData = {};
-    try {
-      errorData = await response.json();
-      console.error('Error response data:', errorData);
-    } catch (parseError) {
-      console.error('Could not parse error response:', parseError);
-      errorData = { message: 'Unknown server error' };
     }
     
     throw new Error(errorData.message || errorData.errorMessage || `HTTP error! status: ${response.status}`);
@@ -193,6 +250,24 @@ export async function updateCatalog(catalogId, catalogData) {
   try {
     console.log('updateCatalog called with:', catalogId, catalogData);
     
+    // Validate catalogData
+    if (!catalogData || typeof catalogData !== 'object') {
+      throw new Error('Invalid catalog data provided');
+    }
+    
+    if (!catalogData.name || !catalogData.description) {
+      throw new Error('Name and description are required');
+    }
+    
+    // Sanitize the data before sending
+    const sanitizedData = {
+      name: catalogData.name.trim(),
+      description: catalogData.description.trim(),
+      ...(catalogData.thumbnail && { thumbnail: catalogData.thumbnail.trim() })
+    };
+    
+    console.log('Sanitized catalog data:', sanitizedData);
+    
     // Check if it's a local catalog
     if (catalogId.startsWith('local-')) {
       const localCatalogs = JSON.parse(localStorage.getItem('localCatalogs') || '[]');
@@ -200,12 +275,11 @@ export async function updateCatalog(catalogId, catalogData) {
       if (catalogIndex !== -1) {
         localCatalogs[catalogIndex] = {
           ...localCatalogs[catalogIndex],
-          ...catalogData,
-          thumbnail: catalogData.thumbnail, // Always update thumbnail
+          ...sanitizedData,
+          thumbnail: sanitizedData.thumbnail, // Always update thumbnail
           updatedAt: new Date().toISOString()
         };
         localStorage.setItem('localCatalogs', JSON.stringify(localCatalogs));
-        console.log('Local catalog after update:', localCatalogs[catalogIndex]);
         return {
           success: true,
           message: 'Local catalog updated successfully',
@@ -215,21 +289,23 @@ export async function updateCatalog(catalogId, catalogData) {
     }
 
     // Try backend update
-    console.log('Sending PUT to backend with:', catalogData);
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/${catalogId}/updatecatalog`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       credentials: 'include',
-      body: JSON.stringify(catalogData),
+      body: JSON.stringify(sanitizedData),
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Backend update failed:', errorData);
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch (parseError) {
+        errorData = { message: `Server error: ${response.status} ${response.statusText}` };
+      }
       
       // Handle permission errors gracefully
       if (response.status === 403) {
-        console.log('Permission denied, updating locally instead');
         // Update locally as fallback - but don't create duplicates
         const localCatalogs = JSON.parse(localStorage.getItem('localCatalogs') || '[]');
         const catalogIndex = localCatalogs.findIndex(cat => cat.id === catalogId);
@@ -238,15 +314,15 @@ export async function updateCatalog(catalogId, catalogData) {
           // Update existing local catalog
           localCatalogs[catalogIndex] = {
             ...localCatalogs[catalogIndex],
-            ...catalogData,
-            thumbnail: catalogData.thumbnail,
+            ...sanitizedData,
+            thumbnail: sanitizedData.thumbnail,
             updatedAt: new Date().toISOString()
           };
         } else {
           // Only create new local catalog entry if it doesn't exist
           // Check if this might be a backend catalog that we're converting to local
           const existingCatalog = localCatalogs.find(cat => 
-            cat.name === catalogData.name || 
+            cat.name === sanitizedData.name || 
             cat.id === catalogId ||
             cat.originalId === catalogId
           );
@@ -255,8 +331,8 @@ export async function updateCatalog(catalogId, catalogData) {
             localCatalogs.push({
               id: `local-${catalogId}`,
               originalId: catalogId, // Keep reference to original ID
-              ...catalogData,
-              thumbnail: catalogData.thumbnail,
+              ...sanitizedData,
+              thumbnail: sanitizedData.thumbnail,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
               isLocal: true
@@ -266,8 +342,8 @@ export async function updateCatalog(catalogId, catalogData) {
             const existingIndex = localCatalogs.findIndex(cat => cat.id === existingCatalog.id);
             localCatalogs[existingIndex] = {
               ...localCatalogs[existingIndex],
-              ...catalogData,
-              thumbnail: catalogData.thumbnail,
+              ...sanitizedData,
+              thumbnail: sanitizedData.thumbnail,
               updatedAt: new Date().toISOString()
             };
           }
@@ -283,14 +359,75 @@ export async function updateCatalog(catalogId, catalogData) {
         };
       }
       
+      // For 500 errors, provide more detailed error information
+      if (response.status === 500) {
+        console.error('Server error details:', errorData);
+        
+        // Fallback to local storage for 500 errors
+        console.log('Server error, updating locally instead');
+        const localCatalogs = JSON.parse(localStorage.getItem('localCatalogs') || '[]');
+        const catalogIndex = localCatalogs.findIndex(cat => cat.id === catalogId);
+        
+        if (catalogIndex !== -1) {
+          // Update existing local catalog
+          localCatalogs[catalogIndex] = {
+            ...localCatalogs[catalogIndex],
+            ...sanitizedData,
+            thumbnail: sanitizedData.thumbnail,
+            updatedAt: new Date().toISOString()
+          };
+        } else {
+          // Create new local catalog entry
+          const existingCatalog = localCatalogs.find(cat => 
+            cat.name === sanitizedData.name || 
+            cat.id === catalogId ||
+            cat.originalId === catalogId
+          );
+          
+          if (!existingCatalog) {
+            localCatalogs.push({
+              id: `local-${catalogId}`,
+              originalId: catalogId,
+              ...sanitizedData,
+              thumbnail: sanitizedData.thumbnail,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              isLocal: true
+            });
+          } else {
+            // Update the existing catalog
+            const existingIndex = localCatalogs.findIndex(cat => cat.id === existingCatalog.id);
+            localCatalogs[existingIndex] = {
+              ...localCatalogs[existingIndex],
+              ...sanitizedData,
+              thumbnail: sanitizedData.thumbnail,
+              updatedAt: new Date().toISOString()
+            };
+          }
+        }
+        
+        localStorage.setItem('localCatalogs', JSON.stringify(localCatalogs));
+        
+        return {
+          success: true,
+          message: 'Catalog updated locally (server error prevented backend update)',
+          data: localCatalogs.find(cat => cat.id === catalogId || cat.originalId === catalogId),
+          warning: 'Changes saved locally due to server issues'
+        };
+      }
+      
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
-    console.log('Backend update response:', data);
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      throw new Error('Invalid response from server');
+    }
+    
     return data;
   } catch (error) {
-    console.error('Error updating catalog:', error);
     throw error;
   }
 }
@@ -322,8 +459,6 @@ export async function deleteCatalog(catalogId) {
       
       // Handle permission errors gracefully
       if (response.status === 403) {
-        console.log('Permission denied for deletion, removing from local storage instead');
-        
         // Remove from local storage if it exists there
         const localCatalogs = JSON.parse(localStorage.getItem('localCatalogs') || '[]');
         const updatedLocalCatalogs = localCatalogs.filter(cat => 
@@ -345,7 +480,6 @@ export async function deleteCatalog(catalogId) {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error deleting catalog:', error);
     throw error;
   }
 }
@@ -388,8 +522,6 @@ export async function addCoursesToCatalog(catalogId, courseIds) {
 
     // If backend fails, handle locally
     if (response.status === 403 || response.status === 404 || response.status === 500) {
-      console.log(`Add courses endpoint failed with status ${response.status}, handling locally...`);
-      
       // For local catalogs, we already handled above
       // For backend catalogs, we'll just return success to avoid breaking the flow
       return {
@@ -401,7 +533,6 @@ export async function addCoursesToCatalog(catalogId, courseIds) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
   } catch (error) {
-    console.error('Error adding courses to catalog:', error);
     // Don't throw error, just return a success message to avoid breaking the flow
     return {
       success: true,
@@ -447,7 +578,6 @@ export async function removeCoursesFromCatalog(catalogId, courseIds) {
 
     // If backend fails, handle locally
     if (response.status === 403 || response.status === 404 || response.status === 500) {
-      console.log(`Remove courses endpoint failed with status ${response.status}, handling locally...`);
       return {
         success: true,
         message: `Courses removed locally (backend returned ${response.status} error)`
@@ -457,7 +587,6 @@ export async function removeCoursesFromCatalog(catalogId, courseIds) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
   } catch (error) {
-    console.error('Error removing courses from catalog:', error);
     return {
       success: true,
       message: 'Courses removed locally (backend error handled)'
@@ -478,8 +607,6 @@ export async function removeCourseFromCatalog(catalogId, courseId) {
 // Get courses for a specific catalog
 export async function getCatalogCourses(catalogId) {
   try {
-    console.log('Fetching courses for catalog:', catalogId);
-    
     // First, try to get catalog courses with full course details
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/${catalogId}/courses`, {
       method: 'GET',
@@ -489,7 +616,6 @@ export async function getCatalogCourses(catalogId) {
 
     if (!response.ok) {
       if (response.status === 404) {
-        console.log('No courses found for catalog:', catalogId);
         return []; // Return empty array for 404 (no courses)
       }
       const errorData = await response.json().catch(() => ({}));
@@ -497,7 +623,6 @@ export async function getCatalogCourses(catalogId) {
     }
 
     const data = await response.json();
-    console.log('Catalog courses API response:', data);
     
     // Handle different possible data structures
     let courses = [];
@@ -509,13 +634,9 @@ export async function getCatalogCourses(catalogId) {
       courses = data.courses;
     }
     
-    console.log('Extracted courses:', courses);
-    
     // Check if courses have full details or just IDs
     if (courses.length > 0 && courses[0]) {
       const firstCourse = courses[0];
-      console.log('🔍 First course structure:', firstCourse);
-      console.log('🔍 Available fields in first course:', Object.keys(firstCourse));
       
       // Check if we have minimal course data (only id and title)
       const hasMinimalData = firstCourse.id && firstCourse.title && 
@@ -525,8 +646,6 @@ export async function getCatalogCourses(catalogId) {
       const hasJunctionData = firstCourse.course_id || (firstCourse.course && firstCourse.course.id);
       
       if (hasMinimalData || hasJunctionData) {
-        console.log('🚨 Detected minimal course data or junction table entries, fetching full course details...');
-        
         // Extract course IDs
         const courseIds = courses.map(item => {
           if (item.course_id) return item.course_id;
@@ -535,86 +654,39 @@ export async function getCatalogCourses(catalogId) {
           return null;
         }).filter(id => id !== null);
         
-        console.log('📋 Course IDs to fetch:', courseIds);
-        
-        // Fetch full course details for each course
-        const fullCourses = await Promise.all(
-          courseIds.map(async (courseId) => {
-            console.log(`🔄 Fetching full details for course: ${courseId}`);
+        // Instead of making individual API calls, fetch all courses once and filter
+        try {
+          const allCoursesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/getAllCourses`, {
+            method: 'GET',
+            headers: getAuthHeaders(),
+            credentials: 'include',
+          });
+          
+          if (allCoursesResponse.ok) {
+            const allCoursesData = await allCoursesResponse.json();
+            const allCourses = allCoursesData.data || [];
             
-            try {
-              // First try individual course endpoint
-              const courseResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/${courseId}`, {
-                method: 'GET',
-                headers: getAuthHeaders(),
-                credentials: 'include',
-              });
-              
-              console.log(`📡 Individual course API response for ${courseId}:`, courseResponse.status);
-              
-              if (courseResponse.ok) {
-                const courseData = await courseResponse.json();
-                console.log(`✅ Individual course data for ${courseId}:`, courseData);
-                const fullCourse = courseData.data || courseData;
-                console.log(`📊 Full course object for ${courseId}:`, fullCourse);
-                return fullCourse;
+            // Find matching courses
+            const fullCourses = courseIds.map(courseId => {
+              const foundCourse = allCourses.find(c => c.id === courseId);
+              if (foundCourse) {
+                return foundCourse;
               } else {
-                console.warn(`❌ Failed to fetch course ${courseId} from individual endpoint:`, courseResponse.status);
-                
-                // Fallback: try to get from all courses and filter
-                console.log(`🔄 Trying fallback for course ${courseId}...`);
-                try {
-                  const allCoursesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/getAllCourses`, {
-                    method: 'GET',
-                    headers: getAuthHeaders(),
-                    credentials: 'include',
-                  });
-                  
-                  console.log(`📡 All courses API response:`, allCoursesResponse.status);
-                  
-                  if (allCoursesResponse.ok) {
-                    const allCoursesData = await allCoursesResponse.json();
-                    console.log(`📊 All courses data:`, allCoursesData);
-                    const allCourses = allCoursesData.data || [];
-                    console.log(`📋 Total courses available:`, allCourses.length);
-                    
-                    const foundCourse = allCourses.find(c => c.id === courseId);
-                    if (foundCourse) {
-                      console.log(`✅ Found course ${courseId} in all courses list:`, foundCourse);
-                      return foundCourse;
-                    } else {
-                      console.warn(`❌ Course ${courseId} not found in all courses list`);
-                      console.log(`🔍 Available course IDs:`, allCourses.map(c => c.id));
-                    }
-                  } else {
-                    console.error(`❌ All courses API failed:`, allCoursesResponse.status);
-                  }
-                } catch (fallbackError) {
-                  console.error(`❌ Fallback failed for course ${courseId}:`, fallbackError);
-                }
-                
                 return null;
               }
-            } catch (error) {
-              console.error(`❌ Error fetching course ${courseId}:`, error);
-              return null;
+            }).filter(course => course !== null);
+            
+            if (fullCourses.length === 0) {
+              return courses;
             }
-          })
-        );
-        
-        // Filter out null results and return full course details
-        const validCourses = fullCourses.filter(course => course !== null);
-        console.log('✅ Final valid courses with full details:', validCourses);
-        console.log('📊 Number of valid courses:', validCourses.length);
-        
-        if (validCourses.length === 0) {
-          console.warn('⚠️ No valid courses found, returning original minimal data');
-          return courses;
+            
+            return fullCourses;
+          } else {
+            return courses; // Return original data if fallback fails
+          }
+        } catch (fallbackError) {
+          return courses; // Return original data if fallback fails
         }
-        
-        return validCourses;
-      } else {
-        console.log('✅ Courses already have full details, no need to fetch additional data');
       }
     }
     
@@ -629,14 +701,11 @@ export async function getCatalogCourses(catalogId) {
 // Get all available courses for selection
 export async function fetchAvailableCourses() {
   try {
-    console.log('🔄 Fetching all available courses...');
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/getAllCourses`, {
       method: 'GET',
       headers: getAuthHeaders(),
       credentials: 'include',
     });
-
-    console.log('📡 All courses API response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -644,18 +713,10 @@ export async function fetchAvailableCourses() {
     }
 
     const data = await response.json();
-    console.log('📊 All courses data:', data);
     const courses = data.data || [];
-    console.log('📋 Number of available courses:', courses.length);
-    
-    if (courses.length > 0) {
-      console.log('🔍 Sample course structure:', courses[0]);
-      console.log('🔍 Sample course fields:', Object.keys(courses[0]));
-    }
     
     return courses;
   } catch (error) {
-    console.error('❌ Error fetching available courses:', error);
     throw error;
   }
 }
@@ -663,33 +724,23 @@ export async function fetchAvailableCourses() {
 // Test function to check individual course API
 export async function testIndividualCourseAPI(courseId) {
   try {
-    console.log(`🧪 Testing individual course API for course: ${courseId}`);
-    
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/${courseId}`, {
       method: 'GET',
       headers: getAuthHeaders(),
       credentials: 'include',
     });
 
-    console.log(`📡 Individual course API response status:`, response.status);
-    console.log(`📡 Individual course API response headers:`, Object.fromEntries(response.headers.entries()));
-
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Individual course API failed:`, errorText);
       return null;
     }
 
     const data = await response.json();
-    console.log(`✅ Individual course API data:`, data);
-    
     const course = data.data || data;
-    console.log(`📊 Individual course object:`, course);
-    console.log(`🔍 Individual course fields:`, Object.keys(course));
     
     return course;
   } catch (error) {
-    console.error(`❌ Error testing individual course API:`, error);
     return null;
   }
 }
+
+

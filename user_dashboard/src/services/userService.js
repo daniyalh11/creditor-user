@@ -1,26 +1,53 @@
 // Service for user profile API calls
 
-// Utility function to get user role
+// Utility function to get user role (for backward compatibility)
 export function getUserRole() {
   return localStorage.getItem('userRole') || 'user';
 }
 
-// Utility function to set user role
+// Utility function to get all user roles
+export function getUserRoles() {
+  const roles = localStorage.getItem('userRoles');
+  return roles ? JSON.parse(roles) : ['user'];
+}
+
+// Utility function to set user role (for backward compatibility)
 export function setUserRole(role) {
   localStorage.setItem('userRole', role);
   // Dispatch custom event to notify other components
   window.dispatchEvent(new Event('userRoleChanged'));
 }
 
+// Utility function to set all user roles
+export function setUserRoles(roles) {
+  if (Array.isArray(roles) && roles.length > 0) {
+    localStorage.setItem('userRoles', JSON.stringify(roles));
+    // Set the first role as the primary role for backward compatibility
+    localStorage.setItem('userRole', roles[0]);
+  } else {
+    localStorage.setItem('userRoles', JSON.stringify(['user']));
+    localStorage.setItem('userRole', 'user');
+  }
+  // Dispatch custom event to notify other components
+  window.dispatchEvent(new Event('userRoleChanged'));
+}
+
 // Utility function to check if user is instructor or admin
 export function isInstructorOrAdmin() {
-  const role = getUserRole();
-  return role === 'instructor' || role === 'admin';
+  const roles = getUserRoles();
+  return roles.some(role => role === 'instructor' || role === 'admin');
+}
+
+// Utility function to check if user has a specific role
+export function hasRole(roleToCheck) {
+  const roles = getUserRoles();
+  return roles.includes(roleToCheck);
 }
 
 // Utility function to clear user data on logout
 export function clearUserData() {
   localStorage.removeItem('userRole');
+  localStorage.removeItem('userRoles');
   // Dispatch custom event to notify other components
   window.dispatchEvent(new Event('userRoleChanged'));
 }
