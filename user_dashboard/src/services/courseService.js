@@ -30,6 +30,61 @@ export async function fetchUserCourses() {
   return data.data;
 }
 
+export async function createCourse(courseData) {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/createCourse`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(courseData),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    throw new Error(errorData.message || `Failed to create course (${response.status})`);
+  }
+  
+  const data = await response.json();
+  return data;
+}
+
+export async function updateCourse(courseId, courseData) {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/editCourse/${courseId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(courseData),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    throw new Error(errorData.message || `Failed to update course (${response.status})`);
+  }
+  
+  const data = await response.json();
+  return data;
+}
+
+export async function fetchCourseUsers(courseId) {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/${courseId}/getAllUsersByCourseId`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch course users');
+  }
+  
+  const data = await response.json();
+  return data.data || [];
+}
+
 export async function fetchCourseModules(courseId) {
   const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/${courseId}/modules/getAllModules`, {
     method: 'GET',
@@ -103,4 +158,47 @@ export async function deleteModule(courseId, moduleId, moduleData) {
   }
   const data = await response.json();
   return data.data || data;
+}
+
+export async function deleteCourse(courseId) {
+  console.log('Deleting course:', courseId);
+  
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/${courseId}/delete`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  });
+  
+  console.log('Delete course response status:', response.status);
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    console.error('Error response:', errorData);
+    throw new Error(errorData.message || `Failed to delete course (${response.status})`);
+  }
+  
+  const data = await response.json();
+  console.log('Success response:', data);
+  return data.data || data;
+}
+
+export async function unenrollUser(courseId, userId) {
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/courses/${courseId}/unenrollUser`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ userId }),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    throw new Error(errorData.message || `Failed to unenroll user (${response.status})`);
+  }
+  
+  const data = await response.json();
+  return data;
 }
