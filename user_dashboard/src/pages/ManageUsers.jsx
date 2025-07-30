@@ -8,6 +8,7 @@ const ManageUsers = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("user");
+  const [apiCallTime, setApiCallTime] = useState(null);
   
   // Clear selected users when filter role changes
   useEffect(() => {
@@ -28,10 +29,26 @@ const ManageUsers = () => {
     fetchCourses();
   }, []);
 
+  // Update time differences every minute to keep them current
+  useEffect(() => {
+    if (!apiCallTime) return;
+
+    const interval = setInterval(() => {
+      // Force a re-render by updating a state that triggers recalculation
+      setUsers(prevUsers => [...prevUsers]);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [apiCallTime]);
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError("");
+      
+      // Record the API call time
+      const currentTime = new Date();
+      setApiCallTime(currentTime);
       
       // Enhanced token retrieval with debugging
       let token = localStorage.getItem('token');
@@ -153,6 +170,41 @@ const ManageUsers = () => {
     return 'user'; // default role when no role is assigned in backend
   };
 
+  // Helper function to calculate time difference and format it
+  const calculateTimeDifference = (lastLoginTime) => {
+    if (!apiCallTime || !lastLoginTime) {
+      return null;
+    }
+
+    const lastLogin = new Date(lastLoginTime);
+    const timeDifference = apiCallTime.getTime() - lastLogin.getTime();
+    
+    // Convert milliseconds to different time units
+    const seconds = Math.floor(timeDifference / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const months = Math.floor(days / 30);
+    const years = Math.floor(days / 365);
+
+    // Format the time difference
+    if (years > 0) {
+      return `${years} year${years > 1 ? 's' : ''} ago`;
+    } else if (months > 0) {
+      return `${months} month${months > 1 ? 's' : ''} ago`;
+    } else if (days > 0) {
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    } else if (hours > 0) {
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    } else if (minutes > 0) {
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    } else if (seconds > 0) {
+      return `${seconds} second${seconds > 1 ? 's' : ''} ago`;
+    } else {
+      return 'Just now';
+    }
+  };
+
   // Helper function to get last visited from activity_log
   const getLastVisited = (user) => {
     if (user.activity_log && user.activity_log.length > 0) {
@@ -160,7 +212,10 @@ const ManageUsers = () => {
       const sortedLogs = user.activity_log.sort((a, b) => 
         new Date(b.createdAt) - new Date(a.createdAt)
       );
-      return sortedLogs[0].createdAt;
+      const lastLoginTime = sortedLogs[0].createdAt;
+      
+      // Calculate and return the time difference
+      return calculateTimeDifference(lastLoginTime);
     }
     return null;
   };
@@ -464,37 +519,54 @@ const ManageUsers = () => {
           </div>
         </div>
         
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFilterRole("user")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              filterRole === "user"
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            User
-          </button>
-          <button
-            onClick={() => setFilterRole("instructor")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              filterRole === "instructor"
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Instructor
-          </button>
-          <button
-            onClick={() => setFilterRole("admin")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              filterRole === "admin"
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Admin
-          </button>
+        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+          {apiCallTime && (
+            <div className="flex items-center gap-2 text-xs text-gray-500 mb-2 sm:mb-0">
+              <span>Last updated: {apiCallTime.toLocaleTimeString()}</span>
+              <button
+                onClick={fetchUsers}
+                disabled={loading}
+                className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                title="Refresh data"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFilterRole("user")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                filterRole === "user"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              User
+            </button>
+            <button
+              onClick={() => setFilterRole("instructor")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                filterRole === "instructor"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Instructor
+            </button>
+            <button
+              onClick={() => setFilterRole("admin")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                filterRole === "admin"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Admin
+            </button>
+          </div>
         </div>
       </div>
 
@@ -718,7 +790,7 @@ const ManageUsers = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {getLastVisited(user) ? new Date(getLastVisited(user)).toLocaleDateString() : 'Never'}
+                    {getLastVisited(user) || 'Never'}
                   </td>
                 </tr>
               ))}
