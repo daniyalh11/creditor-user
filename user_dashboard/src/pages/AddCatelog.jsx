@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  fetchAllCatalogs, 
-  createCatalog, 
-  updateCatalog, 
-  deleteCatalog, 
-  addCoursesToCatalog, 
+import {
+  fetchAllCatalogs,
+  createCatalog,
+  updateCatalog,
+  deleteCatalog,
+  addCoursesToCatalog,
   removeCoursesFromCatalog,
   fetchAvailableCourses,
   getCatalogCourses
@@ -46,13 +46,9 @@ const AddCatelog = () => {
           fetchAllCatalogs(),
           fetchAvailableCourses()
         ]);
-        console.log('Fetched catalogsData:', catalogsData); // Debug log
-        console.log('Catalogs data type:', typeof catalogsData);
-        console.log('Is catalogs array:', Array.isArray(catalogsData));
         
         // Ensure catalogs is always an array
         const catalogsArray = Array.isArray(catalogsData) ? catalogsData : [];
-        console.log('Final catalogs array:', catalogsArray);
         
         setCatalogs(catalogsArray);
         setAvailableCourses(Array.isArray(coursesData) ? coursesData : []);
@@ -66,7 +62,6 @@ const AddCatelog = () => {
         );
         setCourseCounts(counts);
       } catch (err) {
-        console.error("Failed to fetch data:", err);
         setError("Failed to load catalogs and courses. Please try again later.\n" + (err.message || ''));
       } finally {
         setLoading(false);
@@ -77,7 +72,6 @@ const AddCatelog = () => {
 
   const handleFormChange = (e) => {
     const { name, value, checked } = e.target;
-    console.log('Form change:', name, value);
     
     if (name === "courses") {
       const courseId = value;
@@ -90,7 +84,6 @@ const AddCatelog = () => {
     } else {
       setForm(prev => {
         const newForm = { ...prev, [name]: value };
-        console.log('Updated form state:', newForm);
         return newForm;
       });
     }
@@ -111,6 +104,7 @@ const AddCatelog = () => {
       const catalogData = {
         name: form.name,
         description: form.description,
+        courses: form.courses
       };
       if (form.thumbnail && form.thumbnail.trim() !== '') {
         catalogData.thumbnail = form.thumbnail;
@@ -124,9 +118,7 @@ const AddCatelog = () => {
           description: catalogData.description,
           ...(catalogData.thumbnail && { thumbnail: catalogData.thumbnail })
         };
-        console.log('Updating catalog with essential data:', essentialCatalogData);
         newCatalog = await updateCatalog(editId, essentialCatalogData);
-        console.log('Update catalog response:', newCatalog);
         
         // Check if there's a warning about local storage
         if (newCatalog.warning) {
@@ -136,9 +128,30 @@ const AddCatelog = () => {
         }
       } else {
         // Create new catalog
-        newCatalog = await createCatalog(catalogData);
-        console.log('Create catalog response:', newCatalog);
-        setFormSuccess("Catalog created successfully!");
+        try {
+          newCatalog = await createCatalog(catalogData);
+          
+          // Check if there's a warning about local storage
+          if (newCatalog.warning) {
+            setFormSuccess(`${newCatalog.message} (${newCatalog.warning})`);
+          } else {
+            const courseMessage = form.courses.length > 0 ? ` with ${form.courses.length} course(s)` : '';
+            setFormSuccess(`Catalog created successfully${courseMessage}!`);
+          }
+        } catch (createError) {
+          
+          // Provide more specific error messages
+          if (createError.message.includes('500')) {
+            setFormError("Server error occurred. Your changes have been saved locally. Please try again later or contact support if the issue persists.");
+          } else if (createError.message.includes('403')) {
+            setFormError("Permission denied. Your changes have been saved locally.");
+          } else if (createError.message.includes('network')) {
+            setFormError("Network error. Please check your internet connection and try again.");
+          } else {
+            setFormError(`Creation failed: ${createError.message}`);
+          }
+          return; // Exit early to prevent further processing
+        }
       }
       setLastUpdateResponse(newCatalog);
 
@@ -166,29 +179,37 @@ const AddCatelog = () => {
             // Add new courses
             if (coursesToAdd.length > 0) {
               await addCoursesToCatalog(newCatalog.data.id, coursesToAdd);
-              console.log("Courses added successfully:", coursesToAdd);
             }
             
             // Remove courses
             if (coursesToRemove.length > 0) {
               await removeCoursesFromCatalog(newCatalog.data.id, coursesToRemove);
-              console.log("Courses removed successfully:", coursesToRemove);
             }
           } else {
-            // For new catalogs, just add the selected courses
+            // For new catalogs, check if courses were included in the creation request
+            // If not, or if the backend doesn't support it, add them separately
             if (form.courses.length > 0) {
-              await addCoursesToCatalog(newCatalog.data.id, form.courses);
-              console.log("Courses added to new catalog successfully");
+              // Check if courses were already included in the creation response
+              const createdCatalog = newCatalog.data;
+              const hasCourses = createdCatalog.courses && Array.isArray(createdCatalog.courses) && createdCatalog.courses.length > 0;
+              
+              if (!hasCourses) {
+                // Courses weren't included in creation, add them separately
+                try {
+                  await addCoursesToCatalog(newCatalog.data.id, form.courses);
+                } catch (courseAddError) {
+                  // Don't fail the entire operation, just log the warning
+                }
+              }
             }
           }
         } catch (courseError) {
-          console.warn("Course association failed, but catalog was created/updated:", courseError);
+          // Course association failed, but catalog was created/updated
         }
       }
 
       // Refresh catalogs list
       const updatedCatalogs = await fetchAllCatalogs();
-      console.log('Catalogs after update/create:', updatedCatalogs);
       setCatalogs(updatedCatalogs || []);
 
       // Reset form
@@ -196,7 +217,6 @@ const AddCatelog = () => {
       setShowModal(false);
       setEditId(null);
     } catch (err) {
-      console.error("Failed to save catalog:", err);
       setFormError((err && err.message ? err.message : "Failed to save catalog. Please try again.") + (err && err.stack ? "\n" + err.stack : ""));
     } finally {
       setSubmitting(false);
@@ -205,16 +225,12 @@ const AddCatelog = () => {
 
   const handleEdit = async (catalog) => {
     try {
-      console.log('Editing catalog:', catalog);
-      
       // Fetch the current courses associated with this catalog
       let catalogCourses = [];
       try {
         const coursesData = await getCatalogCourses(catalog.id);
         catalogCourses = Array.isArray(coursesData) ? coursesData : [];
-        console.log('Fetched catalog courses from API:', catalogCourses);
       } catch (error) {
-        console.log('Could not fetch catalog courses, using fallback:', error);
         // Fallback to courses from catalog object if API fails
         catalogCourses = catalog.courses || [];
       }
@@ -229,9 +245,6 @@ const AddCatelog = () => {
         }
         return course;
       }).filter(Boolean); // Remove any undefined/null values
-      
-      console.log('Extracted course IDs:', courseIds);
-      console.log('Available courses for comparison:', availableCourses.map(c => ({ id: c.id, title: c.title })));
       
       // More flexible matching - try to match by title if ID doesn't match
       const validCourseIds = courseIds.map(catalogCourseId => {
@@ -280,7 +293,6 @@ const AddCatelog = () => {
       setEditId(catalog.id);
       setShowModal(true);
     } catch (error) {
-      console.error('Error preparing edit form:', error);
       setFormError('Failed to load catalog details. Please try again.');
     }
   };
@@ -300,11 +312,12 @@ const AddCatelog = () => {
           setFormSuccess(result.message || "Catalog deleted successfully!");
         }
       } catch (err) {
-        console.error("Failed to delete catalog:", err);
         setFormError(err.message || "Failed to delete catalog. Please try again.");
       }
     }
   };
+
+
 
   // Fallback to ensure catalogs is always an array
   const safeCatalogs = Array.isArray(catalogs) ? catalogs : [];
@@ -397,6 +410,8 @@ const AddCatelog = () => {
           </div>
         </div>
       )}
+
+      
 
       {safeCatalogs.length === 0 ? (
         <div className="text-center py-12">
