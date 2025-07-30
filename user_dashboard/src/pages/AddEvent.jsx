@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { currentUserId } from "@/data/currentUser";
 import { getAllEvents } from "@/services/calendarService";
 import { fetchUserProfile } from "@/services/userService";
 import Cookies from "js-cookie";
@@ -528,30 +527,29 @@ const AddEvent = () => {
         }
       : undefined;
 
+    // Create a minimal payload first to test
     const payload = {
       title: form.title,
       description: form.description,
       startTime: toIsoUtc(form.startTime),
       endTime: toIsoUtc(form.endTime),
-      location: form.location || (form.zoomLink ? form.zoomLink : ""),
-      isRecurring,
+      location: form.location || "",
+      isRecurring: false, // Temporarily set to false to test basic creation
       calendarType: "GROUP",
-      visibility: "PRIVATE",
-      courseName: selectedCourse ? selectedCourse.title : "",
-      userRole: currentRole // Include user role in payload
+      visibility: "PRIVATE"
     };
-    // Set timezone to PST for backend compatibility
-    payload.timeZone = "America/Los_Angeles";
     
-    // Add timezone offset information for clarity
-    payload.timezoneOffset = -480; // PST is UTC-8 (480 minutes)
-    if (isRecurring) {
+    // Only add recurrence rule if it's a recurring event and basic creation works
+    if (isRecurring && recurrenceRule) {
+      payload.isRecurring = true;
       payload.recurrenceRule = recurrenceRule;
     }
 
     console.log("Form startTime:", form.startTime);
     console.log("Form endTime:", form.endTime);
-    console.log("Payload being sent:", payload);
+    console.log("Is recurring:", isRecurring);
+    console.log("Recurrence rule:", recurrenceRule);
+    console.log("Final payload being sent:", JSON.stringify(payload, null, 2));
     console.log("User role:", currentRole);
     console.log("JWT token role (if any):", decodedToken?.role || decodedToken?.userRole || "No role in token");
 
@@ -601,6 +599,11 @@ const AddEvent = () => {
       // Send to backend only on add
       try {
         const token = getAuthToken();
+        console.log("Making POST request to:", `${import.meta.env.VITE_API_BASE_URL}/calendar/events`);
+        console.log("Request payload:", payload);
+        console.log("Auth token:", token ? "Present" : "Missing");
+        console.log("User role:", currentRole);
+        
         const postRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           method: "POST",
           headers: {
@@ -611,8 +614,12 @@ const AddEvent = () => {
           body: JSON.stringify(payload),
           credentials: "include"
         });
+        console.log("Response status:", postRes.status);
+        console.log("Response headers:", Object.fromEntries(postRes.headers.entries()));
+        
         const postData = await postRes.json();
         console.log("POST response:", postData);
+        console.log("POST response status:", postRes.status);
         
         // Check if it's a role-related error
         if (postRes.status === 403 && postData.message?.includes('Access restricted to admin, instructor roles')) {
@@ -621,19 +628,74 @@ const AddEvent = () => {
           return;
         }
         
+        // Check if the request was successful
+        if (!postRes.ok) {
+          console.error("Failed to create event:", postData);
+          alert(`Failed to create event: ${postData.message || 'Unknown error'}`);
+          return;
+        }
+        
         // Refetch events after adding
         const data = await getAllEvents();
         console.log("Fetched events after add:", data);
+        
+        // Check if the created event is in the response
+        if (postData.success && postData.data) {
+          console.log("Created event data:", postData.data);
+          // If the created event is not in the fetched data, add it manually
+          const createdEvent = postData.data;
+          const eventExists = data.some(ev => ev.id === createdEvent.id);
+          
+          if (!eventExists) {
+            console.log("Created event not found in fetched data, adding manually");
+            const normalizedCreatedEvent = {
+              ...createdEvent,
+              courseId: createdEvent.courseId || createdEvent.course_id
+            };
+            setEvents(prev => [normalizedCreatedEvent, ...prev]);
+          } else {
           // Normalize course_id to courseId for all events
-        const normalizedEvents = data.map(ev => ({
+            const normalizedEvents = data.map(ev => ({
             ...ev,
             courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
           }));
           setEvents(normalizedEvents);
+          }
+        } else {
+          // Normalize course_id to courseId for all events
+          const normalizedEvents = data.map(ev => ({
+            ...ev,
+            courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
+          }));
+          setEvents(normalizedEvents);
+        }
+        
+        // Show success message
+        if (isRecurring) {
+          setModalMessage("Recurring event created successfully!");
+        } else {
+          setModalMessage("Event created successfully!");
+        }
       } catch (err) {
-        // Optionally handle error
+        // Enhanced error logging
         console.error("Failed to add event to backend", err);
-        alert("Failed to create event. Please try again or contact support if the issue persists.");
+        console.error("Error details:", {
+          message: err.message,
+          stack: err.stack,
+          name: err.name
+        });
+        
+        // More specific error message
+        let errorMessage = "Failed to create event. ";
+        if (err.message) {
+          errorMessage += err.message;
+        } else if (err.name === 'TypeError' && err.message.includes('fetch')) {
+          errorMessage += "Network error - please check your connection.";
+        } else {
+          errorMessage += "Please try again or contact support if the issue persists.";
+        }
+        
+        alert(errorMessage);
       }
     }
     
@@ -748,7 +810,7 @@ const AddEvent = () => {
             {(() => {
               const thisYear = new Date().getFullYear();
               return Array.from({ length: 10 }, (_, i) => thisYear + i).map(y => (
-                <option key={y} value={y}>{y}</option>
+              <option key={y} value={y}>{y}</option>
               ));
             })()}
           </select>
