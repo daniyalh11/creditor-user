@@ -1,22 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Video, UserCheck, UserX, Calendar, Play, Eye, Clock, ExternalLink } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ExternalLink, Play, Video } from "lucide-react";
 import { AttendanceViewerModal } from "./AttendanceViewerModal";
-import { UpcomingLiveClasses } from "./UpcomingLiveClasses";
 
-
-// Mock data for attendance and recordings
-const attendanceData = [
-  { date: "2025-06-08", status: "present", topic: "Constitutional Rights" },
-  { date: "2025-06-05", status: "absent", topic: "Civil Procedure" },
-  { date: "2025-06-03", status: "present", topic: "Criminal Law Basics" },
-  { date: "2025-06-01", status: "present", topic: "Legal Research Methods" },
-];
-
+// Mock data
 const recordedSessions = [
   {
     id: "1",
@@ -44,145 +32,143 @@ const recordedSessions = [
   },
 ];
 
+const convertToTimezone = (dateString, timeZone) => {
+  return new Date(new Date(dateString).toLocaleString("en-US", { timeZone }));
+};
+
 export function LiveClasses() {
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('upcoming');
   const [liveClass, setLiveClass] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isCurrentlyActive, setIsCurrentlyActive] = useState(false);
+
+  const userTimezone = localStorage.getItem('userTimezone') || 'America/Los_Angeles'; // PST fallback
+  // At the top, add:
+const formatDateTime = (dateString, timeZone) => {
+  const options = {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone,
+  };
+  return new Intl.DateTimeFormat("en-US", options).format(new Date(dateString));
+};
+
+const convertToTimezone = (dateString, timeZone) => {
+  return new Date(new Date(dateString).toLocaleString("en-US", { timeZone }));
+};
 
   useEffect(() => {
-    // Fetch today's live class from backend
     const fetchLiveClass = async () => {
       setLoading(true);
       try {
         const today = new Date();
-        const start = new Date(today.setHours(0,0,0,0)).toISOString();
-        const end = new Date(today.setHours(23,59,59,999)).toISOString();
+        const start = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+        const end = new Date(today.setHours(23, 59, 59, 999)).toISOString();
         const params = new URLSearchParams({ startDate: start, endDate: end });
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events?${params.toString()}`, {
-          credentials: 'include'
+
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events?${params}`, {
+          credentials: 'include',
         });
         const data = await response.json();
-        if (data && data.data && data.data.length > 0) {
-          // Filter events to only show classes for the current date
-          const todayEvents = data.data.filter(event => {
-            if (!event.startTime) return false;
-            const eventDate = new Date(event.startTime);
-            const currentDate = new Date();
-            
-            // Compare dates (year, month, day) only, ignoring time
-            return eventDate.getFullYear() === currentDate.getFullYear() &&
-                   eventDate.getMonth() === currentDate.getMonth() &&
-                   eventDate.getDate() === currentDate.getDate();
-          });
-          
-          console.log('Today events:', todayEvents);
-          const userTimezone = localStorage.getItem('userTimezone') || 'America/New_York';
-          console.log('User timezone:', userTimezone);
-          const now = new Date();
-          const nowInUserTz = now;
-          const nowInUserTimezone = nowInUserTz.toLocaleString('en-US', { 
-            timeZone: userTimezone,
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          });
-          console.log('Now in user tz:', nowInUserTimezone, '(', nowInUserTz, ')');
-                      todayEvents.forEach(event => {
-              const startInUserTz = new Date(event.startTime);
-              const endInUserTz = new Date(event.endTime);
-              console.log('Event:', event.title, 'Start:', startInUserTz, 'End:', endInUserTz);
-            });
 
-          if (todayEvents.length > 0) {
-            // Find the closest upcoming event (start time is in the future)
-            const upcomingEvents = todayEvents.filter(event => {
-              const startInUserTz = new Date(event.startTime);
-              const isUpcoming = startInUserTz > nowInUserTz;
-              
-              // Convert to user's timezone for display
-              const startInUserTimezone = startInUserTz.toLocaleString('en-US', { 
-                timeZone: userTimezone,
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-              });
-              
-              console.log(`Event "${event.title}": Start time in user tz: ${startInUserTimezone} (${startInUserTz}), Now in user tz: ${nowInUserTz}, Is upcoming: ${isUpcoming}`);
-              return isUpcoming;
-            });
-            
-            // Sort by start time and get the closest one
-            upcomingEvents.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-            const nextEvent = upcomingEvents[0];
-            
-            console.log('Upcoming events:', upcomingEvents.map(e => e.title));
-            console.log('Selected live class:', nextEvent?.title || 'None (no upcoming events)');
-            setLiveClass(nextEvent || null);
-          } else {
-            setLiveClass(null);
-          }
+        if (data?.data?.length > 0) {
+          // Fetch all today's events and find the currently active one
+const todayEvents = data.data.filter(event => {
+  if (!event.startTime || !event.endTime) return false;
+
+  const eventDate = convertToTimezone(event.startTime, userTimezone);
+  const now = convertToTimezone(new Date().toISOString(), userTimezone);
+
+  return (
+    eventDate.getFullYear() === now.getFullYear() &&
+    eventDate.getMonth() === now.getMonth() &&
+    eventDate.getDate() === now.getDate()
+  );
+});
+
+// First, find the currently active class in user TZ
+const now = convertToTimezone(new Date().toISOString(), userTimezone);
+const activeEvent = todayEvents.find(event => {
+  const start = convertToTimezone(event.startTime, userTimezone);
+  const end = convertToTimezone(event.endTime, userTimezone);
+  return now >= start && now <= end;
+});
+
+if (activeEvent) {
+  setLiveClass(activeEvent);
+} else {
+  // If no class is live, set the next upcoming class
+  const upcoming = todayEvents
+    .filter(event => convertToTimezone(event.startTime, userTimezone) > now)
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  setLiveClass(upcoming[0] || null);
+}
+
+          const upcomingEvents = todayEvents.filter(event => {
+            const startInTz = convertToTimezone(event.startTime, userTimezone);
+            return startInTz > convertToTimezone(new Date().toISOString(), userTimezone);
+          });
+
+          upcomingEvents.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+          setLiveClass(upcomingEvents[0] || null);
         } else {
           setLiveClass(null);
         }
       } catch (err) {
+        console.error(err);
         setLiveClass(null);
       } finally {
         setLoading(false);
       }
     };
-    fetchLiveClass();
 
-    // Removed debug POST request - it was causing 500 errors
+    fetchLiveClass();
   }, []);
 
-  const isClassActive = !!liveClass;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsCurrentlyActive(isClassInSession());
+    }, 30 * 1000); // refresh every 30s
+
+    setIsCurrentlyActive(isClassInSession()); // initial check
+
+    return () => clearInterval(interval);
+  }, [liveClass]);
+
+  const isClassInSession = () => {
+    if (!liveClass || !liveClass.startTime || !liveClass.endTime) return false;
+    const now = convertToTimezone(new Date().toISOString(), userTimezone);
+    const start = convertToTimezone(liveClass.startTime, userTimezone);
+    const end = convertToTimezone(liveClass.endTime, userTimezone);
+    return now >= start && now <= end;
+  };
+  
   const joinLink = liveClass?.description || "";
   const classTitle = liveClass?.title || "";
-  
-  // Get user's timezone from localStorage, default to EST if not set
-  const userTimezone = localStorage.getItem('userTimezone') || 'America/New_York';
-  
-  // Convert UTC time to user's timezone for display
+
   const formatTimeInUserTimezone = (utcTime) => {
     if (!utcTime) return '';
     const date = new Date(utcTime);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      timeZone: userTimezone 
+      hour12: true,
+      timeZone: userTimezone
     });
   };
-  
+
   const classTime = liveClass ? `${formatTimeInUserTimezone(liveClass.startTime)} - ${classTitle}` : "";
 
-  // Check if class is currently in session (within start and end time) using user's timezone
-  const isClassInSession = () => {
-    if (!liveClass) return false;
-    const now = new Date();
-    const startTime = new Date(liveClass.startTime);
-    const endTime = new Date(liveClass.endTime);
-    return now >= startTime && now <= endTime;
-  };
-
-  const isCurrentlyActive = isClassInSession();
-
-  const handleVideoClick = (driveLink) => {
-    window.open(driveLink, '_blank');
-  };
-
-  const handleCheckAttendance = () => {
-    setIsAttendanceModalOpen(true);
-  };
-
   const handleViewAllRecordings = () => {
-    // Open recordings Google Drive link from env
     window.open(import.meta.env.VITE_RECORDINGS_DRIVE_URL, '_blank');
   };
 
   return (
     <div className="space-y-6">
-      {/* Join Class Section */}
       <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -194,26 +180,31 @@ export function LiveClasses() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
-                {loading ? "Checking for live class..." : (isClassActive ? (isCurrentlyActive ? "Class is now in session" : "Class is scheduled for today") : "No active class right now")}
+                {loading
+                  ? "Checking for live class..."
+                  : liveClass
+                    ? (isCurrentlyActive ? "Class is now in session" : "Class is scheduled for today")
+                    : "No active class right now"}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {isClassActive ? `Next class: Today at ${classTime}` : "No class scheduled for today"}
+                {liveClass ? `Next class: Today at ${classTime}` : "No class scheduled for today"}
               </p>
             </div>
-            <Button 
-              disabled={!isClassActive || !joinLink || !isCurrentlyActive}
+            <Button
+              disabled={!liveClass || !joinLink || !isCurrentlyActive}
               className={isCurrentlyActive ? "bg-green-600 hover:bg-green-700 animate-pulse" : ""}
               size="lg"
-              onClick={() => joinLink && window.open(joinLink, '_blank')}
+              onClick={() => window.open(joinLink, '_blank')}
             >
               <Video className="h-4 w-4 mr-2" />
-              {isClassActive ? (isCurrentlyActive ? "Join Live Class" : "Class Not Started") : "No Active Class"}
+              {liveClass
+                ? isCurrentlyActive ? "Join Live Class" : "Class Not Started"
+                : "No Active Class"}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Only show Class Recordings section */}
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -221,8 +212,8 @@ export function LiveClasses() {
               <Play className="h-5 w-5 text-primary" />
               Class Recordings
             </CardTitle>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={handleViewAllRecordings}
               className="flex items-center gap-1"
@@ -235,14 +226,14 @@ export function LiveClasses() {
         <CardContent>
           <div className="space-y-3">
             {recordedSessions.map((session) => (
-              <div 
+              <div
                 key={session.id}
                 className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-all cursor-pointer group"
-                onClick={() => handleVideoClick(session.driveLink)}
+                onClick={() => window.open(session.driveLink, "_blank")}
               >
                 <div className="relative w-16 h-12 rounded overflow-hidden flex-shrink-0">
-                  <img 
-                    src={session.thumbnail} 
+                  <img
+                    src={session.thumbnail}
                     alt={session.title}
                     className="w-full h-full object-cover"
                   />
@@ -266,7 +257,6 @@ export function LiveClasses() {
         </CardContent>
       </Card>
 
-      {/* Modals */}
       <AttendanceViewerModal
         isOpen={isAttendanceModalOpen}
         onClose={() => setIsAttendanceModalOpen(false)}

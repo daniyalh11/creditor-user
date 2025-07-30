@@ -184,31 +184,35 @@ const CreateCourse = ({ onCourseCreated }) => {
     setSuccess(false);
     setApiResponse(null);
 
-    const formData = new FormData();
-    formData.append("title", form.title);
-    formData.append("description", form.description);
+    // Prepare the payload as JSON instead of FormData
     const learningObjectivesArray = form.learning_objectives
       ? form.learning_objectives.split("\n").map((s) => s.trim()).filter(Boolean)
       : [];
-    learningObjectivesArray.forEach(obj => formData.append("learning_objectives", obj));
-    formData.append("isHidden", form.isHidden);
-    formData.append("course_status", form.course_status);
-    formData.append("estimated_duration", form.estimated_duration);
-    if (form.max_students) formData.append("max_students", Number(form.max_students));
-    formData.append("course_level", "BEGINNER");
-    formData.append("courseType", "OPEN");
-    formData.append("lockModules", "UNLOCKED");
-    formData.append("price", form.price);
-    formData.append("requireFinalQuiz", form.requireFinalQuiz);
-    if (form.thumbnail) {
-      formData.append("thumbnail", form.thumbnail);
-    }
+    
+    const payload = {
+      title: form.title,
+      description: form.description,
+      learning_objectives: learningObjectivesArray, // Send as array
+      isHidden: form.isHidden,
+      course_status: form.course_status,
+      estimated_duration: form.estimated_duration,
+      max_students: form.max_students ? Number(form.max_students) : 0,
+      course_level: "BEGINNER",
+      courseType: "OPEN",
+      lockModules: "UNLOCKED",
+      price: form.price,
+      requireFinalQuiz: form.requireFinalQuiz,
+      thumbnail: form.thumbnail || null
+    };
 
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/createCourse`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         credentials: "include",
-        body: formData,
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       console.log(data);
