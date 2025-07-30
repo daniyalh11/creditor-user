@@ -611,8 +611,8 @@ const ManageUsers = () => {
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-3">
                 {successData.courseTitle === "Role Update" 
-                  ? `You have successfully updated <span className="font-semibold text-gray-800">${successData.addedUsers.length} user(s)</span> to instructor role.`
-                  : `You have successfully added <span className="font-semibold text-gray-800">${successData.addedUsers.length} ${filterRole}(s)</span> to the course:`
+                  ? <>You have successfully updated <span className="font-semibold text-gray-800">{successData.addedUsers.length} user(s)</span> to instructor role.</>
+                  : <>You have successfully added <span className="font-semibold text-gray-800">{successData.addedUsers.length} {filterRole}(s)</span> to the course:</>
                 }
               </p>
               {successData.courseTitle !== "Role Update" && (
