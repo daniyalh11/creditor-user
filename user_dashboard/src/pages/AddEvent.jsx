@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from "react";
 import { currentUserId } from "@/data/currentUser";
 import { getAllEvents } from "@/services/calendarService";
@@ -39,6 +37,8 @@ const AddEvent = () => {
   const [deletingAll, setDeletingAll] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
+  const [deletingOccurrenceKey, setDeletingOccurrenceKey] = useState(null); // string or null
+  const [modalMessage, setModalMessage] = useState("");
 
   // Get authentication token from cookies
   const getAuthToken = () => {
@@ -94,8 +94,14 @@ const AddEvent = () => {
   const formatInTimezone = (dateString, tz, label) => {
     if (!dateString) return '';
     try {
-      const date = new Date(dateString);
-      return `${label}: ${date.toLocaleString('en-US', {
+      // Parse as local time (from datetime-local input)
+      const [datePart, timePart] = dateString.split('T');
+      const [year, month, day] = datePart.split('-').map(Number);
+      const [hour, minute] = timePart.split(':').map(Number);
+      // Create a Date object in local time
+      const localDate = new Date(year, month - 1, day, hour, minute);
+      // Convert to the target timezone
+      return `${label}: ${localDate.toLocaleString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true,
@@ -253,6 +259,29 @@ const AddEvent = () => {
     }
   };
 
+  // Fetch deleted occurrences for a recurring event
+  const fetchDeletedOccurrences = async (eventId) => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'X-User-Role': getUserRole(),
+        },
+        credentials: 'include',
+      });
+      const data = await res.json();
+      console.log('API /recurrence-exception GET response:', data);
+      // Expecting data.data to be an array of ISO strings (deleted occurrence startTimes)
+      return data.data || [];
+    } catch (err) {
+      console.error('Failed to fetch deleted occurrences', err);
+      return [];
+    }
+  };
+
   // Edit handler: fetch event details and populate modal
   const handleEdit = async (index) => {
     console.log('Edit clicked for index:', index, 'event:', events[index]);
@@ -278,13 +307,21 @@ const AddEvent = () => {
     setEditIndex(index);
     setShowModal(true);
     console.log('setShowModal(true) called, modal should now be open');
+    // If recurring, fetch deleted occurrences
+    let deletedOccurrences = [];
+    if ((e.isRecurring || e.recurrence !== 'none') && e.id) {
+      deletedOccurrences = await fetchDeletedOccurrences(e.id);
+    }
+    setRecurringDeleteEvent({ ...e, index, deletedOccurrences });
   };
 
   const handleDelete = async (index) => {
     const event = events[index];
     // For non-recurring events, use DELETE /calendar/events/:eventId
     if (event.isRecurring && event.occurrences && event.occurrences.length > 0) {
-      setRecurringDeleteEvent({ ...event, index });
+      // Fetch deleted occurrences for this recurring event
+      const deletedOccurrences = await fetchDeletedOccurrences(event.id);
+      setRecurringDeleteEvent({ ...event, index, deletedOccurrences });
       setShowRecurringDeleteModal(true);
       return;
     }
@@ -332,7 +369,7 @@ const AddEvent = () => {
 
   // Delete a single occurrence of a recurring event (now POST)
   const handleDeleteOccurrence = async (eventId, occurrenceStartTime) => {
-    setDeletingOccurrence(true);
+    setDeletingOccurrenceKey(occurrenceStartTime);
     try {
       const token = getAuthToken();
       console.log('Deleting occurrence:', { eventId, occurrenceDate: occurrenceStartTime });
@@ -351,10 +388,11 @@ const AddEvent = () => {
       const data = await getAllEvents();
       setEvents(data);
       setShowRecurringDeleteModal(false);
+      setModalMessage("Event deleted");
     } catch (err) {
       console.error("Failed to delete occurrence", err);
     } finally {
-      setDeletingOccurrence(false);
+      setDeletingOccurrenceKey(null);
     }
   };
 
@@ -384,31 +422,33 @@ const AddEvent = () => {
     }
   };
 
-  // Restore a deleted occurrence in a recurring event (now DELETE)
+  // Restore a deleted occurrence in a recurring event (GET)
   const handleRestoreOccurrence = async (eventId, occurrenceDate) => {
-    setDeletingOccurrence(true);
+    setDeletingOccurrenceKey(occurrenceDate);
     try {
       const token = getAuthToken();
       console.log('Restoring occurrence:', { eventId, occurrenceDate });
-      // RESTORE a single occurrence in a recurring event (DELETE)
-      await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-          "X-User-Role": getUserRole(),
-        },
-        credentials: "include",
-        body: JSON.stringify({ occurrenceDate })
-      });
+      // RESTORE a single occurrence in a recurring event (GET)
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception/restore?occurrenceDate=${encodeURIComponent(occurrenceDate)}`,
+        {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "X-User-Role": getUserRole(),
+          },
+          credentials: "include",
+        }
+      );
       // Refetch events after restore
       const data = await getAllEvents();
       setEvents(data);
       setShowRecurringDeleteModal(false);
+      setModalMessage("Event restored");
     } catch (err) {
       console.error("Failed to restore occurrence", err);
     } finally {
-      setDeletingOccurrence(false);
+      setDeletingOccurrenceKey(null);
     }
   };
 
@@ -431,20 +471,44 @@ const AddEvent = () => {
     const selectedCourse = courses.find(c => c.id === form.courseId);
     const toIsoUtc = (dateString) => {
       if (!dateString) return "";
-      if (dateString.endsWith('Z')) return dateString;
       
-      // Create a Date object from the local datetime string
+      // Create a date object from the input string (which is in user's local timezone)
       const localDate = new Date(dateString);
       
-      // Get the user's timezone
-      const userTimezone = localStorage.getItem('userTimezone') || 'America/New_York';
+      // Convert to PST by creating a date string in PST timezone
+      const pstDateString = localDate.toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+      });
       
-      // Convert the local time to the user's timezone, then to UTC
-      const userTime = new Date(localDate.toLocaleString('en-US', { timeZone: userTimezone }));
+      // Parse the PST date string
+      const [datePart, timePart] = pstDateString.split(", ");
+      const [month, day, year] = datePart.split("/");
+      const [hour, minute, second] = timePart.split(":");
       
-      console.log(`Converting ${dateString} (local) to ${userTimezone}:`, userTime.toISOString());
+      // Create a proper ISO string in PST timezone
+      // Note: We need to send this as UTC but adjusted for PST
+      const pstDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}.000Z`);
       
-      return userTime.toISOString();
+      // Since we're sending to a backend that expects PST, we need to adjust for the 8-hour difference
+      // PST is UTC-8, so we need to add 8 hours to make it UTC
+      const utcDate = new Date(pstDate.getTime() + (8 * 60 * 60 * 1000));
+      
+      console.log('Timezone conversion:', {
+        original: dateString,
+        localDate: localDate.toISOString(),
+        pstDateString,
+        pstDate: pstDate.toISOString(),
+        utcDate: utcDate.toISOString()
+      });
+      
+      return utcDate.toISOString();
     };
 
     // Map recurrence value to frequency
@@ -476,10 +540,11 @@ const AddEvent = () => {
       courseName: selectedCourse ? selectedCourse.title : "",
       userRole: currentRole // Include user role in payload
     };
-    // Only include timeZone for non-recurring events
-    if (!isRecurring) {
-      payload.timeZone = form.timeZone;
-    }
+    // Set timezone to PST for backend compatibility
+    payload.timeZone = "America/Los_Angeles";
+    
+    // Add timezone offset information for clarity
+    payload.timezoneOffset = -480; // PST is UTC-8 (480 minutes)
     if (isRecurring) {
       payload.recurrenceRule = recurrenceRule;
     }
@@ -1052,47 +1117,48 @@ const AddEvent = () => {
               <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
                 {/* Show active occurrences with Delete, deleted with Restore */}
                 {recurringDeleteEvent.occurrences && recurringDeleteEvent.occurrences.map((occ, idx) => {
-                  // Assume recurringDeleteEvent.deletedOccurrences is an array of ISO strings
                   const deletedOccurrences = recurringDeleteEvent.deletedOccurrences || [];
                   const isDeleted = deletedOccurrences.includes(occ.startTime);
+                  // Defensive date rendering
+                  let dateLabel = "-";
+                  let timeLabel = "-";
+                  let endTimeLabel = "-";
+                  const startDateObj = new Date(occ.startTime);
+                  const endDateObj = new Date(occ.endTime);
+                  if (!isNaN(startDateObj.getTime())) {
+                    dateLabel = startDateObj.toLocaleDateString(undefined, {
+                      weekday: 'short', month: 'short', day: 'numeric', timeZone: userTimezone
+                    });
+                    timeLabel = startDateObj.toLocaleTimeString(undefined, {
+                      hour: '2-digit', minute: '2-digit', timeZone: userTimezone
+                    });
+                  }
+                  if (!isNaN(endDateObj.getTime())) {
+                    endTimeLabel = endDateObj.toLocaleTimeString(undefined, {
+                      hour: '2-digit', minute: '2-digit', timeZone: userTimezone
+                    });
+                  }
                   return (
                     <li key={occ.startTime} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {new Date(occ.startTime).toLocaleDateString(undefined, { 
-                            weekday: 'short', 
-                            month: 'short', 
-                            day: 'numeric',
-                            timeZone: userTimezone 
-                          })}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(occ.startTime).toLocaleTimeString(undefined, { 
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            timeZone: userTimezone 
-                          })} - {new Date(occ.endTime).toLocaleTimeString(undefined, { 
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            timeZone: userTimezone 
-                          })}
-                        </p>
+                        <p className="text-sm font-medium text-gray-900 truncate">{dateLabel}</p>
+                        <p className="text-xs text-gray-500">{timeLabel} - {endTimeLabel}</p>
                       </div>
                       {isDeleted ? (
                         <button
-                          className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrence ? 'bg-gray-100 text-gray-400' : 'text-green-600 hover:bg-green-50'}`}
-                          disabled={deletingOccurrence}
+                          className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrenceKey === occ.startTime ? 'bg-gray-100 text-gray-400' : 'text-green-600 hover:bg-green-50'}`}
+                          disabled={deletingOccurrenceKey === occ.startTime}
                           onClick={() => handleRestoreOccurrence(recurringDeleteEvent.id, occ.startTime)}
                         >
-                          {deletingOccurrence ? 'Restoring...' : 'Restore'}
+                          {deletingOccurrenceKey === occ.startTime ? 'Restoring...' : 'Restore'}
                         </button>
                       ) : (
                         <button
-                          className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrence ? 'bg-gray-100 text-gray-400' : 'text-red-600 hover:bg-red-50'}`}
-                          disabled={deletingOccurrence}
+                          className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrenceKey === occ.startTime ? 'bg-gray-100 text-gray-400' : 'text-red-600 hover:bg-red-50'}`}
+                          disabled={deletingOccurrenceKey === occ.startTime}
                           onClick={() => handleDeleteOccurrence(recurringDeleteEvent.id, occ.startTime)}
                         >
-                          {deletingOccurrence ? 'Deleting...' : 'Delete'}
+                          {deletingOccurrenceKey === occ.startTime ? 'Deleting...' : 'Delete'}
                         </button>
                       )}
                     </li>
@@ -1108,25 +1174,30 @@ const AddEvent = () => {
                   Deleted occurrences
                 </h3>
                 <ul className="divide-y divide-gray-200 max-h-40 overflow-y-auto">
-                  {recurringDeleteEvent.deletedOccurrences.map((deletedDate) => (
-                    <li key={deletedDate} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {new Date(deletedDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: userTimezone })}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(deletedDate).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: userTimezone })}
-                        </p>
-                      </div>
-                      <button
-                        className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrence ? 'bg-gray-100 text-gray-400' : 'text-green-600 hover:bg-green-50'}`}
-                        disabled={deletingOccurrence}
-                        onClick={() => handleRestoreOccurrence(recurringDeleteEvent.id, deletedDate)}
-                      >
-                        {deletingOccurrence ? 'Restoring...' : 'Restore'}
-                      </button>
-                    </li>
-                  ))}
+                  {recurringDeleteEvent.deletedOccurrences.map((deletedDate) => {
+                    let dateLabel = "-";
+                    let timeLabel = "-";
+                    const dateObj = new Date(deletedDate);
+                    if (!isNaN(dateObj.getTime())) {
+                      dateLabel = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: userTimezone });
+                      timeLabel = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: userTimezone });
+                    }
+                    return (
+                      <li key={deletedDate} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{dateLabel}</p>
+                          <p className="text-xs text-gray-500">{timeLabel}</p>
+                        </div>
+                        <button
+                          className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrenceKey === deletedDate ? 'bg-gray-100 text-gray-400' : 'text-green-600 hover:bg-green-50'}`}
+                          disabled={deletingOccurrenceKey === deletedDate}
+                          onClick={() => handleRestoreOccurrence(recurringDeleteEvent.id, deletedDate)}
+                        >
+                          {deletingOccurrenceKey === deletedDate ? 'Restoring...' : 'Restore'}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -1195,6 +1266,19 @@ const AddEvent = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {modalMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+            <h3 className="text-lg font-semibold mb-2">{modalMessage}</h3>
+            <button
+              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+              onClick={() => setModalMessage("")}
+            >
+              OK
+            </button>
           </div>
         </div>
       )}
