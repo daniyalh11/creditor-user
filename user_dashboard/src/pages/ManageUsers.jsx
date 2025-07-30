@@ -8,6 +8,12 @@ const ManageUsers = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("user");
+  const [apiCallTime, setApiCallTime] = useState(null);
+  
+  // Clear selected users when filter role changes
+  useEffect(() => {
+    setSelectedUsers([]);
+  }, [filterRole]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [showCourseModal, setShowCourseModal] = useState(false);
@@ -16,16 +22,33 @@ const ManageUsers = () => {
   const [error, setError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState({ courseTitle: "", addedUsers: [] });
+  const [makingInstructor, setMakingInstructor] = useState(false);
 
   useEffect(() => {
     fetchUsers();
     fetchCourses();
   }, []);
 
+  // Update time differences every minute to keep them current
+  useEffect(() => {
+    if (!apiCallTime) return;
+
+    const interval = setInterval(() => {
+      // Force a re-render by updating a state that triggers recalculation
+      setUsers(prevUsers => [...prevUsers]);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [apiCallTime]);
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError("");
+      
+      // Record the API call time
+      const currentTime = new Date();
+      setApiCallTime(currentTime);
       
       // Enhanced token retrieval with debugging
       let token = localStorage.getItem('token');
@@ -99,11 +122,11 @@ const ManageUsers = () => {
       });
       
       if (!token) {
-        console.warn('⚠️ No token found for courses API call');
+        console.warn(' No token found for courses API call');
         // Still try to fetch courses without token
       }
       
-      console.log('📡 Making courses API call to:', `${API_BASE}/api/course/getAllCourses`);
+      console.log(' Making courses API call to:', `${API_BASE}/api/course/getAllCourses`);
       
       const response = await axios.get(`${API_BASE}/api/course/getAllCourses`, {
         headers: {
@@ -147,6 +170,41 @@ const ManageUsers = () => {
     return 'user'; // default role when no role is assigned in backend
   };
 
+  // Helper function to calculate time difference and format it
+  const calculateTimeDifference = (lastLoginTime) => {
+    if (!apiCallTime || !lastLoginTime) {
+      return null;
+    }
+
+    const lastLogin = new Date(lastLoginTime);
+    const timeDifference = apiCallTime.getTime() - lastLogin.getTime();
+    
+    // Convert milliseconds to different time units
+    const seconds = Math.floor(timeDifference / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const months = Math.floor(days / 30);
+    const years = Math.floor(days / 365);
+
+    // Format the time difference
+    if (years > 0) {
+      return `${years} year${years > 1 ? 's' : ''} ago`;
+    } else if (months > 0) {
+      return `${months} month${months > 1 ? 's' : ''} ago`;
+    } else if (days > 0) {
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    } else if (hours > 0) {
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    } else if (minutes > 0) {
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    } else if (seconds > 0) {
+      return `${seconds} second${seconds > 1 ? 's' : ''} ago`;
+    } else {
+      return 'Just now';
+    }
+  };
+
   // Helper function to get last visited from activity_log
   const getLastVisited = (user) => {
     if (user.activity_log && user.activity_log.length > 0) {
@@ -154,7 +212,10 @@ const ManageUsers = () => {
       const sortedLogs = user.activity_log.sort((a, b) => 
         new Date(b.createdAt) - new Date(a.createdAt)
       );
-      return sortedLogs[0].createdAt;
+      const lastLoginTime = sortedLogs[0].createdAt;
+      
+      // Calculate and return the time difference
+      return calculateTimeDifference(lastLoginTime);
     }
     return null;
   };
@@ -204,6 +265,16 @@ const ManageUsers = () => {
       // Different API endpoints based on the current filter role
       if (filterRole === "user") {
         // Add learners to course
+        console.log('🔄 Adding learners to course:', { course_id: selectedCourse, learnerIds: selectedUsers });
+        console.log('📋 Available courses:', courses.map(c => ({ id: c.id, title: c.title })));
+        console.log('🎯 Selected course details:', courses.find(c => c.id === selectedCourse));
+        
+        // Check if the selected course actually exists
+        const selectedCourseData = courses.find(c => c.id === selectedCourse);
+        if (!selectedCourseData) {
+          throw new Error(`Course with ID "${selectedCourse}" not found. Available courses: ${courses.map(c => c.id).join(', ')}`);
+        }
+        
         response = await axios.post(`${API_BASE}/api/course/addLearnerToCourse`, {
           course_id: selectedCourse,
           learnerIds: selectedUsers
@@ -216,6 +287,26 @@ const ManageUsers = () => {
         });
       } else if (filterRole === "instructor") {
         // Add instructors to course
+        console.log('🔄 Adding instructors to course:', { courseId: selectedCourse, instructorIds: selectedUsers });
+        console.log('📋 Available courses:', courses.map(c => ({ id: c.id, title: c.title })));
+        console.log('🎯 Selected course details:', courses.find(c => c.id === selectedCourse));
+        
+        // Check if selectedUsers is an array and not empty
+        if (!Array.isArray(selectedUsers) || selectedUsers.length === 0) {
+          throw new Error('No instructors selected or invalid selection format');
+        }
+        
+        // Check if courseId is valid
+        if (!selectedCourse || typeof selectedCourse !== 'string') {
+          throw new Error('Invalid course ID');
+        }
+        
+        // Check if the selected course actually exists
+        const selectedCourseData = courses.find(c => c.id === selectedCourse);
+        if (!selectedCourseData) {
+          throw new Error(`Course with ID "${selectedCourse}" not found. Available courses: ${courses.map(c => c.id).join(', ')}`);
+        }
+        
         response = await axios.post(`${API_BASE}/api/course/addInstructor/${selectedCourse}`, {
           instructorIds: selectedUsers
         }, {
@@ -227,6 +318,16 @@ const ManageUsers = () => {
         });
       } else if (filterRole === "admin") {
         // Add admins to course
+        console.log('🔄 Adding admins to course:', { courseId: selectedCourse, adminIds: selectedUsers });
+        console.log('📋 Available courses:', courses.map(c => ({ id: c.id, title: c.title })));
+        console.log('🎯 Selected course details:', courses.find(c => c.id === selectedCourse));
+        
+        // Check if the selected course actually exists
+        const selectedCourseData = courses.find(c => c.id === selectedCourse);
+        if (!selectedCourseData) {
+          throw new Error(`Course with ID "${selectedCourse}" not found. Available courses: ${courses.map(c => c.id).join(', ')}`);
+        }
+        
         response = await axios.post(`${API_BASE}/api/course/addAdmin/${selectedCourse}`, {
           adminIds: selectedUsers
         }, {
@@ -259,6 +360,10 @@ const ManageUsers = () => {
         setShowCourseModal(false);
         setSelectedCourse("");
         setSelectedUsers([]);
+        
+        // Refresh users list to get updated course information
+        await fetchUsers();
+        
         console.log(`${filterRole}s added to course successfully`);
       } else {
         throw new Error(response.data?.message || `Failed to add ${filterRole}s to course`);
@@ -269,7 +374,10 @@ const ManageUsers = () => {
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
-        message: error.message
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method,
+        payload: error.config?.data
       });
       
       // Handle specific error cases
@@ -286,6 +394,85 @@ const ManageUsers = () => {
       }
     } finally {
       setAddingToCourse(false);
+    }
+  };
+
+  const handleMakeInstructor = async () => {
+    if (selectedUsers.length === 0) return;
+    
+    try {
+      setMakingInstructor(true);
+      setError("");
+      
+      const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      console.log('🔄 Making users instructors:', { userIds: selectedUsers });
+      
+      // Make API call to update user roles to instructor
+      const response = await axios.put(`${API_BASE}/api/user/updateRole`, {
+        userIds: selectedUsers,
+        role: 'instructor'
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        withCredentials: true,
+      });
+
+      console.log('✅ Make Instructor API Response:', response.data);
+
+      if (response.data && (response.data.success || response.data.code === 200 || response.data.code === 201)) {
+        // Get the selected users data
+        const updatedUsers = users.filter(user => selectedUsers.includes(user.id));
+        
+        // Set success data and show success modal
+        setSuccessData({
+          courseTitle: "Role Update",
+          addedUsers: updatedUsers
+        });
+        setShowSuccessModal(true);
+        
+        // Reset selection
+        setSelectedUsers([]);
+        
+        // Refresh users list to get updated role information
+        await fetchUsers();
+        
+        console.log('Users successfully made instructors');
+      } else {
+        throw new Error(response.data?.message || 'Failed to update user roles');
+      }
+    } catch (error) {
+      console.error('Error making users instructors:', error);
+      console.error('❌ Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method,
+        payload: error.config?.data
+      });
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        setError('Invalid request. Please check your selection and try again.');
+      } else if (error.response?.status === 401) {
+        setError('Authentication failed. Please log in again.');
+      } else if (error.response?.status === 403) {
+        setError('You do not have permission to perform this action.');
+      } else if (error.response?.status === 500) {
+        setError(`Server error: ${error.response?.data?.message || 'Internal server error occurred. Please try again.'}`);
+      } else {
+        setError('Failed to update user roles. Please try again.');
+      }
+    } finally {
+      setMakingInstructor(false);
     }
   };
 
@@ -332,37 +519,54 @@ const ManageUsers = () => {
           </div>
         </div>
         
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFilterRole("user")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              filterRole === "user"
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            User
-          </button>
-          <button
-            onClick={() => setFilterRole("instructor")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              filterRole === "instructor"
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Instructor
-          </button>
-          <button
-            onClick={() => setFilterRole("admin")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              filterRole === "admin"
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Admin
-          </button>
+        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+          {apiCallTime && (
+            <div className="flex items-center gap-2 text-xs text-gray-500 mb-2 sm:mb-0">
+              <span>Last updated: {apiCallTime.toLocaleTimeString()}</span>
+              <button
+                onClick={fetchUsers}
+                disabled={loading}
+                className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                title="Refresh data"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFilterRole("user")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                filterRole === "user"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              User
+            </button>
+            <button
+              onClick={() => setFilterRole("instructor")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                filterRole === "instructor"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Instructor
+            </button>
+            <button
+              onClick={() => setFilterRole("admin")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                filterRole === "admin"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Admin
+            </button>
+          </div>
         </div>
       </div>
 
@@ -373,15 +577,29 @@ const ManageUsers = () => {
             <span className="text-sm font-medium text-blue-800">
               {selectedUsers.length} {filterRole}(s) selected
             </span>
-            <button
-              onClick={() => setShowCourseModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add to Course
-            </button>
+            <div className="flex gap-2">
+              {filterRole === "user" && (
+                <button
+                  onClick={handleMakeInstructor}
+                  disabled={makingInstructor}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  {makingInstructor ? 'Updating...' : 'Make Instructor'}
+                </button>
+              )}
+              <button
+                onClick={() => setShowCourseModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add to Course
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -464,14 +682,21 @@ const ManageUsers = () => {
             
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-3">
-                You have successfully added <span className="font-semibold text-gray-800">{successData.addedUsers.length} {filterRole}(s)</span> to the course:
+                {successData.courseTitle === "Role Update" 
+                  ? <>You have successfully updated <span className="font-semibold text-gray-800">{successData.addedUsers.length} user(s)</span> to instructor role.</>
+                  : <>You have successfully added <span className="font-semibold text-gray-800">{successData.addedUsers.length} {filterRole}(s)</span> to the course:</>
+                }
               </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                <p className="text-sm font-medium text-blue-800">{successData.courseTitle}</p>
-              </div>
+              {successData.courseTitle !== "Role Update" && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm font-medium text-blue-800">{successData.courseTitle}</p>
+                </div>
+              )}
               
               <div className="max-h-48 overflow-y-auto">
-                <p className="text-sm font-medium text-gray-700 mb-2">Added {filterRole}s:</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  {successData.courseTitle === "Role Update" ? "Updated users:" : `Added ${filterRole}s:`}
+                </p>
                 <div className="space-y-2">
                   {successData.addedUsers.map((user) => (
                     <div key={user.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
@@ -565,7 +790,7 @@ const ManageUsers = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {getLastVisited(user) ? new Date(getLastVisited(user)).toLocaleDateString() : 'Never'}
+                    {getLastVisited(user) || 'Never'}
                   </td>
                 </tr>
               ))}
