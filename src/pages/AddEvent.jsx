@@ -39,6 +39,38 @@ const AddEvent = () => {
   const [deleteIndex, setDeleteIndex] = useState(null);
   const [deletingOccurrenceKey, setDeletingOccurrenceKey] = useState(null); // string or null
   const [modalMessage, setModalMessage] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const EVENTS_PER_PAGE = 5;
+  const [showDateEvents, setShowDateEvents] = useState(false);
+  const [selectedDateEvents, setSelectedDateEvents] = useState([]);
+  const [selectedDateForEvents, setSelectedDateForEvents] = useState(null);
+
+  // Sort events by startTime descending (most recent at top)
+  const sortedEvents = [...events].sort((a, b) => {
+    // If both have createdAt, use it; else fallback to startTime
+    const aTime = a.createdAt ? new Date(a.createdAt) : new Date(a.startTime);
+    const bTime = b.createdAt ? new Date(b.createdAt) : new Date(b.startTime);
+    return bTime - aTime;
+  });
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedEvents.length / EVENTS_PER_PAGE);
+  const paginatedEvents = sortedEvents.slice(
+    (currentPage - 1) * EVENTS_PER_PAGE,
+    currentPage * EVENTS_PER_PAGE
+  );
+
+  const handlePrevPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+
+  // Reset to first page if events change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [events]);
 
   // Get authentication token from cookies
   const getAuthToken = () => {
@@ -111,6 +143,94 @@ const AddEvent = () => {
       console.error('Error formatting timezone:', error);
       return `${label}: Error`;
     }
+  };
+
+  // Validate recurring event data
+  const validateRecurringEvent = (formData) => {
+    const errors = [];
+    
+    if (formData.recurrence !== "none") {
+      if (!formData.startTime) {
+        errors.push("Start time is required for recurring events");
+      }
+      if (!formData.endTime) {
+        errors.push("End time is required for recurring events");
+      }
+      if (formData.startTime && formData.endTime) {
+        const start = new Date(formData.startTime);
+        const end = new Date(formData.endTime);
+        if (end <= start) {
+          errors.push("End time must be after start time");
+        }
+      }
+      if (!formData.title.trim()) {
+        errors.push("Title is required for recurring events");
+      }
+    }
+    
+    return errors;
+  };
+
+  // Debug function to test recurring event creation
+  const debugRecurringEvent = () => {
+    const testPayload = {
+      title: "Test Recurring Event",
+      description: "https://meet.google.com/test-recurring",
+      startTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
+      endTime: new Date(Date.now() + 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(), // Tomorrow + 1 hour
+      location: "Test Location",
+      isRecurring: true,
+      calendarType: "GROUP",
+      visibility: "PRIVATE",
+      courseName: "Test Course",
+      userRole: getUserRole(),
+      timeZone: "America/Los_Angeles",
+      recurrenceRule: {
+        frequency: "WEEKLY",
+        interval: 1,
+        endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
+        count: null,
+        byDay: [],
+        byMonthDay: [],
+        byYearDay: [],
+        byWeekNo: [],
+        byMonth: [],
+        bySetPos: [],
+        weekStart: "MO"
+      }
+    };
+    
+    console.log("=== TESTING RECURRING EVENT CREATION ===");
+    console.log("Test payload:", testPayload);
+    
+    // Test the API call
+    const token = getAuthToken();
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+        "X-User-Role": getUserRole(),
+      },
+      body: JSON.stringify(testPayload),
+      credentials: "include"
+    })
+    .then(response => {
+      console.log("Test API response status:", response.status);
+      return response.text();
+    })
+    .then(text => {
+      console.log("Test API response text:", text);
+      try {
+        const data = JSON.parse(text);
+        console.log("Test API response parsed:", data);
+      } catch (e) {
+        console.log("Test API response is not JSON");
+      }
+    })
+    .catch(error => {
+      console.error("Test API error:", error);
+    });
   };
 
   // Fetch user profile to get timezone and role
@@ -197,6 +317,30 @@ const AddEvent = () => {
 
     setSelectedDate(date);
     
+    console.log('=== DATE CLICK DEBUG ===');
+    console.log('Clicked date:', date.toDateString());
+    console.log('Total events available:', events.length);
+    
+    // Check if there are existing events for this date
+    const eventsForDate = getEventsForDate(date);
+    
+    console.log('Events found for this date:', eventsForDate.length);
+    console.log('Events for date:', eventsForDate);
+    
+    if (eventsForDate.length > 0) {
+      // Show existing events for this date
+      console.log('Showing existing events modal');
+      setSelectedDateEvents(eventsForDate);
+      setSelectedDateForEvents(date);
+      setShowDateEvents(true);
+    } else {
+      // No events exist, open the modal directly
+      console.log('No events found, opening new event modal');
+      openEventModal(date);
+    }
+  };
+
+  const openEventModal = (date) => {
     // Create a proper datetime string for the selected date in user's timezone
     const createDateTimeString = (date, hour = 9, minute = 0) => {
       // Create a date object for the selected date
@@ -467,51 +611,33 @@ const AddEvent = () => {
     const decodedToken = decodeToken();
     console.log("Token contents:", decodedToken);
 
+    // Validate recurring event data
+    const validationErrors = validateRecurringEvent(form);
+    if (validationErrors.length > 0) {
+      alert("Validation errors:\n" + validationErrors.join("\n"));
+      return;
+    }
+
+    const isRecurring = form.recurrence !== "none";
+
     // Prepare payload for backend
     const selectedCourse = courses.find(c => c.id === form.courseId);
     const toIsoUtc = (dateString) => {
       if (!dateString) return "";
       
-      // Create a date object from the input string (which is in user's local timezone)
-      const localDate = new Date(dateString);
-      
-      // Convert to PST by creating a date string in PST timezone
-      const pstDateString = localDate.toLocaleString("en-US", {
-        timeZone: "America/Los_Angeles",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false
-      });
-      
-      // Parse the PST date string
-      const [datePart, timePart] = pstDateString.split(", ");
-      const [month, day, year] = datePart.split("/");
-      const [hour, minute, second] = timePart.split(":");
-      
-      // Create a proper ISO string in PST timezone
-      // Note: We need to send this as UTC but adjusted for PST
-      const pstDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}.000Z`);
-      
-      // Since we're sending to a backend that expects PST, we need to adjust for the 8-hour difference
-      // PST is UTC-8, so we need to add 8 hours to make it UTC
-      const utcDate = new Date(pstDate.getTime() + (8 * 60 * 60 * 1000));
-      
-      console.log('Timezone conversion:', {
-        original: dateString,
-        localDate: localDate.toISOString(),
-        pstDateString,
-        pstDate: pstDate.toISOString(),
-        utcDate: utcDate.toISOString()
-      });
-      
-      return utcDate.toISOString();
+      try {
+        // Create a date object from the input string (which is in user's local timezone)
+        const localDate = new Date(dateString);
+        
+        // Convert to UTC directly - simpler and more reliable
+        return localDate.toISOString();
+      } catch (error) {
+        console.error('Error converting date to UTC:', error);
+        return "";
+      }
     };
 
-    // Map recurrence value to frequency
+    // Map recurrence value to frequency with proper structure
     const recurrenceMap = {
       daily: 'DAILY',
       weekly: 'WEEKLY',
@@ -519,14 +645,29 @@ const AddEvent = () => {
       yearly: 'YEARLY',
     };
 
-    const isRecurring = form.recurrence !== "none";
-    const recurrenceRule = isRecurring
-      ? {
-          frequency: recurrenceMap[form.recurrence] || 'DAILY',
-          interval: 1,
-          endDate: "2026-07-31T09:00:00.000Z"
-        }
-      : undefined;
+    // Create proper recurrence rule structure
+    let recurrenceRule = undefined;
+    if (isRecurring) {
+      // Calculate end date (1 year from start date)
+      const startDate = new Date(form.startTime);
+      const endDate = new Date(startDate);
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      
+      recurrenceRule = {
+        frequency: recurrenceMap[form.recurrence] || 'DAILY',
+        interval: 1,
+        endDate: endDate.toISOString(),
+        // Add additional properties that might be expected by backend
+        count: null, // Let endDate control the end
+        byDay: [], // For weekly recurrence
+        byMonthDay: [], // For monthly recurrence
+        byYearDay: [], // For yearly recurrence
+        byWeekNo: [], // For yearly recurrence
+        byMonth: [], // For yearly recurrence
+        bySetPos: [], // For recurrence exceptions
+        weekStart: 'MO' // Monday as week start
+      };
+    }
 
     const payload = {
       title: form.title,
@@ -538,22 +679,25 @@ const AddEvent = () => {
       calendarType: "GROUP",
       visibility: "PRIVATE",
       courseName: selectedCourse ? selectedCourse.title : "",
-      userRole: currentRole // Include user role in payload
+      userRole: currentRole, // Include user role in payload
+      timeZone: "America/Los_Angeles" // Set timezone to PST for backend compatibility
     };
-    // Set timezone to PST for backend compatibility
-    payload.timeZone = "America/Los_Angeles";
     
-    // Add timezone offset information for clarity
-    payload.timezoneOffset = -480; // PST is UTC-8 (480 minutes)
-    if (isRecurring) {
+    // Add recurrence rule if it's a recurring event
+    if (isRecurring && recurrenceRule) {
       payload.recurrenceRule = recurrenceRule;
     }
 
+    console.log("=== EVENT CREATION DEBUG INFO ===");
     console.log("Form startTime:", form.startTime);
     console.log("Form endTime:", form.endTime);
+    console.log("Is Recurring:", isRecurring);
+    console.log("Recurrence Type:", form.recurrence);
+    console.log("Recurrence Rule:", recurrenceRule);
     console.log("Payload being sent:", payload);
     console.log("User role:", currentRole);
     console.log("JWT token role (if any):", decodedToken?.role || decodedToken?.userRole || "No role in token");
+    console.log("=== END DEBUG INFO ===");
 
     if (editIndex !== null) {
       // Update event in backend
@@ -570,28 +714,28 @@ const AddEvent = () => {
           body: JSON.stringify(payload),
           credentials: "include"
         });
-        const rawText = await patchRes.text();
-        let patchData;
-        try {
-          patchData = JSON.parse(rawText);
-        } catch (jsonErr) {
-          console.error('PATCH response not JSON:', rawText);
-          if (patchRes.status === 404) {
-            alert('Event not found. It may have been deleted or does not exist.');
-          } else {
-            alert('Server error: ' + rawText);
-          }
-          throw new Error('Server error: ' + rawText);
-        }
+        
         if (!patchRes.ok) {
-          throw new Error(patchData?.message || 'Failed to update event');
+          const errorText = await patchRes.text();
+          let errorMessage = 'Failed to update event';
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            errorMessage = errorText || errorMessage;
+          }
+          throw new Error(errorMessage);
         }
+        
+        const patchData = await patchRes.json();
         console.log('PATCH /calendar/events/:eventId payload:', payload);
         console.log('PATCH /calendar/events/:eventId response:', patchData);
+        
         // Refetch events after updating
         const data = await getAllEvents();
         console.log("Fetched events after update:", data);
         setEvents(data);
+        alert("Event updated successfully!");
       } catch (err) {
         console.error("Failed to update event", err);
         alert(err.message || 'Failed to update event');
@@ -601,6 +745,8 @@ const AddEvent = () => {
       // Send to backend only on add
       try {
         const token = getAuthToken();
+        console.log('Creating new event with payload:', payload);
+        
         const postRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events`, {
           method: "POST",
           headers: {
@@ -611,29 +757,42 @@ const AddEvent = () => {
           body: JSON.stringify(payload),
           credentials: "include"
         });
+        
+        if (!postRes.ok) {
+          const errorText = await postRes.text();
+          let errorMessage = 'Failed to create event';
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || errorMessage;
+            
+            // Check if it's a role-related error
+            if (postRes.status === 403 && errorData.message?.includes('Access restricted to admin, instructor roles')) {
+              console.error("Role verification failed. Backend expects role in JWT token but token doesn't contain role information.");
+              alert("Permission Error: Your account role cannot be verified by the server. Please contact support to ensure your instructor role is properly configured in the system.");
+              return;
+            }
+          } catch (e) {
+            errorMessage = errorText || errorMessage;
+          }
+          throw new Error(errorMessage);
+        }
+        
         const postData = await postRes.json();
         console.log("POST response:", postData);
-        
-        // Check if it's a role-related error
-        if (postRes.status === 403 && postData.message?.includes('Access restricted to admin, instructor roles')) {
-          console.error("Role verification failed. Backend expects role in JWT token but token doesn't contain role information.");
-          alert("Permission Error: Your account role cannot be verified by the server. Please contact support to ensure your instructor role is properly configured in the system.");
-          return;
-        }
         
         // Refetch events after adding
         const data = await getAllEvents();
         console.log("Fetched events after add:", data);
-          // Normalize course_id to courseId for all events
+        // Normalize course_id to courseId for all events
         const normalizedEvents = data.map(ev => ({
             ...ev,
             courseId: ev.courseId || ev.course_id // fallback to course_id if courseId is missing
           }));
-          setEvents(normalizedEvents);
+        setEvents(normalizedEvents);
+        alert("Event created successfully!");
       } catch (err) {
-        // Optionally handle error
         console.error("Failed to add event to backend", err);
-        alert("Failed to create event. Please try again or contact support if the issue persists.");
+        alert("Failed to create event: " + err.message);
       }
     }
     
@@ -665,13 +824,40 @@ const AddEvent = () => {
   // Helper: get events for a specific date
   const getEventsForDate = (date) => {
     if (!date) return [];
+    
+    console.log('Getting events for date:', date.toDateString());
+    console.log('Available events:', events);
+    
     return events.filter(ev => {
-      const evDate = new Date(ev.date);
-      return (
+      // Try different date fields that might exist
+      const eventDate = ev.date || ev.startTime || ev.createdAt;
+      
+      if (!eventDate) {
+        console.log('Event has no date field:', ev);
+        return false;
+      }
+      
+      const evDate = new Date(eventDate);
+      
+      if (isNaN(evDate.getTime())) {
+        console.log('Invalid date for event:', ev);
+        return false;
+      }
+      
+      const isSameDate = (
         evDate.getFullYear() === date.getFullYear() &&
         evDate.getMonth() === date.getMonth() &&
         evDate.getDate() === date.getDate()
       );
+      
+      console.log('Event date check:', {
+        eventTitle: ev.title,
+        eventDate: evDate.toDateString(),
+        selectedDate: date.toDateString(),
+        isSameDate
+      });
+      
+      return isSameDate;
     });
   };
 
@@ -692,6 +878,16 @@ const AddEvent = () => {
             <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
               Read-only access
             </span>
+          )}
+          {/* Debug button for testing recurring events */}
+          {(userRole === 'admin' || userRole === 'instructor') && (
+            <button
+              onClick={debugRecurringEvent}
+              className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white text-xs rounded-lg"
+              title="Test recurring event creation"
+            >
+              Debug Recurring
+            </button>
           )}
         </div>
       </div>
@@ -799,7 +995,7 @@ const AddEvent = () => {
       {/* Events List */}
       <div className="mb-4">
         <h3 className="font-semibold text-lg mb-4 text-gray-800">Upcoming Events</h3>
-        {events.length === 0 ? (
+        {sortedEvents.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -807,86 +1003,108 @@ const AddEvent = () => {
             <p className="mt-2">No events scheduled yet</p>
           </div>
         ) : (
-          <ul className="space-y-3">
-            {events.map((event, i) => (
-              <li key={event.id || i} className="border rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-semibold text-gray-800">{event.title}
-                      {event.isRecurring && (
-                        <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full align-middle">Recurring</span>
+          <>
+            <ul className="space-y-3">
+              {paginatedEvents.map((event, i) => (
+                <li key={event.id || i} className="border rounded-lg p-4 bg-white hover:bg-gray-50 transition-colors">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-semibold text-gray-800">{event.title}
+                        {event.isRecurring && (
+                          <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full align-middle">Recurring</span>
+                        )}
+                      </h4>
+                      <p className="text-sm text-gray-600 mt-1">{event.description}</p>
+                      {event.courseId && (
+                        <span className="inline-block mt-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                          {courses.find(c => c.id === event.courseId)?.title || event.courseId}
+                        </span>
                       )}
-                    </h4>
-                    <p className="text-sm text-gray-600 mt-1">{event.description}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    {event.courseId && (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full mb-1">
-                        {courses.find(c => c.id === event.courseId)?.title || event.courseId}
-                      </span>
-                    )}
-                    <div className="flex gap-2">
-                      <button
-                        className="text-blue-600 hover:underline text-xs"
-                        onClick={() => handleEdit(i)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="text-red-600 hover:underline text-xs"
-                        onClick={() => handleDelete(i)}
-                      >
-                        Delete
-                      </button>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex gap-2">
+                        <button
+                          className="text-blue-600 hover:underline text-xs"
+                          onClick={() => handleEdit(events.findIndex(e => e.id === event.id))}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="text-red-600 hover:underline text-xs"
+                          onClick={() => handleDelete(events.findIndex(e => e.id === event.id))}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="mt-3 flex items-center text-sm text-gray-500 space-x-4">
-                  <span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {(() => {
-                      try {
-                        const userTz = localStorage.getItem('userTimezone') || 'America/New_York';
-                        return `${new Date(event.startTime).toLocaleString('en-US', { 
-                          hour: '2-digit', 
-                          minute: '2-digit',
-                          hour12: true,
-                          timeZone: userTz 
-                        })} - ${new Date(event.endTime).toLocaleTimeString('en-US', { 
-                          hour: '2-digit', 
-                          minute: '2-digit',
-                          hour12: true,
-                          timeZone: userTz 
-                        })}`;
-                      } catch (error) {
-                        console.error('Error formatting event time:', error);
-                        return `${new Date(event.startTime).toLocaleString()} - ${new Date(event.endTime).toLocaleTimeString()}`;
-                      }
-                    })()}
-                  </span>
-                  {event.recurrence && (
+                  <div className="mt-3 flex items-center text-sm text-gray-500 space-x-4">
                     <span>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      {event.recurrence}
+                      {(() => {
+                        try {
+                          const userTz = localStorage.getItem('userTimezone') || 'America/New_York';
+                          return `${new Date(event.startTime).toLocaleString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true,
+                            timeZone: userTz 
+                          })} - ${new Date(event.endTime).toLocaleTimeString('en-US', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true,
+                            timeZone: userTz 
+                          })}`;
+                        } catch (error) {
+                          console.error('Error formatting event time:', error);
+                          return `${new Date(event.startTime).toLocaleString()} - ${new Date(event.endTime).toLocaleTimeString()}`;
+                        }
+                      })()}
                     </span>
-                  )}
-                </div>
-                {event.location && (
-                  <div className="mt-2 flex items-center text-sm text-gray-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {event.location}
+                    {event.recurrence && (
+                      <span>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {event.recurrence}
+                      </span>
+                    )}
                   </div>
-                )}
-              </li>
-            ))}
-          </ul>
+                  {event.location && (
+                    <div className="mt-2 flex items-center text-sm text-gray-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      {event.location}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {/* Pagination Controls */}
+            <div className="flex justify-center items-center gap-4 mt-4">
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+                className={`px-4 py-2 rounded-lg border text-sm font-medium ${currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-100 text-gray-700'}`}
+              >
+                PREV
+              </button>
+              <span className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className={`px-4 py-2 rounded-lg border text-sm font-medium ${currentPage === totalPages || totalPages === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white hover:bg-gray-100 text-gray-700'}`}
+              >
+                NEXT
+              </button>
+            </div>
+          </>
         )}
       </div>
       
@@ -1092,143 +1310,169 @@ const AddEvent = () => {
 
       {/* Recurring Delete Modal */}
       {showRecurringDeleteModal && recurringDeleteEvent && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity">
-        <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 relative">
-          <button
-            className="absolute top-5 right-5 text-gray-500 hover:text-gray-700 transition-colors duration-200 rounded-full p-1 hover:bg-gray-100"
-            onClick={() => setShowRecurringDeleteModal(false)}
-            aria-label="Close"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">Delete Recurring Event</h2>
-              <p className="text-gray-600">This event repeats. What would you like to delete or restore?</p>
-            </div>
-            
-            <div className="border rounded-lg overflow-hidden">
-              <h3 className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 border-b">
-                Upcoming occurrences
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity">
+    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl mx-4 relative">
+      <button
+        className="absolute top-5 right-5 text-gray-500 hover:text-gray-700 transition-colors duration-200 rounded-full p-1 hover:bg-gray-100"
+        onClick={() => setShowRecurringDeleteModal(false)}
+        aria-label="Close"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-gray-900">Manage Recurring Event</h2>
+          <p className="text-gray-600">This event repeats. Manage occurrences below:</p>
+        </div>
+        
+        {/* Dual column layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Upcoming Occurrences Column */}
+          <div className="border rounded-lg overflow-hidden shadow-sm">
+            <div className="bg-blue-50 px-4 py-3 border-b">
+              <h3 className="text-sm font-medium text-blue-700 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Upcoming Occurrences
               </h3>
-              <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
-                {/* Show active occurrences with Delete, deleted with Restore */}
-                {recurringDeleteEvent.occurrences && recurringDeleteEvent.occurrences.map((occ, idx) => {
-                  const deletedOccurrences = recurringDeleteEvent.deletedOccurrences || [];
-                  const isDeleted = deletedOccurrences.includes(occ.startTime);
-                  // Defensive date rendering
+            </div>
+            <ul className="divide-y divide-gray-200 max-h-80 overflow-y-auto">
+              {recurringDeleteEvent.occurrences && recurringDeleteEvent.occurrences.map((occ, idx) => {
+                const deletedOccurrences = recurringDeleteEvent.deletedOccurrences || [];
+                const isDeleted = deletedOccurrences.includes(occ.startTime);
+                // Skip if this occurrence is deleted
+                if (isDeleted) return null;
+                
+                let dateLabel = "-";
+                let timeLabel = "-";
+                let endTimeLabel = "-";
+                const startDateObj = new Date(occ.startTime);
+                const endDateObj = new Date(occ.endTime);
+                if (!isNaN(startDateObj.getTime())) {
+                  dateLabel = startDateObj.toLocaleDateString(undefined, {
+                    weekday: 'short', month: 'short', day: 'numeric', timeZone: userTimezone
+                  });
+                  timeLabel = startDateObj.toLocaleTimeString(undefined, {
+                    hour: '2-digit', minute: '2-digit', timeZone: userTimezone
+                  });
+                }
+                if (!isNaN(endDateObj.getTime())) {
+                  endTimeLabel = endDateObj.toLocaleTimeString(undefined, {
+                    hour: '2-digit', minute: '2-digit', timeZone: userTimezone
+                  });
+                }
+                return (
+                  <li key={occ.startTime} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{dateLabel}</p>
+                      <p className="text-xs text-gray-500">{timeLabel} - {endTimeLabel}</p>
+                    </div>
+                    <button
+                      className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrenceKey === occ.startTime ? 'bg-gray-100 text-gray-400' : 'text-red-600 hover:bg-red-50 border border-red-100'}`}
+                      disabled={deletingOccurrenceKey === occ.startTime}
+                      onClick={() => handleDeleteOccurrence(recurringDeleteEvent.id, occ.startTime)}
+                    >
+                      {deletingOccurrenceKey === occ.startTime ? (
+                        <span className="flex items-center">
+                          <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Deleting...
+                        </span>
+                      ) : 'Delete'}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {/* Deleted Occurrences Column */}
+          <div className="border rounded-lg overflow-hidden shadow-sm">
+            <div className="bg-amber-50 px-4 py-3 border-b">
+              <h3 className="text-sm font-medium text-amber-700 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Deleted Occurrences
+              </h3>
+            </div>
+            <ul className="divide-y divide-gray-200 max-h-80 overflow-y-auto">
+              {recurringDeleteEvent.deletedOccurrences && recurringDeleteEvent.deletedOccurrences.length > 0 ? (
+                recurringDeleteEvent.deletedOccurrences.map((deletedDate) => {
                   let dateLabel = "-";
                   let timeLabel = "-";
-                  let endTimeLabel = "-";
-                  const startDateObj = new Date(occ.startTime);
-                  const endDateObj = new Date(occ.endTime);
-                  if (!isNaN(startDateObj.getTime())) {
-                    dateLabel = startDateObj.toLocaleDateString(undefined, {
-                      weekday: 'short', month: 'short', day: 'numeric', timeZone: userTimezone
-                    });
-                    timeLabel = startDateObj.toLocaleTimeString(undefined, {
-                      hour: '2-digit', minute: '2-digit', timeZone: userTimezone
-                    });
-                  }
-                  if (!isNaN(endDateObj.getTime())) {
-                    endTimeLabel = endDateObj.toLocaleTimeString(undefined, {
-                      hour: '2-digit', minute: '2-digit', timeZone: userTimezone
-                    });
+                  const dateObj = new Date(deletedDate);
+                  if (!isNaN(dateObj.getTime())) {
+                    dateLabel = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: userTimezone });
+                    timeLabel = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: userTimezone });
                   }
                   return (
-                    <li key={occ.startTime} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{dateLabel}</p>
-                        <p className="text-xs text-gray-500">{timeLabel} - {endTimeLabel}</p>
+                    <li key={deletedDate} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{dateLabel}</p>
+                        <p className="text-xs text-gray-500">{timeLabel}</p>
                       </div>
-                      {isDeleted ? (
-                        <button
-                          className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrenceKey === occ.startTime ? 'bg-gray-100 text-gray-400' : 'text-green-600 hover:bg-green-50'}`}
-                          disabled={deletingOccurrenceKey === occ.startTime}
-                          onClick={() => handleRestoreOccurrence(recurringDeleteEvent.id, occ.startTime)}
-                        >
-                          {deletingOccurrenceKey === occ.startTime ? 'Restoring...' : 'Restore'}
-                        </button>
-                      ) : (
-                        <button
-                          className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrenceKey === occ.startTime ? 'bg-gray-100 text-gray-400' : 'text-red-600 hover:bg-red-50'}`}
-                          disabled={deletingOccurrenceKey === occ.startTime}
-                          onClick={() => handleDeleteOccurrence(recurringDeleteEvent.id, occ.startTime)}
-                        >
-                          {deletingOccurrenceKey === occ.startTime ? 'Deleting...' : 'Delete'}
-                        </button>
-                      )}
+                      <button
+                        className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrenceKey === deletedDate ? 'bg-gray-100 text-gray-400' : 'text-green-600 hover:bg-green-50 border border-green-100'}`}
+                        disabled={deletingOccurrenceKey === deletedDate}
+                        onClick={() => handleRestoreOccurrence(recurringDeleteEvent.id, deletedDate)}
+                      >
+                        {deletingOccurrenceKey === deletedDate ? (
+                          <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Restoring...
+                          </span>
+                        ) : 'Restore'}
+                      </button>
                     </li>
                   );
-                })}
-              </ul>
-            </div>
-
-            {/* Deleted occurrences section */}
-            {recurringDeleteEvent.deletedOccurrences && recurringDeleteEvent.deletedOccurrences.length > 0 && (
-              <div className="mt-6">
-                <h3 className="bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 border-b">
-                  Deleted occurrences
-                </h3>
-                <ul className="divide-y divide-gray-200 max-h-40 overflow-y-auto">
-                  {recurringDeleteEvent.deletedOccurrences.map((deletedDate) => {
-                    let dateLabel = "-";
-                    let timeLabel = "-";
-                    const dateObj = new Date(deletedDate);
-                    if (!isNaN(dateObj.getTime())) {
-                      dateLabel = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: userTimezone });
-                      timeLabel = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: userTimezone });
-                    }
-                    return (
-                      <li key={deletedDate} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{dateLabel}</p>
-                          <p className="text-xs text-gray-500">{timeLabel}</p>
-                        </div>
-                        <button
-                          className={`ml-4 px-3 py-1 text-sm rounded-md transition-colors ${deletingOccurrenceKey === deletedDate ? 'bg-gray-100 text-gray-400' : 'text-green-600 hover:bg-green-50'}`}
-                          disabled={deletingOccurrenceKey === deletedDate}
-                          onClick={() => handleRestoreOccurrence(recurringDeleteEvent.id, deletedDate)}
-                        >
-                          {deletingOccurrenceKey === deletedDate ? 'Restoring...' : 'Restore'}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-            
-            <div className="space-y-2 pt-2">
-              <button
-                className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${deletingAll ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 text-white'}`}
-                disabled={deletingAll}
-                onClick={() => handleDeleteAllOccurrences(recurringDeleteEvent.id)}
-              >
-                {deletingAll ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Deleting all occurrences...
-                  </span>
-                ) : 'Delete entire series'}
-              </button>
-              <button
-                className="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-                onClick={() => setShowRecurringDeleteModal(false)}
-              >
-                Cancel
-                </button>
-              </div>
-            </div>
+                })
+              ) : (
+                <li className="px-4 py-4 text-center">
+                  <p className="text-sm text-gray-500">No deleted occurrences</p>
+                </li>
+              )}
+            </ul>
           </div>
         </div>
-      )}
+
+        {/* Delete All Button */}
+        <div className="pt-4 border-t">
+          <button
+            className={`w-full py-3 px-4 rounded-lg text-sm font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${deletingAll ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 text-white'}`}
+            disabled={deletingAll}
+            onClick={() => handleDeleteAllOccurrences(recurringDeleteEvent.id)}
+          >
+            {deletingAll ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Deleting all occurrences...
+              </span>
+            ) : 'Delete entire series'}
+          </button>
+          <button
+            className="w-full mt-3 py-2.5 px-4 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors border border-gray-300"
+            onClick={() => setShowRecurringDeleteModal(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Confirm Delete Modal for non-recurring event */}
       {showDeleteConfirmModal && (
@@ -1269,6 +1513,154 @@ const AddEvent = () => {
           </div>
         </div>
       )}
+
+      {/* Date Events Modal */}
+      {showDateEvents && selectedDateForEvents && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto relative transform transition-all duration-300 scale-100 opacity-100">
+            <button
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors duration-200 p-1 rounded-full hover:bg-gray-100"
+              onClick={() => setShowDateEvents(false)}
+              aria-label="Close"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 border-b pb-3">
+                Events for {selectedDateForEvents.toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </h2>
+              
+              <div className="mt-4 flex justify-between items-center">
+                <p className="text-gray-600">
+                  {selectedDateEvents.length} event{selectedDateEvents.length !== 1 ? 's' : ''} scheduled
+                </p>
+                <button
+                  onClick={() => {
+                    setShowDateEvents(false);
+                    openEventModal(selectedDateForEvents);
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                >
+                  + Create New Event
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {selectedDateEvents.map((event, index) => (
+                <div key={event.id || index} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-gray-800 text-lg">{event.title}</h3>
+                        {event.isRecurring && (
+                          <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">Recurring</span>
+                        )}
+                      </div>
+                      
+                      {/* Course Name */}
+                      {event.courseId && (
+                        <div className="mb-2">
+                          <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                            {courses.find(c => c.id === event.courseId)?.title || event.courseId}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Time */}
+                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                        <div className="flex items-center gap-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>
+                            {(() => {
+                              try {
+                                const userTz = localStorage.getItem('userTimezone') || 'America/New_York';
+                                return `${new Date(event.startTime).toLocaleString('en-US', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit',
+                                  hour12: true,
+                                  timeZone: userTz 
+                                })} - ${new Date(event.endTime).toLocaleTimeString('en-US', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit',
+                                  hour12: true,
+                                  timeZone: userTz 
+                                })}`;
+                              } catch (error) {
+                                return `${new Date(event.startTime).toLocaleString()} - ${new Date(event.endTime).toLocaleTimeString()}`;
+                              }
+                            })()}
+                          </span>
+                        </div>
+                        
+                        {/* Recurrence */}
+                        {event.recurrence && (
+                          <div className="flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <span>{event.recurrence}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Description */}
+                      {event.description && (
+                        <div className="mb-2">
+                          <p className="text-sm text-gray-700">{event.description}</p>
+                        </div>
+                      )}
+                      
+                      {/* Location */}
+                      {event.location && (
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <span>{event.location}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-col gap-2 ml-4">
+                      <button
+                        className="text-blue-600 hover:underline text-sm"
+                        onClick={() => {
+                          setShowDateEvents(false);
+                          handleEdit(events.findIndex(e => e.id === event.id));
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="text-red-600 hover:underline text-sm"
+                        onClick={() => {
+                          setShowDateEvents(false);
+                          handleDelete(events.findIndex(e => e.id === event.id));
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalMessage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
@@ -1287,4 +1679,3 @@ const AddEvent = () => {
 };
 
 export default AddEvent;
-n
