@@ -193,6 +193,24 @@ export async function updateCatalog(catalogId, catalogData) {
   try {
     console.log('updateCatalog called with:', catalogId, catalogData);
     
+    // Validate catalogData
+    if (!catalogData || typeof catalogData !== 'object') {
+      throw new Error('Invalid catalog data provided');
+    }
+    
+    if (!catalogData.name || !catalogData.description) {
+      throw new Error('Name and description are required');
+    }
+    
+    // Sanitize the data before sending
+    const sanitizedData = {
+      name: catalogData.name.trim(),
+      description: catalogData.description.trim(),
+      ...(catalogData.thumbnail && { thumbnail: catalogData.thumbnail.trim() })
+    };
+    
+    console.log('Sanitized catalog data:', sanitizedData);
+    
     // Check if it's a local catalog
     if (catalogId.startsWith('local-')) {
       const localCatalogs = JSON.parse(localStorage.getItem('localCatalogs') || '[]');
@@ -200,8 +218,8 @@ export async function updateCatalog(catalogId, catalogData) {
       if (catalogIndex !== -1) {
         localCatalogs[catalogIndex] = {
           ...localCatalogs[catalogIndex],
-          ...catalogData,
-          thumbnail: catalogData.thumbnail, // Always update thumbnail
+          ...sanitizedData,
+          thumbnail: sanitizedData.thumbnail, // Always update thumbnail
           updatedAt: new Date().toISOString()
         };
         localStorage.setItem('localCatalogs', JSON.stringify(localCatalogs));
@@ -215,17 +233,29 @@ export async function updateCatalog(catalogId, catalogData) {
     }
 
     // Try backend update
-    console.log('Sending PUT to backend with:', catalogData);
+    console.log('Sending PUT to backend with:', sanitizedData);
+    console.log('Request URL:', `${import.meta.env.VITE_API_BASE_URL}/api/catalog/${catalogId}/updatecatalog`);
+    console.log('Request headers:', getAuthHeaders());
+    
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/catalog/${catalogId}/updatecatalog`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       credentials: 'include',
-      body: JSON.stringify(catalogData),
+      body: JSON.stringify(sanitizedData),
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Backend update failed:', errorData);
+      let errorData = {};
+      try {
+        errorData = await response.json();
+        console.error('Backend update failed - parsed error:', errorData);
+      } catch (parseError) {
+        console.error('Backend update failed - could not parse error response:', parseError);
+        errorData = { message: `Server error: ${response.status} ${response.statusText}` };
+      }
       
       // Handle permission errors gracefully
       if (response.status === 403) {
@@ -238,15 +268,15 @@ export async function updateCatalog(catalogId, catalogData) {
           // Update existing local catalog
           localCatalogs[catalogIndex] = {
             ...localCatalogs[catalogIndex],
-            ...catalogData,
-            thumbnail: catalogData.thumbnail,
+            ...sanitizedData,
+            thumbnail: sanitizedData.thumbnail,
             updatedAt: new Date().toISOString()
           };
         } else {
           // Only create new local catalog entry if it doesn't exist
           // Check if this might be a backend catalog that we're converting to local
           const existingCatalog = localCatalogs.find(cat => 
-            cat.name === catalogData.name || 
+            cat.name === sanitizedData.name || 
             cat.id === catalogId ||
             cat.originalId === catalogId
           );
@@ -255,8 +285,8 @@ export async function updateCatalog(catalogId, catalogData) {
             localCatalogs.push({
               id: `local-${catalogId}`,
               originalId: catalogId, // Keep reference to original ID
-              ...catalogData,
-              thumbnail: catalogData.thumbnail,
+              ...sanitizedData,
+              thumbnail: sanitizedData.thumbnail,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
               isLocal: true
@@ -266,8 +296,8 @@ export async function updateCatalog(catalogId, catalogData) {
             const existingIndex = localCatalogs.findIndex(cat => cat.id === existingCatalog.id);
             localCatalogs[existingIndex] = {
               ...localCatalogs[existingIndex],
-              ...catalogData,
-              thumbnail: catalogData.thumbnail,
+              ...sanitizedData,
+              thumbnail: sanitizedData.thumbnail,
               updatedAt: new Date().toISOString()
             };
           }
@@ -283,11 +313,75 @@ export async function updateCatalog(catalogId, catalogData) {
         };
       }
       
+      // For 500 errors, provide more detailed error information
+      if (response.status === 500) {
+        console.error('Server error details:', errorData);
+        
+        // Fallback to local storage for 500 errors
+        console.log('Server error, updating locally instead');
+        const localCatalogs = JSON.parse(localStorage.getItem('localCatalogs') || '[]');
+        const catalogIndex = localCatalogs.findIndex(cat => cat.id === catalogId);
+        
+        if (catalogIndex !== -1) {
+          // Update existing local catalog
+          localCatalogs[catalogIndex] = {
+            ...localCatalogs[catalogIndex],
+            ...sanitizedData,
+            thumbnail: sanitizedData.thumbnail,
+            updatedAt: new Date().toISOString()
+          };
+        } else {
+          // Create new local catalog entry
+          const existingCatalog = localCatalogs.find(cat => 
+            cat.name === sanitizedData.name || 
+            cat.id === catalogId ||
+            cat.originalId === catalogId
+          );
+          
+          if (!existingCatalog) {
+            localCatalogs.push({
+              id: `local-${catalogId}`,
+              originalId: catalogId,
+              ...sanitizedData,
+              thumbnail: sanitizedData.thumbnail,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              isLocal: true
+            });
+          } else {
+            // Update the existing catalog
+            const existingIndex = localCatalogs.findIndex(cat => cat.id === existingCatalog.id);
+            localCatalogs[existingIndex] = {
+              ...localCatalogs[existingIndex],
+              ...sanitizedData,
+              thumbnail: sanitizedData.thumbnail,
+              updatedAt: new Date().toISOString()
+            };
+          }
+        }
+        
+        localStorage.setItem('localCatalogs', JSON.stringify(localCatalogs));
+        
+        return {
+          success: true,
+          message: 'Catalog updated locally (server error prevented backend update)',
+          data: localCatalogs.find(cat => cat.id === catalogId || cat.originalId === catalogId),
+          warning: 'Changes saved locally due to server issues'
+        };
+      }
+      
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json();
-    console.log('Backend update response:', data);
+    let data;
+    try {
+      data = await response.json();
+      console.log('Backend update response:', data);
+    } catch (parseError) {
+      console.error('Could not parse successful response:', parseError);
+      throw new Error('Invalid response from server');
+    }
+    
     return data;
   } catch (error) {
     console.error('Error updating catalog:', error);

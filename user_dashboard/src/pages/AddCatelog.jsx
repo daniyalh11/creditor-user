@@ -118,9 +118,14 @@ const AddCatelog = () => {
       setLastUpdateRequest({ editId, catalogData });
       let newCatalog;
       if (editId) {
-        // Update existing catalog
-        console.log('Updating catalog with data:', catalogData);
-        newCatalog = await updateCatalog(editId, catalogData);
+        // Update existing catalog - send only essential fields
+        const essentialCatalogData = {
+          name: catalogData.name,
+          description: catalogData.description,
+          ...(catalogData.thumbnail && { thumbnail: catalogData.thumbnail })
+        };
+        console.log('Updating catalog with essential data:', essentialCatalogData);
+        newCatalog = await updateCatalog(editId, essentialCatalogData);
         console.log('Update catalog response:', newCatalog);
         
         // Check if there's a warning about local storage
