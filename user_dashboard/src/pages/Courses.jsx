@@ -112,8 +112,13 @@ export function Courses() {
             }
           })
         );
-        setCourses(coursesWithModules);
-        setFilteredCourses(coursesWithModules);
+        
+        // Filter out draft courses - only show published courses
+        const publishedCourses = coursesWithModules.filter(course => 
+          course.course_status === 'PUBLISHED' || course.status === 'PUBLISHED'
+        );
+        setCourses(publishedCourses);
+        setFilteredCourses(publishedCourses);
       } catch (err) {
         setError("Failed to fetch courses");
       } finally {
