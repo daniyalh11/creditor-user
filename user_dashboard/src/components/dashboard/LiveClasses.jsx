@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ExternalLink, Play, Video } from "lucide-react";
+import { ExternalLink, Play, Video, Clock, Calendar, Users } from "lucide-react";
 import { AttendanceViewerModal } from "./AttendanceViewerModal";
 
 // Mock data
@@ -32,34 +32,45 @@ const recordedSessions = [
   },
 ];
 
-const convertToTimezone = (dateString, timeZone) => {
-  return new Date(new Date(dateString).toLocaleString("en-US", { timeZone }));
+// Helper function to convert UTC time to user's timezone
+const convertUTCToUserTimezone = (utcTime, userTimezone) => {
+  if (!utcTime) return null;
+  const date = new Date(utcTime);
+  return new Date(date.toLocaleString("en-US", { timeZone: userTimezone }));
+};
+
+// Helper function to check if a date is today in user's timezone
+const isTodayInUserTimezone = (dateString, userTimezone) => {
+  const eventDate = convertUTCToUserTimezone(dateString, userTimezone);
+  const now = convertUTCToUserTimezone(new Date().toISOString(), userTimezone);
+  
+  if (!eventDate || !now) return false;
+  
+  return (
+    eventDate.getFullYear() === now.getFullYear() &&
+    eventDate.getMonth() === now.getMonth() &&
+    eventDate.getDate() === now.getDate()
+  );
+};
+
+// Helper function to format time in user's timezone
+const formatTimeInUserTimezone = (utcTime, userTimezone) => {
+  if (!utcTime) return '';
+  const date = new Date(utcTime);
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: userTimezone
+  });
 };
 
 export function LiveClasses() {
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
-  const [liveClass, setLiveClass] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isCurrentlyActive, setIsCurrentlyActive] = useState(false);
+  const [todayEvents, setTodayEvents] = useState([]);
 
-  const userTimezone = localStorage.getItem('userTimezone') || 'America/Los_Angeles'; // PST fallback
-  // At the top, add:
-const formatDateTime = (dateString, timeZone) => {
-  const options = {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-    timeZone,
-  };
-  return new Intl.DateTimeFormat("en-US", options).format(new Date(dateString));
-};
-
-const convertToTimezone = (dateString, timeZone) => {
-  return new Date(new Date(dateString).toLocaleString("en-US", { timeZone }));
-};
+  const userTimezone = localStorage.getItem('userTimezone') || 'America/Los_Angeles';
 
   useEffect(() => {
     const fetchLiveClass = async () => {
@@ -70,138 +81,240 @@ const convertToTimezone = (dateString, timeZone) => {
         const end = new Date(today.setHours(23, 59, 59, 999)).toISOString();
         const params = new URLSearchParams({ startDate: start, endDate: end });
 
+        console.log('Fetching events with params:', { start, end });
+
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events?${params}`, {
           credentials: 'include',
         });
         const data = await response.json();
 
+        console.log('API Response:', data);
+
         if (data?.data?.length > 0) {
-          // Fetch all today's events and find the currently active one
-const todayEvents = data.data.filter(event => {
-  if (!event.startTime || !event.endTime) return false;
+          // Filter events for today in user's timezone
+          const todayEvents = data.data.filter(event => {
+            if (!event.startTime || !event.endTime) {
+              console.log('Event missing start/end time:', event);
+              return false;
+            }
 
-  const eventDate = convertToTimezone(event.startTime, userTimezone);
-  const now = convertToTimezone(new Date().toISOString(), userTimezone);
+            const isToday = isTodayInUserTimezone(event.startTime, userTimezone);
+            console.log('Event date check:', {
+              eventTitle: event.title,
+              startTime: event.startTime,
+              isToday,
+              userTimezone
+            });
 
-  return (
-    eventDate.getFullYear() === now.getFullYear() &&
-    eventDate.getMonth() === now.getMonth() &&
-    eventDate.getDate() === now.getDate()
-  );
-});
-
-// First, find the currently active class in user TZ
-const now = convertToTimezone(new Date().toISOString(), userTimezone);
-const activeEvent = todayEvents.find(event => {
-  const start = convertToTimezone(event.startTime, userTimezone);
-  const end = convertToTimezone(event.endTime, userTimezone);
-  return now >= start && now <= end;
-});
-
-if (activeEvent) {
-  setLiveClass(activeEvent);
-} else {
-  // If no class is live, set the next upcoming class
-  const upcoming = todayEvents
-    .filter(event => convertToTimezone(event.startTime, userTimezone) > now)
-    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-  setLiveClass(upcoming[0] || null);
-}
-
-          const upcomingEvents = todayEvents.filter(event => {
-            const startInTz = convertToTimezone(event.startTime, userTimezone);
-            return startInTz > convertToTimezone(new Date().toISOString(), userTimezone);
+            return isToday;
           });
 
-          upcomingEvents.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-          setLiveClass(upcomingEvents[0] || null);
+          console.log('Today events after filtering:', todayEvents);
+
+          // Sort events by start time
+          todayEvents.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+          setTodayEvents(todayEvents);
         } else {
-          setLiveClass(null);
+          console.log('No events found in API response');
+          setTodayEvents([]);
         }
       } catch (err) {
-        console.error(err);
-        setLiveClass(null);
+        console.error('Error fetching events:', err);
+        setTodayEvents([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchLiveClass();
-  }, []);
+  }, [userTimezone]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setIsCurrentlyActive(isClassInSession());
+      // Update the live status of events and remove ended events every 30 seconds
+      setTodayEvents(prevEvents => {
+        const now = new Date(); // Use current UTC time
+        
+        return prevEvents.filter(event => {
+          const endTime = new Date(event.endTime);
+          const isEnded = now > endTime;
+          
+          // Remove ended events
+          if (isEnded) {
+            console.log('Removing ended event:', event.title);
+            return false;
+          }
+          
+          return true;
+        }).map(event => {
+          const startTime = new Date(event.startTime);
+          const endTime = new Date(event.endTime);
+          const isLive = now >= startTime && now <= endTime;
+          
+          return {
+            ...event,
+            isLive
+          };
+        });
+      });
     }, 30 * 1000); // refresh every 30s
 
-    setIsCurrentlyActive(isClassInSession()); // initial check
-
     return () => clearInterval(interval);
-  }, [liveClass]);
+  }, []);
 
-  const isClassInSession = () => {
-    if (!liveClass || !liveClass.startTime || !liveClass.endTime) return false;
-    const now = convertToTimezone(new Date().toISOString(), userTimezone);
-    const start = convertToTimezone(liveClass.startTime, userTimezone);
-    const end = convertToTimezone(liveClass.endTime, userTimezone);
-    return now >= start && now <= end;
-  };
-  
-  const joinLink = liveClass?.description || "";
-  const classTitle = liveClass?.title || "";
-
-  const formatTimeInUserTimezone = (utcTime) => {
-    if (!utcTime) return '';
-    const date = new Date(utcTime);
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: userTimezone
-    });
+  const getEventStatus = (event) => {
+    const now = new Date(); // Use current UTC time
+    const start = new Date(event.startTime);
+    const end = new Date(event.endTime);
+    
+    if (now >= start && now <= end) {
+      return { status: 'live', text: 'LIVE NOW', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-200' };
+    } else if (now < start) {
+      return { status: 'upcoming', text: 'UPCOMING', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' };
+    } else {
+      return { status: 'ended', text: 'ENDED', color: 'text-gray-500', bgColor: 'bg-gray-50', borderColor: 'border-gray-200' };
+    }
   };
 
-  const classTime = liveClass ? `${formatTimeInUserTimezone(liveClass.startTime)} - ${classTitle}` : "";
+  const handleJoinClass = (event) => {
+    const joinLink = event.description || event.zoomLink || "";
+    if (joinLink) {
+      window.open(joinLink, '_blank');
+    }
+  };
 
   const handleViewAllRecordings = () => {
     window.open(import.meta.env.VITE_RECORDINGS_DRIVE_URL, '_blank');
   };
+
+  const liveEventsCount = todayEvents.filter(event => {
+    const now = new Date();
+    const start = new Date(event.startTime);
+    const end = new Date(event.endTime);
+    return now >= start && now <= end;
+  }).length;
+
+  console.log('Render state:', {
+    loading,
+    todayEventsCount: todayEvents.length,
+    liveEventsCount,
+    userTimezone
+  });
 
   return (
     <div className="space-y-6">
       <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Video className="h-6 w-6 text-primary animate-pulse" />
-            Live Class Status
+            <Video className={`h-6 w-6 ${liveEventsCount > 0 ? 'text-red-500 animate-pulse' : 'text-primary'}`} />
+            Today's Live Classes
+            {liveEventsCount > 0 && (
+              <span className="ml-2 px-2 py-1 bg-red-100 text-red-600 text-xs rounded-full">
+                {liveEventsCount} Live
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                {loading
-                  ? "Checking for live class..."
-                  : liveClass
-                    ? (isCurrentlyActive ? "Class is now in session" : "Class is scheduled for today")
-                    : "No active class right now"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {liveClass ? `Next class: Today at ${classTime}` : "No class scheduled for today"}
-              </p>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-sm text-muted-foreground mt-2">Loading today's classes...</p>
             </div>
-            <Button
-              disabled={!liveClass || !joinLink || !isCurrentlyActive}
-              className={isCurrentlyActive ? "bg-green-600 hover:bg-green-700 animate-pulse" : ""}
-              size="lg"
-              onClick={() => window.open(joinLink, '_blank')}
-            >
-              <Video className="h-4 w-4 mr-2" />
-              {liveClass
-                ? isCurrentlyActive ? "Join Live Class" : "Class Not Started"
-                : "No Active Class"}
-            </Button>
-          </div>
+          ) : todayEvents.length === 0 ? (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-lg font-medium text-gray-600">No classes scheduled for today</p>
+              <p className="text-sm text-muted-foreground mt-1">Check back later for upcoming classes</p>
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  Current timezone: {userTimezone}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Events are filtered based on your timezone preference
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {todayEvents.map((event, index) => {
+                const eventStatus = getEventStatus(event);
+                const isLive = eventStatus.status === 'live';
+                const isUpcoming = eventStatus.status === 'upcoming';
+                
+                return (
+                  <div
+                    key={event.id || index}
+                    className={`p-4 rounded-lg border transition-all duration-300 ${
+                      isLive 
+                        ? 'border-red-200 bg-red-50 shadow-sm' 
+                        : 'border-blue-200 bg-blue-50 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className={`w-3 h-3 rounded-full ${
+                            isLive ? 'bg-red-500 animate-pulse' : 'bg-blue-500'
+                          }`}></div>
+                          <h4 className="font-semibold text-gray-800">{event.title}</h4>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            isLive ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                          }`}>
+                            {eventStatus.text}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            <span>
+                              {formatTimeInUserTimezone(event.startTime, userTimezone)} - {formatTimeInUserTimezone(event.endTime, userTimezone)}
+                            </span>
+                          </div>
+                          {event.instructor && (
+                            <div className="flex items-center gap-1">
+                              <Users className="w-4 h-4" />
+                              <span>{event.instructor}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {event.description && (
+                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                            {event.description}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          onClick={() => handleJoinClass(event)}
+                          disabled={!isLive}
+                          className={`${
+                            isLive 
+                              ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
+                              : 'bg-blue-600 hover:bg-blue-700'
+                          } text-white transition-all duration-300`}
+                          size="sm"
+                        >
+                          <Video className="w-4 h-4 mr-2" />
+                          {isLive ? 'Join Now' : 'Class Not Started'}
+                          {isLive && <ExternalLink className="w-3 h-3 ml-1" />}
+                        </Button>
+                        
+                        {isUpcoming && (
+                          <div className="text-xs text-blue-600 text-center">
+                            Starts in {Math.max(0, Math.floor((new Date(event.startTime).getTime() - new Date().getTime()) / (1000 * 60)))}m
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
