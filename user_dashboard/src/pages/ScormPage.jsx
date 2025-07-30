@@ -108,7 +108,7 @@ const ScormPage = () => {
     const file = event.target.files[0];
     if (file) {
       setScormUploadState(prev => ({
-        ...prev,
+      ...prev,
         [moduleId]: { ...prev[moduleId], file, uploading: false, uploaded: false, error: '' }
       }));
     }
@@ -136,8 +136,8 @@ const ScormPage = () => {
       
       setScormUploadState((prev) => ({
         ...prev,
-        [moduleId]: {
-          ...prev[moduleId],
+        [moduleId]: { 
+          ...prev[moduleId], 
           uploading: false,
           uploaded: true,
           previewUrl: fullUrl,
@@ -196,7 +196,7 @@ const ScormPage = () => {
           <div className="text-gray-400 mb-4">
             <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+              </svg>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
           <p className="text-gray-500">Try a different search term.</p>
@@ -213,7 +213,7 @@ const ScormPage = () => {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleExpandCourse(course.id)}
+                onClick={() => handleExpandCourse(course.id)}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                       {expandedCourseId === course.id ? 'Hide Modules' : 'View Modules'}
@@ -231,20 +231,20 @@ const ScormPage = () => {
                       </div>
                     ) : (
                       course.modules.map((mod) => {
-                        const uploadState = scormUploadState[mod.id] || {};
+                      const uploadState = scormUploadState[mod.id] || {};
                         const isActive = uploadState.active;
                         const hasExistingContent = mod.resource_url;
                         
-                        return (
-                          <div key={mod.id} className="bg-gray-50 rounded-md p-4 border border-gray-200">
-                            <div className="flex justify-between items-center">
-                              <div>
+                      return (
+                        <div key={mod.id} className="bg-gray-50 rounded-md p-4 border border-gray-200">
+                          <div className="flex justify-between items-center">
+                            <div>
                                 <h3 className="font-medium text-gray-800">{mod.title}</h3>
                                 <p className="text-sm text-gray-600 mt-1">{mod.description}</p>
                                 <div className="flex items-center gap-2 mt-2">
                                   <span className="inline-block px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-600 rounded">
-                                    Module ID: {mod.id}
-                                  </span>
+                                Module ID: {mod.id}
+                              </span>
                                   <span className="text-xs text-gray-500">Order: {mod.order || 'N/A'}</span>
                                   <span className="text-xs text-gray-500">Duration: {mod.estimated_duration || 0} min</span>
                                   <span className={`text-xs px-2 py-0.5 rounded-full ${
@@ -280,7 +280,7 @@ const ScormPage = () => {
                                   </Button>
                                 )}
                               </div>
-                            </div>
+                              </div>
 
                             {isActive && !hasExistingContent && (
                               <div className="mt-4 p-4 bg-white rounded-md border border-gray-200">
@@ -296,7 +296,7 @@ const ScormPage = () => {
                                       onChange={(e) => handleFileChange(mod.id, e)}
                                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                                     />
-                                  </div>
+                              </div>
 
                                   {uploadState.file && (
                                     <div className="flex items-center gap-2">
@@ -310,20 +310,20 @@ const ScormPage = () => {
                                       <span className="text-sm text-gray-600">
                                         {uploadState.file.name}
                                       </span>
-                                    </div>
-                                  )}
+                                </div>
+                              )}
 
                                   {uploadState.error && (
                                     <div className="text-red-600 text-sm">{uploadState.error}</div>
                                   )}
 
                                   {uploadState.uploaded && uploadState.previewUrl && (
-                                    <div className="mt-4">
+                                <div className="mt-4">
                                       <h4 className="text-sm font-medium text-gray-700 mb-2">Preview:</h4>
-                                      <iframe
+                                  <iframe
                                         src={uploadState.previewUrl}
                                         className="w-full h-64 border border-gray-300 rounded-md"
-                                        title="SCORM Preview"
+                                    title="SCORM Preview"
                                       />
                                       <div className="mt-2">
                                         <h5 className="text-sm font-medium text-gray-700 mb-1">SCORM URL:</h5>
@@ -342,13 +342,13 @@ const ScormPage = () => {
                                           </Button>
                                         </div>
                                       </div>
-                                    </div>
-                                  )}
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        );
+                              )}
+                                </div>
+                            </div>
+                          )}
+                        </div>
+                      );
                       })
                     )}
                   </div>

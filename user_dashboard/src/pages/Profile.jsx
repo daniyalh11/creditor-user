@@ -206,7 +206,7 @@ function Profile() {
 
         <div className="flex flex-col gap-1 sm:gap-2">
           <div className="flex flex-row items-center gap-2 sm:gap-4">
-            <h1 className="text-2xl font-semibold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">Profile Settings</h1>
+          <h1 className="text-2xl font-semibold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">Profile Settings</h1>
             {userRole && (
               <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20 capitalize">
                 {userRole}

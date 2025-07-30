@@ -97,6 +97,8 @@ export function Courses() {
       setLoading(true);
       try {
         const data = await fetchUserCourses();
+        console.log('Fetched user courses:', data);
+        
         // Fetch modules for each course and add modulesCount and totalDuration
         const coursesWithModules = await Promise.all(
           data.map(async (course) => {
@@ -106,15 +108,32 @@ export function Courses() {
               const totalDurationMins = modules.reduce((sum, m) => sum + (parseInt(m.estimated_duration, 10) || 0), 0);
               // Convert to seconds for formatTime
               const totalDurationSecs = totalDurationMins * 60;
-              return { ...course, modulesCount: modules.length, totalDurationSecs };
+              const courseWithModules = { 
+                ...course, 
+                modulesCount: modules.length, 
+                totalDurationSecs,
+                // Ensure image field is set from thumbnail
+                image: course.thumbnail || course.image || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000"
+              };
+              console.log('Processed course:', courseWithModules);
+              return courseWithModules;
             } catch {
-              return { ...course, modulesCount: 0, totalDurationSecs: 0 };
+              const courseWithDefaults = { 
+                ...course, 
+                modulesCount: 0, 
+                totalDurationSecs: 0,
+                image: course.thumbnail || course.image || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000"
+              };
+              console.log('Processed course (with defaults):', courseWithDefaults);
+              return courseWithDefaults;
             }
           })
         );
+        console.log('Final courses array:', coursesWithModules);
         setCourses(coursesWithModules);
         setFilteredCourses(coursesWithModules);
       } catch (err) {
+        console.error('Error fetching courses:', err);
         setError("Failed to fetch courses");
       } finally {
         setLoading(false);
