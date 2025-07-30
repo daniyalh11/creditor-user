@@ -1039,14 +1039,6 @@ const ManageUsers = () => {
             </div>
             
             <div className="flex gap-3 justify-end">
-              {selectedCourse && (
-                <button
-                  onClick={() => checkCourseUsers(selectedCourse)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Debug: Check Course Users
-                </button>
-              )}
               <button
                 onClick={() => {
                   setShowCourseModal(false);
