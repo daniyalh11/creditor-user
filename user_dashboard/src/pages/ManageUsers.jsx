@@ -369,7 +369,10 @@ const ManageUsers = () => {
           },
           withCredentials: true,
         });
-      } else if (filterRole === "admin") {
+        console.log('🔄 Response:', response);
+      }
+    
+       else if (filterRole === "admin") {
         // Add admins to course
         console.log('🔄 Adding admins to course:', { courseId: selectedCourse, adminIds: selectedUsers });
         console.log('📋 Available courses:', courses.map(c => ({ id: c.id, title: c.title })));
@@ -415,6 +418,41 @@ const ManageUsers = () => {
         setShowCourseModal(false);
         setSelectedCourse("");
         setSelectedUsers([]);
+        
+        // After successful addition, verify the users are actually in the course
+        console.log('🔄 Verifying course users after addition...');
+        try {
+          const verifyResponse = await axios.get(`${API_BASE}/api/course/${selectedCourse}/getAllUsersByCourseId`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            withCredentials: true,
+          });
+          
+          console.log('✅ Course users verification response:', verifyResponse.data);
+          console.log('📋 Users in course after addition:', verifyResponse.data?.data || []);
+          
+          // Check if our added users are actually in the course
+          const courseUsers = verifyResponse.data?.data || [];
+          const addedUserIds = selectedUsers;
+          const foundUsers = courseUsers.filter(cu => addedUserIds.includes(cu.user_id));
+          
+          console.log('🔍 Verification results:', {
+            expectedUsers: addedUserIds,
+            foundUsers: foundUsers.map(fu => fu.user_id),
+            missingUsers: addedUserIds.filter(id => !foundUsers.some(fu => fu.user_id === id))
+          });
+          
+          if (foundUsers.length !== addedUserIds.length) {
+            console.warn('⚠️ Some users were not found in course after addition!');
+            console.warn('📋 Missing users:', addedUserIds.filter(id => !foundUsers.some(fu => fu.user_id === id)));
+          } else {
+            console.log('✅ All users successfully verified in course!');
+          }
+        } catch (verifyError) {
+          console.error('❌ Error verifying course users:', verifyError);
+        }
         
         // Refresh users list to get updated course information
         await fetchUsers();
@@ -801,6 +839,42 @@ const ManageUsers = () => {
     setShowDeleteModal(true);
   };
 
+  // Function to manually check course users
+  const checkCourseUsers = async (courseId) => {
+    try {
+      console.log('🔍 Manually checking course users for course:', courseId);
+      
+      const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      const response = await axios.get(`${API_BASE}/api/course/${courseId}/getAllUsersByCourseId`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        withCredentials: true,
+      });
+      
+      console.log('✅ Course users check response:', response.data);
+      console.log('📋 All users in course:', response.data?.data || []);
+      
+      // Show the results in an alert for easy viewing
+      const courseUsers = response.data?.data || [];
+      const userList = courseUsers.map(cu => 
+        `${cu.user?.first_name} ${cu.user?.last_name} (${cu.user?.email}) - Roles: ${cu.user?.user_roles?.map(r => r.role).join(', ')}`
+      ).join('\n');
+      
+      alert(`Course Users for ${courseId}:\n\n${userList || 'No users found'}`);
+      
+    } catch (error) {
+      console.error('❌ Error checking course users:', error);
+      alert(`Error checking course users: ${error.message}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -965,6 +1039,14 @@ const ManageUsers = () => {
             </div>
             
             <div className="flex gap-3 justify-end">
+              {selectedCourse && (
+                <button
+                  onClick={() => checkCourseUsers(selectedCourse)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Debug: Check Course Users
+                </button>
+              )}
               <button
                 onClick={() => {
                   setShowCourseModal(false);
