@@ -365,7 +365,7 @@ const AddCatelog = () => {
             <div>
               <h3 className="text-sm font-medium text-yellow-800">Limited Permissions</h3>
               <p className="text-sm text-yellow-700 mt-1">
-                You are logged in as a <strong>{userRole}</strong>. Catalog changes will be saved locally only. 
+                You are logged in with roles: <strong>{userRoles.join(', ')}</strong>. Catalog changes will be saved locally only. 
                 Contact an administrator to get instructor or admin permissions for full functionality.
               </p>
               <p className="text-sm text-yellow-600 mt-2">

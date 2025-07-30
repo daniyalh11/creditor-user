@@ -47,10 +47,13 @@ function Profile() {
             : 'User'
         );
         
-        // Store the first role in localStorage for sidebar access
+        // Store all roles in localStorage for proper access control
         if (Array.isArray(data.user_roles) && data.user_roles.length > 0) {
-          localStorage.setItem('userRole', data.user_roles[0].role);
+          const roles = data.user_roles.map(roleObj => roleObj.role);
+          localStorage.setItem('userRoles', JSON.stringify(roles));
+          localStorage.setItem('userRole', roles[0]); // Keep first role for backward compatibility
         } else {
+          localStorage.setItem('userRoles', JSON.stringify(['user']));
           localStorage.setItem('userRole', 'user');
         }
         
