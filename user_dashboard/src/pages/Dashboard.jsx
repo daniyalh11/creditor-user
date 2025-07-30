@@ -52,6 +52,7 @@ export function Dashboard() {
   const [userCourses, setUserCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [coursesError, setCoursesError] = useState(null);
+  const [userCoursesMap, setUserCoursesMap] = useState({});
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://creditor-backend-gvtd.onrender.com";
   // Get userId from localStorage or cookies, or fetch from profile
@@ -91,11 +92,11 @@ export function Dashboard() {
           withCredentials: true
         });
         
-        // console.log('✅ API Response:', userCoursesResponse.data);
+        console.log('✅ API Response:', userCoursesResponse.data);
         
         if (userCoursesResponse.data && userCoursesResponse.data.data) {
           const courses = userCoursesResponse.data.data;
-          // console.log('📚 Courses found:', courses.length, courses);
+           console.log('📚 Courses found:', courses.length, courses);
           
           // Calculate basic dashboard stats from available data
           const activeCourses = courses.length;

@@ -16,6 +16,7 @@ const AddUsersForm = () => {
   const [addedUsers, setAddedUsers] = useState([]);
   const [showUserList, setShowUserList] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [recentlyAddedUsers, setRecentlyAddedUsers] = useState([]);
 
   // Load added users from localStorage on mount
   useEffect(() => {
@@ -47,9 +48,9 @@ const AddUsersForm = () => {
           newUsers.push({ email: "", first_name: "", last_name: "", password: "" });
         }
       } else {
-        arr.length = value;
+        newUsers.length = value;
       }
-      return arr;
+      return newUsers;
     });
   };
 
@@ -74,13 +75,25 @@ const AddUsersForm = () => {
       const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
       const [header, ...rows] = json;
       const headerMap = header.map(h => h && h.toString().toLowerCase().trim());
-      const emailIdx = headerMap.indexOf("email");
-      const passwordIdx = headerMap.indexOf("password");
-      const firstNameIdx = headerMap.indexOf("first_name");
-      const lastNameIdx = headerMap.indexOf("last_name");
+      
+      // More flexible column name matching
+      const emailIdx = headerMap.findIndex(h => h.includes('email'));
+      const passwordIdx = headerMap.findIndex(h => h.includes('password'));
+      const firstNameIdx = headerMap.findIndex(h => 
+        h.includes('first') && (h.includes('name') || h.includes('_name'))
+      );
+      const lastNameIdx = headerMap.findIndex(h => 
+        h.includes('last') && (h.includes('name') || h.includes('_name'))
+      );
       
       if (emailIdx === -1 || passwordIdx === -1 || firstNameIdx === -1 || lastNameIdx === -1) {
-        setError("Excel file must have columns: email, password, first_name, last_name");
+        const missingColumns = [];
+        if (emailIdx === -1) missingColumns.push('email');
+        if (passwordIdx === -1) missingColumns.push('password');
+        if (firstNameIdx === -1) missingColumns.push('first_name/firstName');
+        if (lastNameIdx === -1) missingColumns.push('last_name/lastName');
+        
+        setError(`Missing required columns: ${missingColumns.join(', ')}. Available columns: ${headerMap.join(', ')}`);
         return;
       }
       
@@ -88,11 +101,26 @@ const AddUsersForm = () => {
         .filter(row => row[emailIdx] && row[passwordIdx] && row[firstNameIdx] && row[lastNameIdx])
         .slice(0, numUsers) // Only take the number of users selected
         .map(row => ({
-          email: row[emailIdx],
-          password: row[passwordIdx],
-          first_name: row[firstNameIdx],
-          last_name: row[lastNameIdx],
-        }));
+          email: String(row[emailIdx]).trim(),
+          password: String(row[passwordIdx]).trim(),
+          first_name: String(row[firstNameIdx]).trim(),
+          last_name: String(row[lastNameIdx]).trim(),
+        }))
+        .filter(user => 
+          user.email && 
+          user.password && 
+          user.first_name && 
+          user.last_name &&
+          user.email.length > 0 &&
+          user.password.length > 0 &&
+          user.first_name.length > 0 &&
+          user.last_name.length > 0
+        );
+
+      if (parsedUsers.length === 0) {
+        setError('No valid user data found in Excel file. Please ensure all required fields are filled and not empty.');
+        return;
+      }
 
       setExcelData(parsedUsers);
       setUsers(parsedUsers);
@@ -102,53 +130,64 @@ const AddUsersForm = () => {
     reader.readAsArrayBuffer(file);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => { 
     e.preventDefault();
     setLoading(true);
     setError("");
     setSuccess(false);
 
     try {
+      // Validate user data before sending
+      const validUsers = users.filter(user => 
+        user.email && 
+        user.password && 
+        user.first_name && 
+        user.last_name &&
+        user.email.trim() !== '' &&
+        user.password.trim() !== '' &&
+        user.first_name.trim() !== '' &&
+        user.last_name.trim() !== ''
+      );
+
+      if (validUsers.length === 0) {
+        setError('Please ensure all users have valid email, password, first name, and last name.');
+        setLoading(false);
+        return;
+      }
+
+      if (validUsers.length !== users.length) {
+        setError(`Only ${validUsers.length} out of ${users.length} users have valid data. Please check all fields.`);
+        setLoading(false);
+        return;
+      }
+
       let response;
       const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
 
-      if (excelFile) {
-        // Excel upload: send as FormData
-        const formData = new FormData();
-        formData.append('file', excelFile);
-        response = await axios.post(
-          `${API_BASE}/api/auth/admin/create-users`,
-          formData,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'multipart/form-data',
-            },
-          }
-        );
-      } else {
-        // Manual entry: send as JSON array
-        const payload = users;
-        response = await axios.post(
-          `${API_BASE}/api/auth/admin/create-users`,
-          payload,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-      }
+      // Always send as JSON array, whether from Excel or manual entry
+      const payload = validUsers;
+      
+      response = await axios.post(
+        `${API_BASE}/api/auth/admin/create-users`,
+        payload,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       if (response.data && response.data.success) {
         setSuccess(true);
+        setRecentlyAddedUsers(validUsers); // Track recently added users
         setAddedUsers(prev => {
-          const updated = [...prev, ...users];
+          const updated = [...prev, ...validUsers];
           // Save to localStorage here for immediate persistence
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
           return updated;
         });
+        
         setUsers([{ email: "", first_name: "", last_name: "", password: "" }]);
         setNumUsers(1);
         setExcelFile(null);
@@ -158,6 +197,13 @@ const AddUsersForm = () => {
         setError(response.data.message || "Failed to add users.");
       }
     } catch (err) {
+      console.error('❌ Error adding users:', err);
+      console.error('❌ Error details:', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        message: err.message
+      });
       setError(err.response?.data?.message || "Failed to add users. Please try again.");
     } finally {
       setLoading(false);
@@ -167,6 +213,7 @@ const AddUsersForm = () => {
   const resetForm = () => {
     setSuccess(false);
     setError("");
+    setRecentlyAddedUsers([]);
     setUsers([{ email: "", first_name: "", last_name: "", password: "" }]);
     setNumUsers(1);
     setExcelFile(null);
@@ -178,7 +225,16 @@ const AddUsersForm = () => {
     return (
       <div className="bg-white rounded-xl shadow-md overflow-hidden p-8 mb-8">
         <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 text-green-700">
-          <p className="font-medium">Successfully added {addedUsers.length} user(s)!</p>
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <p className="font-medium">Successfully added users!</p>
+          </div>
+          <p className="text-sm">
+            {addedUsers.length} user(s) have been added to the system. 
+            They should receive email notifications shortly and will appear in the Manage Users section.
+          </p>
         </div>
         
         <div className="flex gap-4 mb-6">
@@ -195,6 +251,41 @@ const AddUsersForm = () => {
             {showUserList ? 'Hide User List' : 'View Added Users'}
           </button>
         </div>
+
+        {/* Show recently added users */}
+        {recentlyAddedUsers.length > 0 && (
+          <div className="mb-6 bg-blue-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3">Recently Added Users ({recentlyAddedUsers.length})</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-blue-200">
+                <thead className="bg-blue-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-blue-600 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-blue-200">
+                  {recentlyAddedUsers.map((user, index) => (
+                    <tr key={index}>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {user.first_name} {user.last_name}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {user.email}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                          Added Successfully
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {showUserList && (
           <div className="bg-gray-50 rounded-lg p-4">
@@ -296,8 +387,8 @@ const AddUsersForm = () => {
                   Upload an Excel file with columns: 
                   <span className="font-mono bg-yellow-100 px-1 mx-1 rounded">email</span>, 
                   <span className="font-mono bg-yellow-100 px-1 mx-1 rounded">password</span>, 
-                  <span className="font-mono bg-yellow-100 px-1 mx-1 rounded">firstName</span>, 
-                  <span className="font-mono bg-yellow-100 px-1 mx-1 rounded">lastName</span>
+                  <span className="font-mono bg-yellow-100 px-1 mx-1 rounded">first_name</span> (or firstName), 
+                  <span className="font-mono bg-yellow-100 px-1 mx-1 rounded">last_name</span> (or lastName)
                 </p>
               </div>
               <label className="cursor-pointer">
@@ -336,8 +427,8 @@ const AddUsersForm = () => {
                   {excelData.slice(0, 5).map((user, index) => (
                     <tr key={index}>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{user.firstName}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{user.lastName}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{user.first_name}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{user.last_name}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                     </tr>
                   ))}
