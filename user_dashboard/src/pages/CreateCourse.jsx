@@ -215,13 +215,28 @@ const CreateCourse = ({ onCourseCreated }) => {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      console.log(data);
+      console.log('Course creation response:', data);
       if (res.ok && data.success) {
         setSuccess(true);
         setApiResponse({ type: "success", message: data.message, course: data.data });
-        setCourses([data.data, ...courses]);
+        
+        // Ensure the course data has all required fields before adding to list
+        const newCourse = {
+          ...data.data,
+          // Ensure these fields exist for proper display
+          title: data.data.title || 'Untitled Course',
+          description: data.data.description || '',
+          image: data.data.thumbnail || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1000",
+          modulesCount: 0,
+          totalDurationSecs: 0,
+          progress: 0
+        };
+        
+        console.log('Adding new course to list:', newCourse);
+        setCourses([newCourse, ...courses]);
+        
         if (onCourseCreated) {
-          onCourseCreated(data.data);
+          onCourseCreated(newCourse);
         }
         setShowModal(false);
         setForm({
@@ -405,14 +420,14 @@ const CreateCourse = ({ onCourseCreated }) => {
       {apiResponse && (
         <div className={`border rounded-lg p-4 ${apiResponse.type === "success" ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
           <p className={`text-sm ${apiResponse.type === "success" ? "text-green-800" : "text-red-800"}`}>
-            {apiResponse.message}
+          {apiResponse.message}
           </p>
         </div>
       )}
 
       {/* Courses Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {paginatedCourses.map((course) => (
+            {paginatedCourses.map((course) => (
           <div key={course.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
@@ -503,9 +518,9 @@ const CreateCourse = ({ onCourseCreated }) => {
                                   Delete
                                 </button>
                               </div>
-                            </div>
-                          </div>
-                        ))}
+                </div>
+              </div>
+            ))}
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500">No modules found for this course</p>
@@ -524,26 +539,26 @@ const CreateCourse = ({ onCourseCreated }) => {
       </div>
 
       {/* Pagination */}
-      {filteredCourses.length > PAGE_SIZE && (
+          {filteredCourses.length > PAGE_SIZE && (
         <div className="flex justify-center gap-2">
-          <button
-            onClick={() => setPage(page - 1)}
-            disabled={!hasPrev}
+              <button
+                onClick={() => setPage(page - 1)}
+                disabled={!hasPrev}
             className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
+              >
+                Previous
+              </button>
           <span className="px-3 py-2 text-sm text-gray-700">
             Page {page + 1} of {Math.ceil(filteredCourses.length / PAGE_SIZE)}
           </span>
-          <button
-            onClick={() => setPage(page + 1)}
-            disabled={!hasNext}
+              <button
+                onClick={() => setPage(page + 1)}
+                disabled={!hasNext}
             className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
+              >
+                Next
+              </button>
+            </div>
       )}
 
       {/* Create Course Modal */}

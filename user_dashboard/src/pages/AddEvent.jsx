@@ -316,19 +316,50 @@ const AddEvent = () => {
 
   const handleDelete = async (index) => {
     const event = events[index];
-    // For non-recurring events, use DELETE /calendar/events/:eventId
-    if (event.isRecurring && event.occurrences && event.occurrences.length > 0) {
-      // Fetch deleted occurrences for this recurring event
-      const deletedOccurrences = await fetchDeletedOccurrences(event.id);
-      setRecurringDeleteEvent({ ...event, index, deletedOccurrences });
-      setShowRecurringDeleteModal(true);
-      return;
+    console.log('Deleting event:', event);
+    console.log('Event isRecurring:', event.isRecurring);
+    console.log('Event recurrenceRule:', event.recurrenceRule);
+    console.log('Event recurrence:', event.recurrence);
+    
+    // Check if this is a recurring event
+    if (event.isRecurring || event.recurrenceRule || event.recurrence !== 'none') {
+      console.log('This is a recurring event, fetching occurrences...');
+      
+      try {
+        // Fetch event details to get occurrences
+        const eventDetails = await fetchEventDetails(event.id);
+        console.log('Event details:', eventDetails);
+        
+        if (eventDetails && eventDetails.occurrences && eventDetails.occurrences.length > 0) {
+          console.log('Found occurrences:', eventDetails.occurrences.length);
+          // Fetch deleted occurrences for this recurring event
+          const deletedOccurrences = await fetchDeletedOccurrences(event.id);
+          console.log('Deleted occurrences:', deletedOccurrences);
+          setRecurringDeleteEvent({ 
+            ...event, 
+            ...eventDetails,
+            index, 
+            deletedOccurrences 
+          });
+          setShowRecurringDeleteModal(true);
+          return;
+        } else {
+          console.log('No occurrences found, treating as non-recurring');
+        }
+      } catch (err) {
+        console.error('Error fetching event details:', err);
+        // Fall back to non-recurring deletion
+      }
+    } else {
+      console.log('This is not a recurring event');
     }
+    
     if (!event.id) {
       // If no id, just remove from local state
     setEvents(events.filter((_, i) => i !== index));
       return;
     }
+    
     // Show confirmation modal for non-recurring event
     setDeleteIndex(index);
     setShowDeleteConfirmModal(true);
@@ -366,14 +397,15 @@ const AddEvent = () => {
     }
   };
 
-  // Delete a single occurrence of a recurring event (now POST)
+  // Delete a single occurrence of a recurring event
   const handleDeleteOccurrence = async (eventId, occurrenceStartTime) => {
     setDeletingOccurrenceKey(occurrenceStartTime);
     try {
       const token = getAuthToken();
       console.log('Deleting occurrence:', { eventId, occurrenceDate: occurrenceStartTime });
-      // DELETE a single occurrence in a recurring event (POST)
-      await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception`, {
+      
+      // DELETE a single occurrence in a recurring event
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -383,13 +415,28 @@ const AddEvent = () => {
         credentials: "include",
         body: JSON.stringify({ occurrenceDate: occurrenceStartTime })
       });
-      // Refetch events after deletion
-      const data = await getAllEvents();
-      setEvents(data);
-      setShowRecurringDeleteModal(false);
-      setModalMessage("Event deleted");
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `Failed to delete occurrence (${response.status})`);
+      }
+      
+      console.log('Successfully deleted occurrence');
+      
+      // Refresh the recurring event data to show updated occurrences
+      const eventDetails = await fetchEventDetails(eventId);
+      const deletedOccurrences = await fetchDeletedOccurrences(eventId);
+      
+      setRecurringDeleteEvent(prev => ({
+        ...prev,
+        ...eventDetails,
+        deletedOccurrences
+      }));
+      
+      setModalMessage("Event occurrence deleted successfully");
     } catch (err) {
       console.error("Failed to delete occurrence", err);
+      setModalMessage(`Error: ${err.message}`);
     } finally {
       setDeletingOccurrenceKey(null);
     }
@@ -400,8 +447,10 @@ const AddEvent = () => {
     setDeletingAll(true);
     try {
       const token = getAuthToken();
+      console.log('Deleting entire recurring event series:', eventId);
+      
       // DELETE recurring event series
-      await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/recurring/${eventId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events/recurring/${eventId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -410,12 +459,27 @@ const AddEvent = () => {
         },
         credentials: "include"
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `Failed to delete recurring event (${response.status})`);
+      }
+      
+      console.log('Successfully deleted recurring event series');
+      
       // Refetch events after deletion
       const data = await getAllEvents();
-      setEvents(data);
+      // Normalize course_id to courseId for all events
+      const normalizedEvents = data.map(ev => ({
+        ...ev,
+        courseId: ev.courseId || ev.course_id
+      }));
+      setEvents(normalizedEvents);
       setShowRecurringDeleteModal(false);
+      setModalMessage("Entire event series deleted successfully");
     } catch (err) {
       console.error("Failed to delete all occurrences", err);
+      setModalMessage(`Error: ${err.message}`);
     } finally {
       setDeletingAll(false);
     }
@@ -427,6 +491,7 @@ const AddEvent = () => {
     try {
       const token = getAuthToken();
       console.log('Restoring occurrence:', { eventId, occurrenceDate });
+      
       // RESTORE a single occurrence in a recurring event (GET)
       const res = await fetch(
         `${import.meta.env.VITE_API_BASE_URL}/calendar/events/${eventId}/recurrence-exception/restore?occurrenceDate=${encodeURIComponent(occurrenceDate)}`,
@@ -439,13 +504,28 @@ const AddEvent = () => {
           credentials: "include",
         }
       );
-      // Refetch events after restore
-      const data = await getAllEvents();
-      setEvents(data);
-      setShowRecurringDeleteModal(false);
-      setModalMessage("Event restored");
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `Failed to restore occurrence (${res.status})`);
+      }
+      
+      console.log('Successfully restored occurrence');
+      
+      // Refresh the recurring event data to show updated occurrences
+      const eventDetails = await fetchEventDetails(eventId);
+      const deletedOccurrences = await fetchDeletedOccurrences(eventId);
+      
+      setRecurringDeleteEvent(prev => ({
+        ...prev,
+        ...eventDetails,
+        deletedOccurrences
+      }));
+      
+      setModalMessage("Event occurrence restored successfully");
     } catch (err) {
       console.error("Failed to restore occurrence", err);
+      setModalMessage(`Error: ${err.message}`);
     } finally {
       setDeletingOccurrenceKey(null);
     }
