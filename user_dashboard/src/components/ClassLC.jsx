@@ -2,6 +2,13 @@ import React, { useRef, useEffect, useState } from "react";
 import { motion, useAnimation, useInView } from "framer-motion";
 import LiveClassBanner from "../assets/LiveClassBanner.png";
 
+// Helper to convert a date to PST (America/Los_Angeles)
+function toPST(date) {
+  // Get UTC time in ms, then subtract 8 hours for PST offset
+  // Note: This does not handle daylight saving time
+  return new Date(date.getTime() - (date.getTimezoneOffset() * 60000) - (8 * 60 * 60000));
+}
+
 const ClassLC = () => {
   const bannerRef = useRef(null);
   const ctaRef = useRef(null);
@@ -38,39 +45,41 @@ const ClassLC = () => {
       setLoading(true);
       try {
         const today = new Date();
-        const start = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-        const end = new Date(today.setHours(23, 59, 59, 999)).toISOString();
-        const params = new URLSearchParams({ startDate: start, endDate: end });
+        // Calculate start and end of day in PST
+        const nowPST = toPST(new Date());
+        const startOfDayPST = new Date(nowPST);
+        startOfDayPST.setHours(0, 0, 0, 0);
+        const endOfDayPST = new Date(nowPST);
+        endOfDayPST.setHours(23, 59, 59, 999);
+        const params = new URLSearchParams({ startDate: startOfDayPST.toISOString(), endDate: endOfDayPST.toISOString() });
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/calendar/events?${params.toString()}`, {
           credentials: 'include'
         });
         const data = await response.json();
         if (data && data.data && data.data.length > 0) {
-          // Filter events to only show classes for the current date
+          // Filter events to only show classes for the current date in PST
           const events = data.data.filter(event => {
             if (!event.startTime) return false;
-            const eventDate = new Date(event.startTime);
-            const currentDate = new Date();
+            const eventDate = toPST(new Date(event.startTime));
             return (
-              eventDate.getFullYear() === currentDate.getFullYear() &&
-              eventDate.getMonth() === currentDate.getMonth() &&
-              eventDate.getDate() === currentDate.getDate()
+              eventDate.getFullYear() === startOfDayPST.getFullYear() &&
+              eventDate.getMonth() === startOfDayPST.getMonth() &&
+              eventDate.getDate() === startOfDayPST.getDate()
             );
           });
           setTodayEvents(events);
 
-          // Find live events (current time between start and end)
-          const now = new Date();
+          // Find live events (current time between start and end in PST)
           const live = events.filter(event => {
-            const start = new Date(event.startTime);
-            const end = new Date(event.endTime);
-            return now >= start && now <= end;
+            const start = toPST(new Date(event.startTime));
+            const end = toPST(new Date(event.endTime));
+            return nowPST >= start && nowPST <= end;
           });
           setLiveEvents(live);
 
-          // Find the next upcoming event (start time in the future)
+          // Find the next upcoming event (start time in the future in PST)
           const upcoming = events
-            .filter(event => new Date(event.startTime) > now)
+            .filter(event => toPST(new Date(event.startTime)) > nowPST)
             .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
           setNextEvent(upcoming[0] || null);
         } else {
