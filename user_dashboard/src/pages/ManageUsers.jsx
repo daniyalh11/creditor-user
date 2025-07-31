@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useAuth } from "@/contexts/AuthContext";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://creditor-backend-bh52.onrender.com";
 
 const ManageUsers = () => {
+  const { userRole, hasRole } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -341,19 +343,9 @@ const ManageUsers = () => {
         });
       } else if (filterRole === "instructor") {
         // Add instructors to course
-        console.log('🔄 Adding instructors to course:', { courseId: selectedCourse, instructorIds: selectedUsers });
+        console.log('🔄 Adding instructors to course:', { course_id: selectedCourse, learnerIds: selectedUsers });
         console.log('📋 Available courses:', courses.map(c => ({ id: c.id, title: c.title })));
         console.log('🎯 Selected course details:', courses.find(c => c.id === selectedCourse));
-        
-        // Check if selectedUsers is an array and not empty
-        if (!Array.isArray(selectedUsers) || selectedUsers.length === 0) {
-          throw new Error('No instructors selected or invalid selection format');
-        }
-        
-        // Check if courseId is valid
-        if (!selectedCourse || typeof selectedCourse !== 'string') {
-          throw new Error('Invalid course ID');
-        }
         
         // Check if the selected course actually exists
         const selectedCourseData = courses.find(c => c.id === selectedCourse);
@@ -361,8 +353,9 @@ const ManageUsers = () => {
           throw new Error(`Course with ID "${selectedCourse}" not found. Available courses: ${courses.map(c => c.id).join(', ')}`);
         }
         
-        response = await axios.post(`${API_BASE}/api/course/addInstructor/${selectedCourse}`, {
-          instructorIds: selectedUsers
+        response = await axios.post(`${API_BASE}/api/course/addLearnerToCourse`, {
+          course_id: selectedCourse,
+          learnerIds: selectedUsers
         }, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -370,12 +363,11 @@ const ManageUsers = () => {
           },
           withCredentials: true,
         });
-        console.log('🔄 Response:', response);
       }
     
        else if (filterRole === "admin") {
         // Add admins to course
-        console.log('🔄 Adding admins to course:', { courseId: selectedCourse, adminIds: selectedUsers });
+        console.log('🔄 Adding admins to course:', { course_id: selectedCourse, learnerIds: selectedUsers });
         console.log('📋 Available courses:', courses.map(c => ({ id: c.id, title: c.title })));
         console.log('🎯 Selected course details:', courses.find(c => c.id === selectedCourse));
         
@@ -385,8 +377,9 @@ const ManageUsers = () => {
           throw new Error(`Course with ID "${selectedCourse}" not found. Available courses: ${courses.map(c => c.id).join(', ')}`);
         }
         
-        response = await axios.post(`${API_BASE}/api/course/addAdmin/${selectedCourse}`, {
-          adminIds: selectedUsers
+        response = await axios.post(`${API_BASE}/api/course/addLearnerToCourse`, {
+          course_id: selectedCourse,
+          learnerIds: selectedUsers
         }, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1015,6 +1008,13 @@ const ManageUsers = () => {
         throw new Error('No authentication token found. Please log in again.');
       }
       
+      console.log('🗑️ Deleting user:', {
+        userId: userToDelete.id,
+        userName: `${userToDelete.first_name} ${userToDelete.last_name}`,
+        userRole: getUserRole(userToDelete),
+        apiUrl: `${API_BASE}/api/user/${userToDelete.id}`
+      });
+      
       // Make API call to delete user using the correct endpoint format
       const response = await axios.delete(`${API_BASE}/api/user/${userToDelete.id}`, {
         headers: {
@@ -1024,7 +1024,12 @@ const ManageUsers = () => {
         withCredentials: true,
       });
 
+      console.log('✅ Delete API response:', response.data);
+      console.log('✅ Response status:', response.status);
+      
       if (response.data && (response.data.success || response.data.code === 200 || response.data.code === 201)) {
+        console.log('✅ User deleted successfully');
+        
         // Close delete modal
         setShowDeleteModal(false);
         setUserToDelete(null);
@@ -1072,6 +1077,12 @@ const ManageUsers = () => {
   };
 
   const handleDeleteClick = (user) => {
+    // Check if current user is admin
+    if (!hasRole('admin')) {
+      setError('Only administrators can delete users, instructors, and admins.');
+      return;
+    }
+    
     setUserToDelete(user);
     setShowDeleteModal(true);
   };
@@ -1141,6 +1152,20 @@ const ManageUsers = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span className="text-sm text-red-700">{error}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Notice */}
+      {!hasRole('admin') && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <span className="text-sm text-yellow-700">
+              Only administrators can delete users, instructors, and admins. You are currently logged in as a {userRole}.
+            </span>
           </div>
         </div>
       )}
@@ -1348,7 +1373,7 @@ const ManageUsers = () => {
                 {successData.courseTitle === "Role Update" 
                   ? <>You have successfully updated <span className="font-semibold text-gray-800">{successData.addedUsers.length} user(s)</span> to instructor role. They will now appear in the Instructor section.</>
                   : successData.courseTitle === "User Deleted"
-                  ? <>You have successfully deleted user <span className="font-semibold text-gray-800">{successData.addedUsers[0]?.first_name} {successData.addedUsers[0]?.last_name}</span> from the system.</>
+                  ? <>You have successfully deleted {getUserRole(successData.addedUsers[0])} <span className="font-semibold text-gray-800">{successData.addedUsers[0]?.first_name} {successData.addedUsers[0]?.last_name}</span> from the system.</>
                   : <>You have successfully added <span className="font-semibold text-gray-800">{successData.addedUsers.length} {filterRole}(s)</span> to the course:</>
                 }
               </p>
@@ -1361,7 +1386,7 @@ const ManageUsers = () => {
               <div className="max-h-48 overflow-y-auto">
                 <p className="text-sm font-medium text-gray-700 mb-2">
                   {successData.courseTitle === "Role Update" ? "Updated users:" : 
-                   successData.courseTitle === "User Deleted" ? "Deleted user:" : 
+                   successData.courseTitle === "User Deleted" ? "Deleted member:" : 
                    `Added ${filterRole}s:`}
                 </p>
                 <div className="space-y-2">
@@ -1433,11 +1458,9 @@ const ManageUsers = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Last Visited
                 </th>
-                {filterRole === "user" && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                )}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {hasRole('admin') ? 'Actions' : 'Actions (Admin Only)'}
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -1478,21 +1501,19 @@ const ManageUsers = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {getLastVisited(user) || 'Never'}
                   </td>
-                  {filterRole === "user" && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {getUserRole(user) === 'user' && (
-                        <button
-                          onClick={() => handleDeleteClick(user)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete User"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      )}
-                    </td>
-                  )}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {hasRole('admin') && (
+                      <button
+                        onClick={() => handleDeleteClick(user)}
+                        className="text-red-600 hover:text-red-900"
+                        title={`Delete ${getUserRole(user)}`}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1532,7 +1553,7 @@ const ManageUsers = () => {
             </div>
             
             <p className="text-sm text-gray-600 mb-4">
-              Are you sure you want to delete user <span className="font-semibold text-gray-800">{userToDelete.first_name} {userToDelete.last_name}</span>? This action cannot be undone.
+              Are you sure you want to delete {getUserRole(userToDelete)} <span className="font-semibold text-gray-800">{userToDelete.first_name} {userToDelete.last_name}</span>? This action cannot be undone.
             </p>
             
             <div className="flex justify-end gap-3">
