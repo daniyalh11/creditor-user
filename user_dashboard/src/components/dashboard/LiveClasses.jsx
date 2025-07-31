@@ -69,8 +69,31 @@ export function LiveClasses() {
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [todayEvents, setTodayEvents] = useState([]);
+  const [courses, setCourses] = useState([]);
 
   const userTimezone = localStorage.getItem('userTimezone') || 'America/Los_Angeles';
+
+  // Fetch courses to map course IDs to course names
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/course/getAllCourses`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (data && data.data) {
+          setCourses(data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch courses:", err);
+      }
+    };
+    fetchCourses();
+  }, []);
 
   useEffect(() => {
     const fetchLiveClass = async () => {
@@ -221,7 +244,12 @@ export function LiveClasses() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
               <p className="text-sm text-muted-foreground mt-2">Loading today's classes...</p>
             </div>
-          ) : todayEvents.length === 0 ? (
+          ) : todayEvents.filter(event => {
+            // Only show events that have not ended
+            const now = new Date();
+            const end = new Date(event.endTime);
+            return now <= end;
+          }).length === 0 ? (
             <div className="text-center py-8">
               <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-lg font-medium text-gray-600">No classes scheduled for today</p>
@@ -237,82 +265,90 @@ export function LiveClasses() {
             </div>
           ) : (
             <div className="space-y-4">
-              {todayEvents.map((event, index) => {
-                const eventStatus = getEventStatus(event);
-                const isLive = eventStatus.status === 'live';
-                const isUpcoming = eventStatus.status === 'upcoming';
-                
-                return (
-                  <div
-                    key={event.id || index}
-                    className={`p-4 rounded-lg border transition-all duration-300 ${
-                      isLive 
-                        ? 'border-red-200 bg-red-50 shadow-sm' 
-                        : 'border-blue-200 bg-blue-50 shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className={`w-3 h-3 rounded-full ${
-                            isLive ? 'bg-red-500 animate-pulse' : 'bg-blue-500'
-                          }`}></div>
-                          <h4 className="font-semibold text-gray-800">{event.title}</h4>
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            isLive ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
-                          }`}>
-                            {eventStatus.text}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            <span>
-                              {formatTimeInUserTimezone(event.startTime, userTimezone)} - {formatTimeInUserTimezone(event.endTime, userTimezone)}
+              {todayEvents
+                .filter(event => {
+                  // Only show events that have not ended
+                  const now = new Date();
+                  const end = new Date(event.endTime);
+                  return now <= end;
+                })
+                .map((event, index) => {
+                  const eventStatus = getEventStatus(event);
+                  const isLive = eventStatus.status === 'live';
+                  const isUpcoming = eventStatus.status === 'upcoming';
+                  return (
+                    <div
+                      key={event.id || index}
+                      className={`p-4 rounded-lg border transition-all duration-300 ${
+                        isLive 
+                          ? 'border-red-200 bg-red-50 shadow-sm' 
+                          : 'border-blue-200 bg-blue-50 shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className={`w-3 h-3 rounded-full ${
+                              isLive ? 'bg-red-500 animate-pulse' : 'bg-blue-500'
+                            }`}></div>
+                            <h4 className="font-semibold text-gray-800">{event.title}</h4>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              isLive ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                            }`}>
+                              {eventStatus.text}
                             </span>
                           </div>
-                          {event.instructor && (
+                          {/* Show course name if available */}
+                          {(event.courseName || event.courseId || event.course_id) && (
+                            <span className="inline-block mb-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                              {event.courseName || courses.find(c => c.id === (event.courseId || event.course_id))?.title || (event.courseId || event.course_id)}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">
-                              <Users className="w-4 h-4" />
-                              <span>{event.instructor}</span>
+                              <Clock className="w-4 h-4" />
+                              <span>
+                                {formatTimeInUserTimezone(event.startTime, userTimezone)} - {formatTimeInUserTimezone(event.endTime, userTimezone)}
+                              </span>
+                            </div>
+                            {event.instructor && (
+                              <div className="flex items-center gap-1">
+                                <Users className="w-4 h-4" />
+                                <span>{event.instructor}</span>
+                              </div>
+                            )}
+                          </div>
+                          {event.description && (
+                            <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                              {event.description}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            onClick={() => handleJoinClass(event)}
+                            disabled={!isLive}
+                            className={`${
+                              isLive 
+                                ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
+                                : 'bg-blue-600 hover:bg-blue-700'
+                            } text-white transition-all duration-300`}
+                            size="sm"
+                          >
+                            <Video className="w-4 h-4 mr-2" />
+                            {isLive ? 'Join Now' : 'Class Not Started'}
+                            {isLive && <ExternalLink className="w-3 h-3 ml-1" />}
+                          </Button>
+                          {isUpcoming && (
+                            <div className="text-xs text-blue-600 text-center">
+                              Starts in {Math.max(0, Math.floor((new Date(event.startTime).getTime() - new Date().getTime()) / (1000 * 60)))}m
                             </div>
                           )}
                         </div>
-                        
-                        {event.description && (
-                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                            {event.description}
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div className="flex flex-col gap-2">
-                        <Button
-                          onClick={() => handleJoinClass(event)}
-                          disabled={!isLive}
-                          className={`${
-                            isLive 
-                              ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
-                              : 'bg-blue-600 hover:bg-blue-700'
-                          } text-white transition-all duration-300`}
-                          size="sm"
-                        >
-                          <Video className="w-4 h-4 mr-2" />
-                          {isLive ? 'Join Now' : 'Class Not Started'}
-                          {isLive && <ExternalLink className="w-3 h-3 ml-1" />}
-                        </Button>
-                        
-                        {isUpcoming && (
-                          <div className="text-xs text-blue-600 text-center">
-                            Starts in {Math.max(0, Math.floor((new Date(event.startTime).getTime() - new Date().getTime()) / (1000 * 60)))}m
-                          </div>
-                        )}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
         </CardContent>
