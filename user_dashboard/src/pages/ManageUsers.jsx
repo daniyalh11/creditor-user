@@ -24,7 +24,8 @@ const ManageUsers = () => {
   const [error, setError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState({ courseTitle: "", addedUsers: [] });
-  const [makingInstructor, setMakingInstructor] = useState(false);
+
+  const [updatingRole, setUpdatingRole] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [deletingUser, setDeletingUser] = useState(false);
@@ -194,7 +195,7 @@ const ManageUsers = () => {
     });
     
     if (user.user_roles && user.user_roles.length > 0) {
-      // Priority order: admin > instructor > user
+      // Priority order: admin > instructor > user (single role system)
       const roles = user.user_roles.map(r => r.role);
       
       if (roles.includes('admin')) {
@@ -596,7 +597,7 @@ const ManageUsers = () => {
     if (selectedUsers.length === 0) return;
     
     try {
-      setMakingInstructor(true);
+      setUpdatingRole(true);
       setError("");
       
       const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
@@ -657,20 +658,20 @@ const ManageUsers = () => {
               const hasInstructorRole = user.user_roles?.some(role => role.role === 'instructor');
               
               if (!hasInstructorRole) {
-                // Add instructor role to existing roles
+                // Replace all roles with instructor role (single role system)
                 const updatedUser = {
                   ...user,
                   user_roles: [
-                    ...(user.user_roles || []),
                     { role: 'instructor' }
                   ]
                 };
                 
-                console.log('🔄 Manually updating user role to instructor:', {
+                console.log('🔄 Manually updating user role to instructor (single role system):', {
                   id: user.id,
                   name: `${user.first_name} ${user.last_name}`,
                   oldRoles: user.user_roles,
-                  newRoles: updatedUser.user_roles
+                  newRoles: updatedUser.user_roles,
+                  message: 'All previous roles replaced with instructor role'
                 });
                 
                 return updatedUser;
@@ -722,7 +723,7 @@ const ManageUsers = () => {
             id: user.id,
             name: `${user.first_name} ${user.last_name}`,
             role: getUserRole(user),
-            user_roles: user.user_roles
+            user_roles: u.user_roles
           })));
         }, 2000);
       } else {
@@ -754,7 +755,243 @@ const ManageUsers = () => {
         setError('Failed to update user roles. Please try again.');
       }
     } finally {
-      setMakingInstructor(false);
+      setUpdatingRole(false);
+    }
+  };
+
+  const handleMakeAdmin = async () => {
+    if (selectedUsers.length === 0) return;
+    
+    try {
+      setUpdatingRole(true);
+      setError("");
+      
+      const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      console.log('🔄 Making admin API call:', {
+        url: `${API_BASE}/api/user/make-admins`,
+        payload: { user_ids: selectedUsers },
+        selectedUsers
+      });
+      
+      // Make API call to make users admins
+      const response = await axios.post(`${API_BASE}/api/user/make-admins`, {
+        user_ids: selectedUsers
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        withCredentials: true,
+      });
+
+      console.log('✅ Make admin API response:', response.data);
+
+      // Check if the request was successful (HTTP 200-299)
+      if (response.status >= 200 && response.status < 300) {
+        // Get the selected users data
+        const updatedUsers = users.filter(user => selectedUsers.includes(user.id));
+        
+        console.log('✅ Success! Users to be updated to admin:', updatedUsers.map(u => ({ id: u.id, name: `${u.first_name} ${u.last_name}`, currentRole: getUserRole(u) })));
+        
+        // Manually update the local state to reflect the role change
+        setUsers(prevUsers => {
+          const newUsers = prevUsers.map(user => {
+            if (selectedUsers.includes(user.id)) {
+              // Check if user already has admin role
+              const hasAdminRole = user.user_roles?.some(role => role.role === 'admin');
+              
+              if (!hasAdminRole) {
+                // Replace all roles with admin role (single role system)
+                const updatedUser = {
+                  ...user,
+                  user_roles: [
+                    { role: 'admin' }
+                  ]
+                };
+                
+                console.log('🔄 Manually updating user role to admin (single role system):', {
+                  id: user.id,
+                  name: `${user.first_name} ${user.last_name}`,
+                  oldRoles: user.user_roles,
+                  newRoles: updatedUser.user_roles,
+                  message: 'All previous roles replaced with admin role'
+                });
+                
+                return updatedUser;
+              } else {
+                console.log('ℹ️ User already has admin role:', {
+                  id: user.id,
+                  name: `${user.first_name} ${user.last_name}`,
+                  roles: user.user_roles
+                });
+                return user;
+              }
+            }
+            return user;
+          });
+          
+          return newUsers;
+        });
+        
+        // Reset selection first
+        setSelectedUsers([]);
+        
+        // Show success message immediately
+        setSuccessData({
+          courseTitle: "Admin Role Update",
+          addedUsers: updatedUsers
+        });
+        setShowSuccessModal(true);
+        
+        // Wait a moment for backend to process, then refresh
+        setTimeout(async () => {
+          console.log('🔄 Refreshing users list to get updated admin roles...');
+          await fetchUsers();
+        }, 2000);
+      } else {
+        console.error('❌ API returned non-success status:', response.status);
+        throw new Error(response.data?.message || `API returned status ${response.status}`);
+      }
+    } catch (error) {
+      console.error('❌ Error making users admins:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        setError('Invalid request. Please check your selection and try again.');
+      } else if (error.response?.status === 401) {
+        setError('Authentication failed. Please log in again.');
+      } else if (error.response?.status === 403) {
+        setError('You do not have permission to perform this action.');
+      } else if (error.response?.status === 500) {
+        setError(`Server error: ${error.response?.data?.message || 'Internal server error occurred. Please try again.'}`);
+      } else {
+        setError('Failed to update user roles. Please try again.');
+      }
+    } finally {
+      setUpdatingRole(false);
+    }
+  };
+
+  const handleMakeUser = async () => {
+    if (selectedUsers.length === 0) return;
+    
+    try {
+      setUpdatingRole(true); // Reuse the same loading state
+      setError("");
+      
+      const token = localStorage.getItem('token') || document.cookie.split('token=')[1]?.split(';')[0];
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      console.log('🔄 Making user API call:', {
+        url: `${API_BASE}/api/user/make-users`,
+        payload: { user_ids: selectedUsers },
+        selectedUsers
+      });
+      
+      // Make API call to make users regular users
+      const response = await axios.post(`${API_BASE}/api/user/make-users`, {
+        user_ids: selectedUsers
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        withCredentials: true,
+      });
+
+      console.log('✅ Make user API response:', response.data);
+
+      // Check if the request was successful (HTTP 200-299)
+      if (response.status >= 200 && response.status < 300) {
+        // Get the selected users data
+        const updatedUsers = users.filter(user => selectedUsers.includes(user.id));
+        
+        console.log('✅ Success! Users to be updated to regular user:', updatedUsers.map(u => ({ id: u.id, name: `${u.first_name} ${u.last_name}`, currentRole: getUserRole(u) })));
+        
+        // Manually update the local state to reflect the role change
+        setUsers(prevUsers => {
+          const newUsers = prevUsers.map(user => {
+            if (selectedUsers.includes(user.id)) {
+              // Check if user already has user role
+              const hasUserRole = user.user_roles?.some(role => role.role === 'user');
+              
+              if (!hasUserRole) {
+                // Replace all roles with user role (single role system)
+                const updatedUser = {
+                  ...user,
+                  user_roles: [
+                    { role: 'user' }
+                  ]
+                };
+                
+                console.log('🔄 Manually updating user role to regular user (single role system):', {
+                  id: user.id,
+                  name: `${user.first_name} ${user.last_name}`,
+                  oldRoles: user.user_roles,
+                  newRoles: updatedUser.user_roles,
+                  message: 'All previous roles replaced with user role'
+                });
+                
+                return updatedUser;
+              } else {
+                console.log('ℹ️ User already has user role:', {
+                  id: user.id,
+                  name: `${user.first_name} ${user.last_name}`,
+                  roles: user.user_roles
+                });
+                return user;
+              }
+            }
+            return user;
+          });
+          
+          return newUsers;
+        });
+        
+        // Reset selection first
+        setSelectedUsers([]);
+        
+        // Show success message immediately
+        setSuccessData({
+          courseTitle: "User Role Update",
+          addedUsers: updatedUsers
+        });
+        setShowSuccessModal(true);
+        
+        // Wait a moment for backend to process, then refresh
+        setTimeout(async () => {
+          console.log('🔄 Refreshing users list to get updated user roles...');
+          await fetchUsers();
+        }, 2000);
+      } else {
+        console.error('❌ API returned non-success status:', response.status);
+        throw new Error(response.data?.message || `API returned status ${response.status}`);
+      }
+    } catch (error) {
+      console.error('❌ Error making users regular users:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        setError('Invalid request. Please check your selection and try again.');
+      } else if (error.response?.status === 401) {
+        setError('Authentication failed. Please log in again.');
+      } else if (error.response?.status === 403) {
+        setError('You do not have permission to perform this action.');
+      } else if (error.response?.status === 500) {
+        setError(`Server error: ${error.response?.data?.message || 'Internal server error occurred. Please try again.'}`);
+      } else {
+        setError('Failed to update user roles. Please try again.');
+      }
+    } finally {
+      setUpdatingRole(false);
     }
   };
 
@@ -874,9 +1111,16 @@ const ManageUsers = () => {
       
       // Show the results in an alert for easy viewing
       const courseUsers = response.data?.data || [];
-      const userList = courseUsers.map(cu => 
-        `${cu.user?.first_name} ${cu.user?.last_name} (${cu.user?.email}) - Roles: ${cu.user?.user_roles?.map(r => r.role).join(', ')}`
-      ).join('\n');
+      const userList = courseUsers.map(cu => {
+        let roleDisplay = 'No role';
+        if (cu.user?.user_roles && cu.user.user_roles.length > 0) {
+          const roles = cu.user.user_roles.map(r => r.role);
+          const priorityRoles = ['admin', 'instructor', 'user'];
+          const highestRole = priorityRoles.find(role => roles.includes(role)) || 'user';
+          roleDisplay = highestRole;
+        }
+        return `${cu.user?.first_name} ${cu.user?.last_name} (${cu.user?.email}) - Role: ${roleDisplay}`;
+      }).join('\n');
       
       alert(`Course Users for ${courseId}:\n\n${userList || 'No users found'}`);
       
@@ -1002,18 +1246,38 @@ const ManageUsers = () => {
               {selectedUsers.length} {filterRole}(s) selected
             </span>
             <div className="flex gap-2">
+              {/* Role Management Buttons */}
               {filterRole === "user" && (
                 <button
                   onClick={handleMakeInstructor}
-                  disabled={makingInstructor}
+                  disabled={updatingRole}
                   className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Promote to Instructor (replaces all existing roles)"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                  {makingInstructor ? 'Updating...' : 'Make Instructor'}
+                  {updatingRole ? 'Updating...' : 'Make Instructor'}
                 </button>
               )}
+              {filterRole === "instructor" && (
+                <div className="text-sm text-gray-500 italic">
+                  {/* No role changes available for instructors */}
+                </div>
+              )}
+              {/* {filterRole === "admin" && (
+                <button
+                  onClick={handleMakeInstructor}
+                  disabled={updatingRole}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Demote to Instructor (replaces all existing roles)"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  {updatingRole ? 'Updating...' : 'Make Instructor'}
+                </button>
+              )} */}
               <button
                 onClick={() => setShowCourseModal(true)}
                 className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"

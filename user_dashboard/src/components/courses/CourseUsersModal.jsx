@@ -208,17 +208,25 @@ const CourseUsersModal = ({ isOpen, onClose, courseId }) => {
                           <p className="text-sm text-gray-600">{userData.user.email}</p>
                         </div>
 
-                        {/* Role Badges */}
+                        {/* Role Badge - Show only highest priority role */}
                         <div className="flex flex-wrap gap-2">
-                          {userData.user.user_roles?.map((role, roleIndex) => (
-                            <span 
-                              key={roleIndex} 
-                              className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full border ${getRoleBadgeStyle(role.role)}`}
-                            >
-                              {getRoleIcon(role.role)}
-                              {role.role}
-                            </span>
-                          ))}
+                          {(() => {
+                            if (userData.user.user_roles && userData.user.user_roles.length > 0) {
+                              const roles = userData.user.user_roles.map(roleObj => roleObj.role);
+                              const priorityRoles = ['admin', 'instructor', 'user'];
+                              const highestRole = priorityRoles.find(role => roles.includes(role)) || 'user';
+                              
+                              return (
+                                <span 
+                                  className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full border ${getRoleBadgeStyle(highestRole)}`}
+                                >
+                                  {getRoleIcon(highestRole)}
+                                  {highestRole}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
                     </div>
