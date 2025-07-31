@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 3000,
+    allowedHosts: ['creditor-user-vgy3.onrender.com'], // Allow this Render host
   },
   plugins: [
     react(),
