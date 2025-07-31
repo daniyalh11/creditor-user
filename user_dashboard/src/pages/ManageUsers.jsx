@@ -29,6 +29,7 @@ const ManageUsers = () => {
   const [userToDelete, setUserToDelete] = useState(null);
   const [deletingUser, setDeletingUser] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
+  const [enrollmentProgress, setEnrollmentProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
     fetchUsers();
@@ -699,12 +700,83 @@ const ManageUsers = () => {
         // Reset selection first
         setSelectedUsers([]);
         
-        // Show success message immediately
-        setSuccessData({
-          courseTitle: "Role Update",
-          addedUsers: updatedUsers
-        });
-        setShowSuccessModal(true);
+        // Automatically enroll new instructors in all courses
+        console.log('🎓 Automatically enrolling new instructors in all courses...');
+        console.log('📋 Available courses:', courses.map(c => ({ id: c.id, title: c.title })));
+        console.log('👥 New instructors to enroll:', selectedUsers);
+        
+        try {
+          // Set initial enrollment progress
+          setEnrollmentProgress({ current: 0, total: courses.length });
+          
+          // Enroll each new instructor in all courses
+          const enrollmentPromises = courses.map(async (course, index) => {
+            try {
+              console.log(`🔄 Enrolling instructors in course: ${course.title} (${course.id})`);
+              
+              const enrollmentResponse = await axios.post(`${API_BASE}/api/course/addLearnerToCourse`, {
+                course_id: course.id,
+                learnerIds: selectedUsers
+              }, {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                withCredentials: true,
+              });
+              
+              console.log(`✅ Successfully enrolled instructors in course: ${course.title}`, enrollmentResponse.data);
+              setEnrollmentProgress(prev => ({ ...prev, current: prev.current + 1 }));
+              return { course, success: true, response: enrollmentResponse.data };
+            } catch (enrollmentError) {
+              console.log(`⚠️ Failed to enroll instructors in course: ${course.title}`, enrollmentError.response?.data);
+              setEnrollmentProgress(prev => ({ ...prev, current: prev.current + 1 }));
+              return { course, success: false, error: enrollmentError.response?.data };
+            }
+          });
+          
+          const enrollmentResults = await Promise.all(enrollmentPromises);
+          const successfulEnrollments = enrollmentResults.filter(result => result.success);
+          const failedEnrollments = enrollmentResults.filter(result => !result.success);
+          
+          console.log('📊 Enrollment results:', {
+            totalCourses: courses.length,
+            successfulEnrollments: successfulEnrollments.length,
+            failedEnrollments: failedEnrollments.length,
+            successfulCourses: successfulEnrollments.map(r => r.course.title),
+            failedCourses: failedEnrollments.map(r => r.course.title)
+          });
+          
+          // Show success message with enrollment information
+          const enrollmentMessage = successfulEnrollments.length > 0 
+            ? ` and enrolled them in ${successfulEnrollments.length} course(s)`
+            : '';
+          
+          setSuccessData({
+            courseTitle: "Role Update",
+            addedUsers: updatedUsers,
+            enrollmentInfo: {
+              successful: successfulEnrollments.length,
+              total: courses.length,
+              message: enrollmentMessage
+            }
+          });
+          setShowSuccessModal(true);
+          
+        } catch (enrollmentError) {
+          console.error('❌ Error during automatic course enrollment:', enrollmentError);
+          // Still show success for role update, but log enrollment error
+          setSuccessData({
+            courseTitle: "Role Update",
+            addedUsers: updatedUsers,
+            enrollmentInfo: {
+              successful: 0,
+              total: courses.length,
+              message: ' (course enrollment failed)'
+            }
+          });
+          setShowSuccessModal(true);
+        }
         
         // Wait a moment for backend to process, then refresh
         console.log('🔄 Waiting for backend to process role update...');
@@ -1011,7 +1083,12 @@ const ManageUsers = () => {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                  {makingInstructor ? 'Updating...' : 'Make Instructor'}
+                  {makingInstructor 
+                    ? enrollmentProgress.total > 0 
+                      ? `Updating & Enrolling... (${enrollmentProgress.current}/${enrollmentProgress.total})`
+                      : 'Updating & Enrolling...'
+                    : 'Make Instructor'
+                  }
                 </button>
               )}
               <button
@@ -1107,7 +1184,7 @@ const ManageUsers = () => {
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-3">
                 {successData.courseTitle === "Role Update" 
-                  ? <>You have successfully updated <span className="font-semibold text-gray-800">{successData.addedUsers.length} user(s)</span> to instructor role. They will now appear in the Instructor section.</>
+                  ? <>You have successfully updated <span className="font-semibold text-gray-800">{successData.addedUsers.length} user(s)</span> to instructor role{successData.enrollmentInfo?.message || ''}. They will now appear in the Instructor section.</>
                   : successData.courseTitle === "User Deleted"
                   ? <>You have successfully deleted {getUserRole(successData.addedUsers[0])} <span className="font-semibold text-gray-800">{successData.addedUsers[0]?.first_name} {successData.addedUsers[0]?.last_name}</span> from the system.</>
                   : <>You have successfully added <span className="font-semibold text-gray-800">{successData.addedUsers.length} {filterRole}(s)</span> to the course:</>
@@ -1116,6 +1193,26 @@ const ManageUsers = () => {
               {successData.courseTitle !== "Role Update" && successData.courseTitle !== "User Deleted" && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                   <p className="text-sm font-medium text-blue-800">{successData.courseTitle}</p>
+                </div>
+              )}
+              
+              {/* Course Enrollment Information */}
+              {successData.courseTitle === "Role Update" && successData.enrollmentInfo && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    <p className="text-sm font-medium text-green-800">Course Enrollment Status</p>
+                  </div>
+                  <p className="text-sm text-green-700">
+                    Successfully enrolled in <span className="font-semibold">{successData.enrollmentInfo.successful}</span> out of <span className="font-semibold">{successData.enrollmentInfo.total}</span> courses.
+                  </p>
+                  {successData.enrollmentInfo.successful < successData.enrollmentInfo.total && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Some courses may have failed due to existing enrollments or permissions.
+                    </p>
+                  )}
                 </div>
               )}
               
