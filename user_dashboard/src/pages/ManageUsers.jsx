@@ -31,6 +31,10 @@ const ManageUsers = () => {
   const [deletingUser, setDeletingUser] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
   const [enrollmentProgress, setEnrollmentProgress] = useState({ current: 0, total: 0 });
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage] = useState(5);
 
   useEffect(() => {
     fetchUsers();
@@ -288,6 +292,17 @@ const ManageUsers = () => {
     return matchesSearch && matchesRole;
   });
 
+  // Pagination logic
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+
+  // Reset to first page when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterRole]);
+
   const handleSelectUser = (userId) => {
     setSelectedUsers(prev => 
       prev.includes(userId) 
@@ -297,10 +312,10 @@ const ManageUsers = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedUsers.length === filteredUsers.length) {
+    if (selectedUsers.length === currentUsers.length) {
       setSelectedUsers([]);
     } else {
-      setSelectedUsers(filteredUsers.map(user => user.id));
+      setSelectedUsers(currentUsers.map(user => user.id));
     }
   };
 
@@ -753,16 +768,16 @@ const ManageUsers = () => {
             ? ` and enrolled them in ${successfulEnrollments.length} course(s)`
             : '';
           
-          setSuccessData({
-            courseTitle: "Role Update",
+        setSuccessData({
+          courseTitle: "Role Update",
             addedUsers: updatedUsers,
             enrollmentInfo: {
               successful: successfulEnrollments.length,
               total: courses.length,
               message: enrollmentMessage
             }
-          });
-          setShowSuccessModal(true);
+        });
+        setShowSuccessModal(true);
           
         } catch (enrollmentError) {
           console.error('❌ Error during automatic course enrollment:', enrollmentError);
@@ -1098,7 +1113,7 @@ const ManageUsers = () => {
 
       console.log('✅ Delete API response:', response.data);
       console.log('✅ Response status:', response.status);
-      
+
       if (response.data && (response.data.success || response.data.code === 200 || response.data.code === 201)) {
         console.log('✅ User deleted successfully');
         
@@ -1541,7 +1556,7 @@ const ManageUsers = () => {
                 <th className="px-6 py-3 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
+                    checked={selectedUsers.length === currentUsers.length && currentUsers.length > 0}
                     onChange={handleSelectAll}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
@@ -1561,7 +1576,7 @@ const ManageUsers = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
+              {currentUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input
@@ -1617,7 +1632,7 @@ const ManageUsers = () => {
           </table>
         </div>
         
-        {filteredUsers.length === 0 && (
+        {currentUsers.length === 0 && (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
@@ -1631,6 +1646,41 @@ const ManageUsers = () => {
           </div>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="bg-white px-4 py-3 flex items-center justify-center border-t border-gray-200">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                currentPage === 1
+                  ? 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Previous
+            </button>
+            
+            <span className="text-sm text-gray-700 font-medium">
+              Page {currentPage} of {totalPages}
+            </span>
+            
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                currentPage === totalPages
+                  ? 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && userToDelete && (

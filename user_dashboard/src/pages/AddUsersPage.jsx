@@ -57,6 +57,15 @@ const AddUsersForm = () => {
   const handleNumUsersChange = (e) => {
     const value = parseInt(e.target.value, 10);
     setNumUsers(value);
+    
+    // Reset Excel data when number of users changes
+    if (showExcelPreview) {
+      setExcelFile(null);
+      setExcelData([]);
+      setShowExcelPreview(false);
+      setError(""); // Clear any existing errors
+    }
+    
     setUsers((prev) => {
       const newUsers = [...prev];
       if (value > prev.length) {
@@ -477,9 +486,9 @@ const AddUsersForm = () => {
         {showExcelPreview && excelData.length > 0 && (
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Excel Data Preview ({excelData.length} users)</h3>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-96 overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-100">
+                <thead className="bg-gray-100 sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Name</th>
@@ -488,7 +497,7 @@ const AddUsersForm = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {excelData.slice(0, 5).map((user, index) => (
+                  {excelData.map((user, index) => (
                     <tr key={index}>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{user.first_name}</td>
@@ -496,13 +505,6 @@ const AddUsersForm = () => {
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                     </tr>
                   ))}
-                  {excelData.length > 5 && (
-                    <tr>
-                      <td colSpan="4" className="px-4 py-3 text-center text-sm text-gray-500">
-                        Showing 5 of {excelData.length} users
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
