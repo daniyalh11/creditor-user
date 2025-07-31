@@ -10,6 +10,7 @@ const AddUsersForm = () => {
   const [users, setUsers] = useState([
     { email: "", first_name: "", last_name: "", password: "" },
   ]);
+  const [passwordErrors, setPasswordErrors] = useState({}); // Track password validation errors
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -17,6 +18,21 @@ const AddUsersForm = () => {
   const [showUserList, setShowUserList] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
   const [recentlyAddedUsers, setRecentlyAddedUsers] = useState([]);
+
+  // Password validation function
+  const validatePassword = (password) => {
+    if (!password) return null; // Don't validate empty passwords
+    
+    const hasAlphabets = /[a-zA-Z]/.test(password);
+    const hasNumbers = /[0-9]/.test(password);
+    const hasSpecialChars = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    
+    if (!hasAlphabets || !hasNumbers || !hasSpecialChars) {
+      return "Password must contain alphabets, special characters, and numbers";
+    }
+    
+    return null; // Password is valid
+  };
 
   // Load added users from localStorage on mount
   useEffect(() => {
@@ -52,6 +68,17 @@ const AddUsersForm = () => {
       }
       return newUsers;
     });
+    
+    // Update password errors to match new user count
+    setPasswordErrors((prev) => {
+      const newErrors = {};
+      for (let i = 0; i < value; i++) {
+        if (prev[i] !== undefined) {
+          newErrors[i] = prev[i];
+        }
+      }
+      return newErrors;
+    });
   };
 
   const handleUserChange = (idx, field, value) => {
@@ -60,6 +87,15 @@ const AddUsersForm = () => {
       arr[idx][field] = value;
       return arr;
     });
+    
+    // Validate password when password field changes
+    if (field === "password") {
+      const validationError = validatePassword(value);
+      setPasswordErrors((prev) => ({
+        ...prev,
+        [idx]: validationError
+      }));
+    }
   };
 
   const handleExcelUpload = (e) => {
@@ -122,10 +158,28 @@ const AddUsersForm = () => {
         return;
       }
 
+      // Validate passwords for Excel data
+      const excelPasswordErrors = {};
+      let hasPasswordErrors = false;
+      parsedUsers.forEach((user, index) => {
+        const validationError = validatePassword(user.password);
+        if (validationError) {
+          excelPasswordErrors[index] = validationError;
+          hasPasswordErrors = true;
+        }
+      });
+
+      if (hasPasswordErrors) {
+        setError('Some passwords in the Excel file do not meet the requirements. Passwords must contain alphabets, special characters, and numbers.');
+        setPasswordErrors(excelPasswordErrors);
+        return;
+      }
+
       setExcelData(parsedUsers);
       setUsers(parsedUsers);
       setShowExcelPreview(true);
       setError("");
+      setPasswordErrors({}); // Clear any existing password errors
     };
     reader.readAsArrayBuffer(file);
   };
@@ -137,6 +191,14 @@ const AddUsersForm = () => {
     setSuccess(false);
 
     try {
+      // Check for password validation errors
+      const hasPasswordErrors = Object.values(passwordErrors).some(error => error !== null);
+      if (hasPasswordErrors) {
+        setError('Please fix password validation errors before submitting.');
+        setLoading(false);
+        return;
+      }
+
       // Validate user data before sending
       const validUsers = users.filter(user => 
         user.email && 
@@ -193,6 +255,7 @@ const AddUsersForm = () => {
         setExcelFile(null);
         setExcelData([]);
         setShowExcelPreview(false);
+        setPasswordErrors({}); // Clear password errors on success
       } else {
         setError(response.data.message || "Failed to add users.");
       }
@@ -213,6 +276,7 @@ const AddUsersForm = () => {
   const resetForm = () => {
     setSuccess(false);
     setError("");
+    setPasswordErrors({});
     setRecentlyAddedUsers([]);
     setUsers([{ email: "", first_name: "", last_name: "", password: "" }]);
     setNumUsers(1);
@@ -473,11 +537,21 @@ const AddUsersForm = () => {
                     <input
                       type="text"
                       placeholder="••••••••"
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
+                        passwordErrors[idx] ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'
+                      }`}
                       value={user.password}
                       onChange={(e) => handleUserChange(idx, "password", e.target.value)}
                       required
                     />
+                    {passwordErrors[idx] && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {passwordErrors[idx]}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
